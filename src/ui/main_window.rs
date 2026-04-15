@@ -16,7 +16,6 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
 use libadwaita as adw;
-use adw::prelude::*;
 use sourceview5 as sv;
 use sv::prelude::*;
 

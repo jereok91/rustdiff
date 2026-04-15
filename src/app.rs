@@ -6,7 +6,6 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
 use libadwaita as adw;
-use adw::prelude::*; // ApplicationExt, etc.
 
 use crate::ui::main_window::MainWindow;
 

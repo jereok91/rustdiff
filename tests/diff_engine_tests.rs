@@ -4,7 +4,7 @@
 //! y XML completos como los que un usuario pegaría en la aplicación.
 
 use rustdiff::diff_engine::*;
-use rustdiff::parser::{parse_json, parse_xml, XmlChild, XmlNode};
+use rustdiff::parser::{parse_json, parse_xml};
 
 // ═══════════════════════════════════════════════
 // JSON: escenario API REST — respuesta de usuario
