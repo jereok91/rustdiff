@@ -1,12 +1,27 @@
+# Copyright 2026 the rustdiff authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
 [package]
 name = "rustdiff"
 version = "0.1.0"
 edition = "2024"
 authors     = ["digitalgex <jpajro@digitalgex.com>"]
 description = "Comparador semántico de JSON y XML — escritorio nativo con GTK4"
-license     = "MIT"
+license     = "GPL-3.0-or-later"
 readme      = "README.md"
-# Rust mínimo recomendado para gtk4-rs 0.9 + libadwaita 0.7
 rust-version = "1.85"
  
 # ─────────────────────────────────────────────
@@ -21,28 +36,21 @@ path = "src/main.rs"
 # ─────────────────────────────────────────────
 [dependencies]
 
-# ── UI / GTK ─────────────────────────────────
 gtk4 = { version = "0.9", features = [
-    "v4_12",          # widgets modernos (ColumnView, etc.)
-] }
+    "v4_12",          ] }
 libadwaita = { version = "0.7", features = [
-    "v1_5",           # AdwToolbarView, breakpoints responsivos
-] }
-# Editor con syntax-highlighting nativo de GNOME
+    "v1_5",           ] }
 sourceview5 = { version = "0.9" }
  
 # ── SERIALIZACIÓN / PARSEO ───────────────────
 serde      = { version = "1",    features = ["derive"] }
 serde_json = { version = "1" }
-# XML rápido: parsing + pretty-print sin dependencias C
 quick-xml  = { version = "0.36", features = ["serialize", "async-tokio"] }
  
 # ── MOTOR DE DIFF ────────────────────────────
-# Algoritmo Myers/LCS — el mismo que usa `git diff`
 similar = { version = "2", features = ["text", "unicode"] }
  
 # ── PERSISTENCIA SSD (SQLite embebido) ───────
-# "bundled" compila SQLite dentro del binario (sin dep. externa)
 rusqlite = { version = "0.31", features = ["bundled", "backup"] }
  
 # ── ASYNC (parseo en hilo separado sin bloquear UI) ──
@@ -55,24 +63,18 @@ tokio = { version = "1", features = [
 ] }
  
 # ── UTILIDADES ───────────────────────────────
-# Rutas de datos de usuario multiplataforma (~/.local/share, etc.)
 dirs        = "5"
-# Logging estructurado
 tracing              = "0.1"
 tracing-subscriber   = { version = "0.3", features = ["env-filter"] }
-# Manejo ergonómico de errores
 thiserror   = "1"
 anyhow      = "1"
-# Notificaciones al usuario (Gtk toast / system notification)
 notify-rust = { version = "4", optional = true }
  
 # ─────────────────────────────────────────────
 # DEPENDENCIAS SOLO EN TESTS / BENCHMARKS
 # ─────────────────────────────────────────────
 [dev-dependencies]
-# Fixtures de prueba y asserts expresivos
 pretty_assertions = "1"
-# Genera datos JSON / XML aleatorios para fuzzing básico
 arbitrary         = { version = "1", features = ["derive"] }
  
 # ─────────────────────────────────────────────
@@ -80,9 +82,7 @@ arbitrary         = { version = "1", features = ["derive"] }
 # ─────────────────────────────────────────────
 [features]
 default     = []
-# Activa notificaciones de escritorio del SO
 notifications = ["notify-rust"]
-# Modo verbose para desarrollo (activa más trazas)
 dev         = []
  
 # ─────────────────────────────────────────────
@@ -107,7 +107,7 @@ incremental   = true       # compilación incremental (más rápido en cambios)
 # METADATA (útil para empaquetado .deb / flatpak)
 # ─────────────────────────────────────────────
 [package.metadata.deb]
-maintainer   = "jpajro <jpajaro@diogitalgex.com>"
+maintainer   = "jpajaro <jpajaro@diogitalgex.com>"
 copyright    = "2026, digitalgex"
 license-file = ["LICENSE", "4"]
 extended-description = """

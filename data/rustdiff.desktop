@@ -1,0 +1,42 @@
+[Desktop Entry]
+# ── Información básica ──────────────────────────────────────────────
+Name=RustDiff
+Name[es]=RustDiff
+GenericName=JSON & XML Comparator
+GenericName[es]=Comparador de JSON y XML
+Comment=Compare JSON and XML documents visually
+Comment[es]=Compara documentos JSON y XML de forma visual
+Icon=rustdiff
+Exec=rustdiff %F
+Terminal=false
+Type=Application
+
+# ── Categorías (clasifica la app en el menú del sistema) ────────────
+Categories=Utility;Development;TextEditor;
+
+# ── Tipos MIME que puede abrir la app ──────────────────────────────
+MimeType=application/json;application/xml;text/xml;text/json;
+
+# ── Palabras clave para búsqueda ───────────────────────────────────
+Keywords=json;xml;diff;compare;format;lint;validate;
+Keywords[es]=json;xml;diff;comparar;formato;validar;
+
+# ── Integración con el escritorio ──────────────────────────────────
+# Aparece en la búsqueda de GNOME/KDE
+StartupNotify=true
+StartupWMClass=rustdiff
+
+# ── Acciones rápidas (click derecho en el ícono) ───────────────────
+Actions=NewComparison;History;
+
+[Desktop Action NewComparison]
+Name=New Comparison
+Name[es]=Nueva Comparación
+Exec=rustdiff
+Icon=rustdiff
+
+[Desktop Action History]
+Name=Open History
+Name[es]=Abrir Historial
+Exec=rustdiff --history
+Icon=rustdiff

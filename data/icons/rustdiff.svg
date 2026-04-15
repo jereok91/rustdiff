@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <!-- Fondo con esquinas redondeadas estilo app icon moderno -->
+    <clipPath id="appClip">
+      <rect width="128" height="128" rx="28" ry="28"/>
+    </clipPath>
+  </defs>
+
+  <!-- Fondo degradado sutil: azul oscuro → azul profundo -->
+  <rect width="128" height="128" rx="28" ry="28" fill="#1E2A3A"/>
+
+  <!-- Panel izquierdo (JSON - verde azulado) -->
+  <rect x="12" y="22" width="42" height="84" rx="6" ry="6"
+        fill="#1A3A2A" stroke="#2ECC71" stroke-width="1.5"/>
+  <!-- Líneas simulando código JSON -->
+  <rect x="18" y="32" width="20" height="3" rx="1.5" fill="#2ECC71" opacity="0.9"/>
+  <rect x="18" y="40" width="28" height="3" rx="1.5" fill="#27AE60" opacity="0.7"/>
+  <rect x="18" y="48" width="24" height="3" rx="1.5" fill="#27AE60" opacity="0.7"/>
+  <rect x="18" y="56" width="30" height="3" rx="1.5" fill="#2ECC71" opacity="0.9"/>
+  <rect x="18" y="64" width="22" height="3" rx="1.5" fill="#27AE60" opacity="0.5"/>
+  <rect x="18" y="72" width="26" height="3" rx="1.5" fill="#27AE60" opacity="0.7"/>
+  <rect x="18" y="80" width="18" height="3" rx="1.5" fill="#2ECC71" opacity="0.9"/>
+  <rect x="18" y="88" width="28" height="3" rx="1.5" fill="#27AE60" opacity="0.5"/>
+
+  <!-- Panel derecho (XML - naranja) -->
+  <rect x="74" y="22" width="42" height="84" rx="6" ry="6"
+        fill="#3A2A1A" stroke="#E67E22" stroke-width="1.5"/>
+  <!-- Líneas simulando código XML -->
+  <rect x="80" y="32" width="28" height="3" rx="1.5" fill="#E67E22" opacity="0.9"/>
+  <rect x="80" y="40" width="20" height="3" rx="1.5" fill="#D35400" opacity="0.7"/>
+  <rect x="80" y="48" width="30" height="3" rx="1.5" fill="#D35400" opacity="0.7"/>
+  <!-- Línea DIFERENTE (resaltada en rojo = eliminada) -->
+  <rect x="80" y="56" width="30" height="5" rx="2" fill="#C0392B" opacity="0.6"/>
+  <rect x="80" y="56" width="30" height="5" rx="2" fill="none"
+        stroke="#E74C3C" stroke-width="0.8"/>
+  <rect x="80" y="65" width="24" height="3" rx="1.5" fill="#D35400" opacity="0.5"/>
+  <!-- Línea DIFERENTE (resaltada en verde = añadida) -->
+  <rect x="80" y="72" width="26" height="5" rx="2" fill="#1A6B2A" opacity="0.7"/>
+  <rect x="80" y="72" width="26" height="5" rx="2" fill="none"
+        stroke="#2ECC71" stroke-width="0.8"/>
+  <rect x="80" y="81" width="20" height="3" rx="1.5" fill="#D35400" opacity="0.5"/>
+  <rect x="80" y="88" width="28" height="3" rx="1.5" fill="#E67E22" opacity="0.7"/>
+
+  <!-- Conector central con flechas bidireccionales -->
+  <!-- Flecha izquierda → derecha -->
+  <line x1="57" y1="60" x2="71" y2="60"
+        stroke="#5DADE2" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="71,57 76,60 71,63" fill="#5DADE2"/>
+  <!-- Flecha derecha → izquierda -->
+  <line x1="71" y1="68" x2="57" y2="68"
+        stroke="#5DADE2" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="57,65 52,68 57,71" fill="#5DADE2"/>
+
+  <!-- Punto central brillante (símbolo diff) -->
+  <circle cx="64" cy="64" r="5" fill="#2980B9"/>
+  <circle cx="64" cy="64" r="3" fill="#5DADE2"/>
+
+  <!-- Etiqueta pequeña "≠" centrada debajo del logo (diferencia) -->
+  <text x="64" y="118" font-family="monospace" font-size="11"
+        font-weight="bold" text-anchor="middle"
+        fill="#5DADE2" opacity="0.85">≠ diff</text>
+</svg>
