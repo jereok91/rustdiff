@@ -1,6 +1,20 @@
 # RustDiff
 
+[![Crates.io](https://img.shields.io/crates/v/rustdiff)](https://crates.io/crates/rustdiff)
+[![License: GPL-3.0](https://img.shields.io/crates/l/rustdiff)](LICENSE)
+
 Comparador semantico de documentos JSON y XML con interfaz grafica nativa, construido con Rust, GTK4 y Libadwaita.
+
+## Instalacion rapida
+
+```bash
+# Instalacion automatica (detecta distro, instala deps, compila)
+curl -fsSL https://raw.githubusercontent.com/jereok91/rustdiff/main/install.sh | bash
+
+# O manualmente: instalar deps del sistema + cargo install
+# (ver seccion "Requisitos del sistema" abajo)
+cargo install rustdiff
+```
 
 ```
 rustdiff/

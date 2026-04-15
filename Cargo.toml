@@ -14,113 +14,139 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
+
 [package]
-name = "rustdiff"
-version = "0.1.0"
-edition = "2024"
+name        = "rustdiff"
+version     = "0.1.0"
+edition     = "2024"
+rust-version = "1.85"
 authors     = ["digitalgex <jpajro@digitalgex.com>"]
-description = "Comparador semántico de JSON y XML — escritorio nativo con GTK4"
+description = "Semantic JSON & XML diff tool with a native GTK4 desktop UI"
 license     = "GPL-3.0-or-later"
 readme      = "README.md"
-rust-version = "1.85"
- 
+repository  = "https://github.com/jereok91/rustdiff"
+homepage    = "https://github.com/jereok91/rustdiff"
+
+# Maximo 5 keywords — las que la gente buscaria en crates.io
+keywords    = ["json", "xml", "diff", "gtk4", "compare"]
+
+# Solo slugs validos de https://crates.io/category_slugs
+categories  = ["command-line-utilities", "development-tools", "gui"]
+
+# ── Archivos a incluir en el .crate ─────────
+# Solo lo necesario para compilar + metadata.
+# Excluye tests, screenshots, CI, etc. para reducir tamano del paquete.
+include = [
+    "src/**/*.rs",
+    "build.rs",
+    "Cargo.toml",
+    "Cargo.lock",
+    "LICENSE",
+    "README.md",
+    "data/rustdiff.desktop",
+    "data/icons/rustdiff.svg",
+]
+
 # ─────────────────────────────────────────────
 # BINARIO PRINCIPAL
 # ─────────────────────────────────────────────
 [[bin]]
 name = "rustdiff"
 path = "src/main.rs"
- 
+
 # ─────────────────────────────────────────────
-# DEPENDENCIAS DE PRODUCCIÓN
+# DEPENDENCIAS DE BUILD (verificacion de libs del sistema)
+# ─────────────────────────────────────────────
+[build-dependencies]
+pkg-config = "0.3"
+
+# ─────────────────────────────────────────────
+# DEPENDENCIAS DE PRODUCCION
 # ─────────────────────────────────────────────
 [dependencies]
 
-gtk4 = { version = "0.9", features = [
-    "v4_12",          ] }
-libadwaita = { version = "0.7", features = [
-    "v1_5",           ] }
-sourceview5 = { version = "0.9" }
- 
-# ── SERIALIZACIÓN / PARSEO ───────────────────
-serde      = { version = "1",    features = ["derive"] }
-serde_json = { version = "1" }
+# ── UI / GTK ─────────────────────────────────
+gtk4        = { version = "0.9", features = ["v4_12"] }
+libadwaita  = { version = "0.7", features = ["v1_5"] }
+sourceview5 = "0.9"
+
+# ── SERIALIZACION / PARSEO ───────────────────
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
 quick-xml  = { version = "0.36", features = ["serialize", "async-tokio"] }
- 
+
 # ── MOTOR DE DIFF ────────────────────────────
 similar = { version = "2", features = ["text", "unicode"] }
- 
-# ── PERSISTENCIA SSD (SQLite embebido) ───────
+
+# ── PERSISTENCIA (SQLite embebido) ───────────
 rusqlite = { version = "0.31", features = ["bundled", "backup"] }
- 
-# ── ASYNC (parseo en hilo separado sin bloquear UI) ──
+
+# ── ASYNC ────────────────────────────────────
 tokio = { version = "1", features = [
-    "rt",             # runtime básico
+    "rt",
     "rt-multi-thread",
-    "fs",             # lectura async de archivos
-    "time",           # debounce timer
-    "macros",         # #[tokio::main]
+    "fs",
+    "time",
+    "macros",
 ] }
- 
+
 # ── UTILIDADES ───────────────────────────────
-dirs        = "5"
-tracing              = "0.1"
-tracing-subscriber   = { version = "0.3", features = ["env-filter"] }
-thiserror   = "1"
-anyhow      = "1"
-notify-rust = { version = "4", optional = true }
- 
+dirs               = "5"
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror          = "1"
+anyhow             = "1"
+notify-rust        = { version = "4", optional = true }
+
 # ─────────────────────────────────────────────
-# DEPENDENCIAS SOLO EN TESTS / BENCHMARKS
+# DEPENDENCIAS DE TEST
 # ─────────────────────────────────────────────
 [dev-dependencies]
 pretty_assertions = "1"
 arbitrary         = { version = "1", features = ["derive"] }
- 
+
 # ─────────────────────────────────────────────
-# FEATURES OPCIONALES
+# FEATURES
 # ─────────────────────────────────────────────
 [features]
-default     = []
+default       = []
 notifications = ["notify-rust"]
-dev         = []
- 
+
 # ─────────────────────────────────────────────
-# PERFIL RELEASE — máximo rendimiento + binario pequeño
+# PERFIL RELEASE
 # ─────────────────────────────────────────────
 [profile.release]
-opt-level     = 3          # optimización máxima
-lto           = "thin"     # Link-Time Optimization (más rápido que "fat")
-codegen-units = 1          # un solo codegen-unit = mejor inlining
-strip         = "symbols"  # elimina símbolos de debug del binario
-panic         = "abort"    # binario más pequeño, sin stack unwinding
- 
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1
+strip         = "symbols"
+panic         = "abort"
+
 # ─────────────────────────────────────────────
-# PERFIL DE DESARROLLO — builds rápidos
+# PERFIL DE DESARROLLO
 # ─────────────────────────────────────────────
 [profile.dev]
-opt-level     = 1          # algo de optimización para que GTK no sea lento
-debug         = true
-incremental   = true       # compilación incremental (más rápido en cambios)
- 
+opt-level   = 1
+debug       = true
+incremental = true
+
 # ─────────────────────────────────────────────
-# METADATA (útil para empaquetado .deb / flatpak)
+# METADATA PARA EMPAQUETADO .deb
 # ─────────────────────────────────────────────
 [package.metadata.deb]
-maintainer   = "jpajaro <jpajaro@diogitalgex.com>"
+maintainer   = "jpajaro <jpajaro@digitalgex.com>"
 copyright    = "2026, digitalgex"
 license-file = ["LICENSE", "4"]
 extended-description = """
-RustDiff es un comparador semántico de JSON y XML.
+RustDiff es un comparador semantico de JSON y XML.
 Muestra las diferencias entre dos documentos de forma visual,
-resaltando añadidos, eliminados y modificados con colores.
+resaltando anadidos, eliminados y modificados con colores.
 """
-depends      = "$auto, libgtk-4-1, libadwaita-1-0"
-section      = "utils"
-priority     = "optional"
+depends  = "$auto, libgtk-4-1, libadwaita-1-0, libgtksourceview-5-0"
+section  = "utils"
+priority = "optional"
 assets = [
-    ["target/release/rustdiff", "usr/bin/",              "755"],
-    ["data/rustdiff.desktop",   "usr/share/applications/", "644"],
-    ["data/icons/rustdiff.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+    ["target/release/rustdiff", "usr/bin/",                                "755"],
+    ["data/rustdiff.desktop",   "usr/share/applications/",                 "644"],
+    ["data/icons/rustdiff.svg", "usr/share/icons/hicolor/scalable/apps/",  "644"],
 ]
-

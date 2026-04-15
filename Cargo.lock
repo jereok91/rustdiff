@@ -1303,6 +1303,7 @@ dependencies = [
  "gtk4",
  "libadwaita",
  "notify-rust",
+ "pkg-config",
  "pretty_assertions",
  "quick-xml 0.36.2",
  "rusqlite",
