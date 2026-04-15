@@ -67,6 +67,14 @@ sudo dnf install gtk4-devel libadwaita-devel gtksourceview5-devel
 sudo apt install libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev
 ```
 
+**macOS (experimental, via Homebrew):**
+
+```bash
+brew install pkgconf gtk4 libadwaita gtksourceview5
+```
+
+> **Nota:** GTK4 + Libadwaita en macOS es experimental. RustDiff esta optimizado para Linux (GNOME).
+
 **Nota:** SQLite no necesita instalarse aparte. La crate `rusqlite` viene con la feature `bundled` que compila SQLite directamente dentro del binario.
 
 ### Verificar dependencias

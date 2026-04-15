@@ -23,15 +23,20 @@ ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 fail()  { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
-# ── Verificar que estamos en Linux ───────────
-[[ "$(uname -s)" == "Linux" ]] || fail "RustDiff solo soporta Linux."
+# ── Verificar SO soportado ───────────────────
+OS="$(uname -s)"
+case "$OS" in
+    Linux)  ;;
+    Darwin) warn "macOS detectado. GTK4+Libadwaita en macOS es experimental." ;;
+    *)      fail "Sistema operativo no soportado: $OS" ;;
+esac
 
 # ── Verificar que Rust esta instalado ────────
 if ! command -v cargo &>/dev/null; then
     fail "Cargo no encontrado. Instala Rust primero:\n         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
 fi
 
-rust_version=$(rustc --version | grep -oP '\d+\.\d+\.\d+')
+rust_version=$(rustc --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
 info "Rust detectado: ${BOLD}${rust_version}${NC}"
 
 # ── Detectar package manager ─────────────────
@@ -40,6 +45,7 @@ detect_pm() {
     elif command -v dnf    &>/dev/null; then echo "dnf"
     elif command -v apt    &>/dev/null; then echo "apt"
     elif command -v zypper &>/dev/null; then echo "zypper"
+    elif command -v brew   &>/dev/null; then echo "brew"
     else echo "unknown"
     fi
 }
@@ -64,6 +70,9 @@ install_deps() {
             ;;
         zypper)
             sudo zypper install -y gtk4-devel libadwaita-devel gtksourceview5-devel
+            ;;
+        brew)
+            brew install pkgconf gtk4 libadwaita gtksourceview5
             ;;
         *)
             fail "Package manager no soportado. Instala manualmente:\n" \
@@ -140,7 +149,12 @@ install_desktop_files() {
     [ -n "$tmp_dir" ] && rm -rf "$tmp_dir"
 }
 
-install_desktop_files
+# Solo instalar .desktop e icono en Linux (no aplica en macOS)
+if [ "$OS" = "Linux" ]; then
+    install_desktop_files
+else
+    info "Saltando instalacion de .desktop e icono (no aplica en macOS)."
+fi
 
 # ── Resumen final ────────────────────────────
 echo
