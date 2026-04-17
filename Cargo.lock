@@ -1295,7 +1295,7 @@ dependencies = [
 
 [[package]]
 name = "rustdiff"
-version = "0.1.2-rc"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "arbitrary",
