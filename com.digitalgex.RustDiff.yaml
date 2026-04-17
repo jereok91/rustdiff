@@ -1,33 +1,17 @@
-# Manifiesto Flatpak para RustDiff
-#
-# Uso local:
-#   flatpak-builder --user --force-clean --install build-dir \
-#       com.digitalgex.RustDiff.yaml
-#
-# Antes de enviar a Flathub hay que cambiar la sección `sources` del módulo
-# `rustdiff` para usar `type: git` con `url`, `tag` y `commit` pinned.
-# Un ejemplo comentado vive al final del archivo.
-
 app-id: com.digitalgex.RustDiff
 runtime: org.gnome.Platform
-runtime-version: '47'
+runtime-version: '48'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
 command: rustdiff
 
-# Permisos concedidos al sandbox:
-#   - ipc / wayland / x11 / dri: UI nativa con aceleración
-#   - filesystem=home:           abrir archivos JSON/XML desde el $HOME
-#                                (se puede reducir en una iteración futura)
 finish-args:
   - --share=ipc
   - --socket=fallback-x11
   - --socket=wayland
   - --device=dri
-  - --filesystem=home
 
-# Rust toolchain proviene de la extensión SDK — no hace falta rustup.
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
   env:
@@ -37,17 +21,12 @@ modules:
   - name: rustdiff
     buildsystem: simple
     build-commands:
-      # Compilación offline: las crates vienen vendorizadas en cargo-sources.json
       - cargo --offline build --release --manifest-path Cargo.toml --verbose
-      # Binario
       - install -Dm755 ./target/release/rustdiff /app/bin/rustdiff
-      # Desktop entry, AppStream metainfo, icono SVG
       - install -Dm644 ./data/com.digitalgex.RustDiff.desktop -t /app/share/applications
       - install -Dm644 ./data/com.digitalgex.RustDiff.metainfo.xml -t /app/share/metainfo
       - install -Dm644 ./data/icons/com.digitalgex.RustDiff.svg -t /app/share/icons/hicolor/scalable/apps
     sources:
-      # Árbol local — práctico para iterar sin push.
-      # Para Flathub reemplazar por el bloque `type: git` de más abajo.
       - type: dir
         path: .
         skip:
@@ -56,20 +35,4 @@ modules:
           - target
           - .git
           - .github
-
-      # Vendoring de todas las crates (generado con flatpak-cargo-generator.py).
-      # Se regenera cuando Cargo.lock cambie.
       - cargo-sources.json
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Bloque equivalente para envío a Flathub (reemplaza el `type: dir` de arriba):
-#
-#       - type: git
-#         url: https://github.com/jereok91/rustdiff.git
-#         tag: v0.1.2
-#         commit: <hash-completo-40-chars>
-#
-# Regenera `cargo-sources.json` en cada release si cambió Cargo.lock:
-#   .flatpak-tools/venv/bin/python3 \
-#       .flatpak-tools/flatpak-cargo-generator.py Cargo.lock -o cargo-sources.json
-# ─────────────────────────────────────────────────────────────────────────────
