@@ -323,21 +323,22 @@ fn create_column(
 pub fn diff_css() -> &'static str {
     r#"
     .diff-added {
-        background-color: rgba(0, 200, 0, 0.2);
-        color: #2D7A2D;
+        background-color: rgba(46, 160, 67, 0.18);
+        color: @theme_fg_color;
     }
     .diff-removed {
-        background-color: rgba(200, 0, 0, 0.2);
-        color: #7A2D2D;
+        background-color: rgba(248, 81, 73, 0.18);
+        color: @theme_fg_color;
     }
     .diff-changed {
-        background-color: rgba(200, 200, 0, 0.2);
-        color: #7A7A2D;
+        background-color: rgba(210, 153, 34, 0.20);
+        color: @theme_fg_color;
     }
     .diff-panel {
         border-top: 1px solid alpha(currentColor, 0.15);
     }
-    .editor-panel {
+    .rustdiff-editor,
+    .rustdiff-editor text {
         font-family: monospace;
     }
     "#

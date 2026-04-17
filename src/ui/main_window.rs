@@ -19,7 +19,7 @@ use libadwaita as adw;
 use sourceview5 as sv;
 use sv::prelude::*;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -76,6 +76,9 @@ impl MainWindow {
         // ── Editores SourceView ─────────────────
         let left_view = create_source_view();
         let right_view = create_source_view();
+
+        // Zoom con Ctrl + rueda del ratón
+        setup_editor_zoom(&left_view, &right_view);
 
         // ── Panel de diferencias ────────────────
         let diff_panel = Rc::new(DiffPanel::new());
@@ -882,7 +885,7 @@ fn create_source_view() -> sv::View {
     view.set_bottom_margin(4);
     view.set_left_margin(4);
     view.set_right_margin(4);
-    view.add_css_class("editor-panel");
+    view.add_css_class("rustdiff-editor");
 
     // Reaccionar a cambios de tema oscuro/claro del sistema
     let buf_clone = view.buffer();
@@ -972,4 +975,67 @@ fn open_file_dialog(window: &adw::ApplicationWindow, view: &sv::View) {
             }
         }
     });
+}
+
+// ─────────────────────────────────────────────
+// Zoom con Ctrl + rueda del ratón
+// ─────────────────────────────────────────────
+
+const ZOOM_DEFAULT_PT: f64 = 11.0;
+const ZOOM_MIN_PT: f64 = 6.0;
+const ZOOM_MAX_PT: f64 = 40.0;
+const ZOOM_STEP_PT: f64 = 1.0;
+
+/// Conecta un `EventControllerScroll` a ambos editores para ajustar el
+/// tamaño de fuente cuando el usuario mantiene `Ctrl` y mueve la rueda.
+/// El tamaño se aplica vía un `CssProvider` compartido — así ambos
+/// editores se escalan a la vez.
+fn setup_editor_zoom(left: &sv::View, right: &sv::View) {
+    let zoom = Rc::new(Cell::new(ZOOM_DEFAULT_PT));
+    let provider = gtk::CssProvider::new();
+    provider.load_from_string(&zoom_css(ZOOM_DEFAULT_PT));
+
+    if let Some(display) = gtk::gdk::Display::default() {
+        gtk::style_context_add_provider_for_display(
+            &display,
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION + 10,
+        );
+    }
+
+    for view in [left, right] {
+        let controller = gtk::EventControllerScroll::new(
+            gtk::EventControllerScrollFlags::VERTICAL,
+        );
+        let zoom = zoom.clone();
+        let provider = provider.clone();
+        controller.connect_scroll(move |ctrl, _dx, dy| {
+            let modifier = ctrl
+                .current_event()
+                .map(|e| e.modifier_state())
+                .unwrap_or_else(gtk::gdk::ModifierType::empty);
+            if !modifier.contains(gtk::gdk::ModifierType::CONTROL_MASK) {
+                return gtk::glib::Propagation::Proceed;
+            }
+
+            let mut pt = zoom.get();
+            if dy < 0.0 {
+                pt = (pt + ZOOM_STEP_PT).min(ZOOM_MAX_PT);
+            } else if dy > 0.0 {
+                pt = (pt - ZOOM_STEP_PT).max(ZOOM_MIN_PT);
+            } else {
+                return gtk::glib::Propagation::Proceed;
+            }
+            zoom.set(pt);
+            provider.load_from_string(&zoom_css(pt));
+            gtk::glib::Propagation::Stop
+        });
+        view.add_controller(controller);
+    }
+}
+
+fn zoom_css(pt: f64) -> String {
+    format!(
+        ".rustdiff-editor, .rustdiff-editor text {{ font-size: {pt:.1}pt; }}"
+    )
 }

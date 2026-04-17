@@ -21,10 +21,34 @@ use crate::diff_engine::{DiffItem, DiffKind, DiffResult};
 // ─────────────────────────────────────────────
 // Nombres de los TextTags
 // ─────────────────────────────────────────────
+//
+// Se usan dos familias de tags:
+//   * `*-line-*`  → pintan todo el párrafo con un color muy suave
+//                   (vista general del diff línea por línea).
+//   * Sin sufijo  → pintan sólo el rango exacto (clave/valor) del
+//                   `DiffItem` con un color un poco más saturado.
+//
+// Al separarlas evitamos que ambos estilos se superpongan sobre la
+// misma línea y produzcan bloques oscuros.
+
+const TAG_LINE_ADDED: &str = "rustdiff-line-added";
+const TAG_LINE_REMOVED: &str = "rustdiff-line-removed";
 
 const TAG_ADDED: &str = "rustdiff-added";
 const TAG_REMOVED: &str = "rustdiff-removed";
 const TAG_CHANGED: &str = "rustdiff-changed";
+
+// Paleta inspirada en GitHub: visible tanto en tema claro como oscuro
+// gracias al alpha bajo; el fondo del editor tiñe el color final.
+//
+// `*_LINE_*`   → fondo de párrafo muy sutil (sombra general).
+// `*_INLINE_*` → fondo por carácter con algo más de contraste.
+const COLOR_LINE_ADDED: &str = "rgba(46, 160, 67, 0.10)";
+const COLOR_LINE_REMOVED: &str = "rgba(248, 81, 73, 0.10)";
+
+const COLOR_INLINE_ADDED: &str = "rgba(46, 160, 67, 0.28)";
+const COLOR_INLINE_REMOVED: &str = "rgba(248, 81, 73, 0.28)";
+const COLOR_INLINE_CHANGED: &str = "rgba(210, 153, 34, 0.32)";
 
 // ─────────────────────────────────────────────
 // API pública
@@ -68,9 +92,15 @@ pub fn clear_highlights(buffer: &gtk::TextBuffer) {
     let start = buffer.start_iter();
     let end = buffer.end_iter();
 
-    buffer.remove_tag_by_name(TAG_ADDED, &start, &end);
-    buffer.remove_tag_by_name(TAG_REMOVED, &start, &end);
-    buffer.remove_tag_by_name(TAG_CHANGED, &start, &end);
+    for tag in [
+        TAG_LINE_ADDED,
+        TAG_LINE_REMOVED,
+        TAG_ADDED,
+        TAG_REMOVED,
+        TAG_CHANGED,
+    ] {
+        buffer.remove_tag_by_name(tag, &start, &end);
+    }
 }
 
 /// Hace scroll en un SourceView hasta la primera ocurrencia de `search_text`.
@@ -141,11 +171,28 @@ enum Side {
 fn ensure_tags(buffer: &gtk::TextBuffer) {
     let table = buffer.tag_table();
 
+    // Tags de línea: sólo paragraph_background (sutil)
+    if table.lookup(TAG_LINE_ADDED).is_none() {
+        let tag = gtk::TextTag::builder()
+            .name(TAG_LINE_ADDED)
+            .paragraph_background(COLOR_LINE_ADDED)
+            .build();
+        table.add(&tag);
+    }
+
+    if table.lookup(TAG_LINE_REMOVED).is_none() {
+        let tag = gtk::TextTag::builder()
+            .name(TAG_LINE_REMOVED)
+            .paragraph_background(COLOR_LINE_REMOVED)
+            .build();
+        table.add(&tag);
+    }
+
+    // Tags inline: sólo background (más visible en el rango exacto)
     if table.lookup(TAG_ADDED).is_none() {
         let tag = gtk::TextTag::builder()
             .name(TAG_ADDED)
-            .background("rgba(0,200,0,0.15)")
-            .paragraph_background("rgba(0,200,0,0.08)")
+            .background(COLOR_INLINE_ADDED)
             .build();
         table.add(&tag);
     }
@@ -153,8 +200,7 @@ fn ensure_tags(buffer: &gtk::TextBuffer) {
     if table.lookup(TAG_REMOVED).is_none() {
         let tag = gtk::TextTag::builder()
             .name(TAG_REMOVED)
-            .background("rgba(200,0,0,0.15)")
-            .paragraph_background("rgba(200,0,0,0.08)")
+            .background(COLOR_INLINE_REMOVED)
             .build();
         table.add(&tag);
     }
@@ -162,8 +208,7 @@ fn ensure_tags(buffer: &gtk::TextBuffer) {
     if table.lookup(TAG_CHANGED).is_none() {
         let tag = gtk::TextTag::builder()
             .name(TAG_CHANGED)
-            .background("rgba(200,200,0,0.15)")
-            .paragraph_background("rgba(200,200,0,0.08)")
+            .background(COLOR_INLINE_CHANGED)
             .build();
         table.add(&tag);
     }
@@ -192,12 +237,12 @@ fn apply_line_diff(
             }
             ChangeTag::Delete => {
                 // Línea eliminada (solo en el izquierdo)
-                tag_line(left_buf, left_line, TAG_REMOVED);
+                tag_line(left_buf, left_line, TAG_LINE_REMOVED);
                 left_line += 1;
             }
             ChangeTag::Insert => {
                 // Línea añadida (solo en el derecho)
-                tag_line(right_buf, right_line, TAG_ADDED);
+                tag_line(right_buf, right_line, TAG_LINE_ADDED);
                 right_line += 1;
             }
         }
