@@ -43,12 +43,12 @@ const TAG_CHANGED: &str = "rustdiff-changed";
 //
 // `*_LINE_*`   → fondo de párrafo muy sutil (sombra general).
 // `*_INLINE_*` → fondo por carácter con algo más de contraste.
-const COLOR_LINE_ADDED: &str = "rgba(46, 160, 67, 0.10)";
-const COLOR_LINE_REMOVED: &str = "rgba(248, 81, 73, 0.10)";
+const COLOR_LINE_ADDED: &str = "rgba(46, 160, 67, 0.22)";
+const COLOR_LINE_REMOVED: &str = "rgba(248, 81, 73, 0.22)";
 
-const COLOR_INLINE_ADDED: &str = "rgba(46, 160, 67, 0.28)";
-const COLOR_INLINE_REMOVED: &str = "rgba(248, 81, 73, 0.28)";
-const COLOR_INLINE_CHANGED: &str = "rgba(210, 153, 34, 0.32)";
+const COLOR_INLINE_ADDED: &str = "rgba(46, 160, 67, 0.45)";
+const COLOR_INLINE_REMOVED: &str = "rgba(248, 81, 73, 0.45)";
+const COLOR_INLINE_CHANGED: &str = "rgba(210, 153, 34, 0.50)";
 
 // ─────────────────────────────────────────────
 // API pública
