@@ -17,10 +17,10 @@
 
 [package]
 name        = "rustdiff"
-version     = "0.1.2"
+version     = "0.1.2-rc"
 edition     = "2024"
 rust-version = "1.85"
-authors     = ["digitalgex <jpajro@digitalgex.com>"]
+authors     = ["digitalgex <jpajaro@digitalgex.com>"]
 description = "Semantic JSON & XML diff tool with a native GTK4 desktop UI"
 license     = "GPL-3.0-or-later"
 readme      = "README.md"
