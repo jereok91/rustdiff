@@ -100,6 +100,16 @@
   </branding>
 
   <releases>
+    <release version="0.1.3" date="2026-04-17">
+      <description>
+        <p>Packaging milestone: the application is now ready to ship as a Flatpak on Flathub.</p>
+        <ul>
+          <li>Added AppStream metainfo and Flatpak manifest.</li>
+          <li>Renamed the desktop file and icon to the reverse-DNS AppID as Flathub requires.</li>
+          <li>Cargo dependencies are now vendored via cargo-sources.json so offline builds work.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.2" date="2026-04-16">
       <description>
         <p>User interface polish and history management.</p>
