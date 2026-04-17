@@ -1,1 +1,9 @@
 /target
+
+# Flatpak build artefacts
+/build-dir
+/.flatpak-builder
+/repo
+
+# venv local del generador flatpak-cargo (el script sí se commitea)
+/.flatpak-tools/venv
