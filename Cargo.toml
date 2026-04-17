@@ -43,8 +43,9 @@ include = [
     "Cargo.lock",
     "LICENSE",
     "README.md",
-    "data/rustdiff.desktop",
-    "data/icons/rustdiff.svg",
+    "data/com.digitalgex.RustDiff.desktop",
+    "data/com.digitalgex.RustDiff.metainfo.xml",
+    "data/icons/com.digitalgex.RustDiff.svg",
 ]
 
 # ─────────────────────────────────────────────
@@ -146,7 +147,8 @@ depends  = "$auto, libgtk-4-1, libadwaita-1-0, libgtksourceview-5-0"
 section  = "utils"
 priority = "optional"
 assets = [
-    ["target/release/rustdiff", "usr/bin/",                                "755"],
-    ["data/rustdiff.desktop",   "usr/share/applications/",                 "644"],
-    ["data/icons/rustdiff.svg", "usr/share/icons/hicolor/scalable/apps/",  "644"],
+    ["target/release/rustdiff",                     "usr/bin/",                                                  "755"],
+    ["data/com.digitalgex.RustDiff.desktop",        "usr/share/applications/",                                   "644"],
+    ["data/com.digitalgex.RustDiff.metainfo.xml",   "usr/share/metainfo/",                                       "644"],
+    ["data/icons/com.digitalgex.RustDiff.svg",      "usr/share/icons/hicolor/scalable/apps/",                    "644"],
 ]

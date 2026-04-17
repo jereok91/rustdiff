@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright 2026 the rustdiff authors
+  SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<component type="desktop-application">
+  <id>com.digitalgex.RustDiff</id>
+
+  <name>RustDiff</name>
+  <summary>Semantic JSON and XML comparator</summary>
+  <summary xml:lang="es">Comparador semántico de JSON y XML</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <developer id="com.digitalgex">
+    <name>digitalgex</name>
+  </developer>
+
+  <description>
+    <p>
+      RustDiff is a desktop application that compares two JSON or XML documents
+      and highlights the differences in a clear, visual way. It is written in
+      Rust and built on top of GTK4 and Libadwaita, so it feels native on the
+      GNOME desktop.
+    </p>
+    <p xml:lang="es">
+      RustDiff es una aplicación de escritorio que compara dos documentos JSON
+      o XML y resalta sus diferencias de forma clara y visual. Está escrita en
+      Rust y usa GTK4 y Libadwaita, por lo que se integra nativamente con
+      GNOME.
+    </p>
+    <p>Main features:</p>
+    <ul>
+      <li>Semantic diff for JSON (key by key) and XML (nodes, attributes and text).</li>
+      <li>Split editor with syntax highlighting and automatic pretty-print.</li>
+      <li>Inline and full-line highlighting for added, removed and changed items.</li>
+      <li>Filterable table of differences, clickable to jump to the exact location.</li>
+      <li>Export to plain text or styled HTML.</li>
+      <li>Session history backed by SQLite with per-entry and bulk deletion.</li>
+      <li>Ctrl + mouse wheel zoom on both editors, dark mode follows the system.</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">com.digitalgex.RustDiff.desktop</launchable>
+
+  <url type="homepage">https://github.com/jereok91/rustdiff</url>
+  <url type="bugtracker">https://github.com/jereok91/rustdiff/issues</url>
+  <url type="vcs-browser">https://github.com/jereok91/rustdiff</url>
+
+  <categories>
+    <category>Utility</category>
+    <category>Development</category>
+    <category>TextEditor</category>
+  </categories>
+
+  <keywords>
+    <keyword>json</keyword>
+    <keyword>xml</keyword>
+    <keyword>diff</keyword>
+    <keyword>compare</keyword>
+    <keyword>format</keyword>
+    <keyword>validate</keyword>
+  </keywords>
+
+  <provides>
+    <binary>rustdiff</binary>
+  </provides>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
+  <content_rating type="oars-1.1" />
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Comparing two JSON documents with inline highlights</caption>
+      <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/main.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Difference table with type filters</caption>
+      <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/diff-table.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Session history sidebar</caption>
+      <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/history.png</image>
+    </screenshot>
+  </screenshots>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#e8c39e</color>
+    <color type="primary" scheme_preference="dark">#613583</color>
+  </branding>
+
+  <releases>
+    <release version="0.1.2" date="2026-04-16">
+      <description>
+        <p>User interface polish and history management.</p>
+        <ul>
+          <li>New GitHub-inspired diff color palette that adapts to light and dark themes.</li>
+          <li>Ctrl + mouse wheel now zooms both editors simultaneously.</li>
+          <li>Session history can be deleted one by one or cleared entirely.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.1.1" date="2026-04-10">
+      <description>
+        <p>macOS build support and minor fixes.</p>
+      </description>
+    </release>
+    <release version="0.1.0" date="2026-04-05">
+      <description>
+        <p>First public release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

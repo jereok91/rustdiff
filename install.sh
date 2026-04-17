@@ -108,33 +108,45 @@ install_desktop_files() {
     info "Instalando icono y entrada de menu..."
 
     # Descargar archivos si no estamos en el repo
-    local icon_src="data/icons/rustdiff.svg"
-    local desktop_src="data/rustdiff.desktop"
+    local app_id="com.digitalgex.RustDiff"
+    local icon_src="data/icons/${app_id}.svg"
+    local desktop_src="data/${app_id}.desktop"
+    local metainfo_src="data/${app_id}.metainfo.xml"
     local tmp_dir=""
 
     if [ ! -f "$icon_src" ]; then
         tmp_dir=$(mktemp -d)
-        icon_src="${tmp_dir}/rustdiff.svg"
-        desktop_src="${tmp_dir}/rustdiff.desktop"
+        icon_src="${tmp_dir}/${app_id}.svg"
+        desktop_src="${tmp_dir}/${app_id}.desktop"
+        metainfo_src="${tmp_dir}/${app_id}.metainfo.xml"
 
-        curl -fsSL "https://raw.githubusercontent.com/jereok91/rustdiff/main/data/icons/rustdiff.svg" \
+        curl -fsSL "https://raw.githubusercontent.com/jereok91/rustdiff/main/data/icons/${app_id}.svg" \
             -o "$icon_src" || warn "No se pudo descargar el icono."
-        curl -fsSL "https://raw.githubusercontent.com/jereok91/rustdiff/main/data/rustdiff.desktop" \
+        curl -fsSL "https://raw.githubusercontent.com/jereok91/rustdiff/main/data/${app_id}.desktop" \
             -o "$desktop_src" || warn "No se pudo descargar el .desktop."
+        curl -fsSL "https://raw.githubusercontent.com/jereok91/rustdiff/main/data/${app_id}.metainfo.xml" \
+            -o "$metainfo_src" || warn "No se pudo descargar el metainfo."
     fi
 
     # Instalar icono
     if [ -f "$icon_src" ]; then
         sudo install -Dm644 "$icon_src" \
-            /usr/share/icons/hicolor/scalable/apps/rustdiff.svg
+            "/usr/share/icons/hicolor/scalable/apps/${app_id}.svg"
         ok "Icono instalado."
     fi
 
     # Instalar .desktop
     if [ -f "$desktop_src" ]; then
         sudo install -Dm644 "$desktop_src" \
-            /usr/share/applications/rustdiff.desktop
+            "/usr/share/applications/${app_id}.desktop"
         ok "Entrada de menu instalada."
+    fi
+
+    # Instalar AppStream metainfo
+    if [ -f "$metainfo_src" ]; then
+        sudo install -Dm644 "$metainfo_src" \
+            "/usr/share/metainfo/${app_id}.metainfo.xml"
+        ok "Metadata AppStream instalada."
     fi
 
     # Actualizar caches del sistema

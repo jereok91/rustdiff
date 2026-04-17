@@ -6,7 +6,7 @@ GenericName=JSON & XML Comparator
 GenericName[es]=Comparador de JSON y XML
 Comment=Compare JSON and XML documents visually
 Comment[es]=Compara documentos JSON y XML de forma visual
-Icon=rustdiff
+Icon=com.digitalgex.RustDiff
 Exec=rustdiff %F
 Terminal=false
 Type=Application
@@ -24,7 +24,7 @@ Keywords[es]=json;xml;diff;comparar;formato;validar;
 # ── Integración con el escritorio ──────────────────────────────────
 # Aparece en la búsqueda de GNOME/KDE
 StartupNotify=true
-StartupWMClass=rustdiff
+StartupWMClass=com.digitalgex.RustDiff
 
 # ── Acciones rápidas (click derecho en el ícono) ───────────────────
 Actions=NewComparison;History;
@@ -33,10 +33,10 @@ Actions=NewComparison;History;
 Name=New Comparison
 Name[es]=Nueva Comparación
 Exec=rustdiff
-Icon=rustdiff
+Icon=com.digitalgex.RustDiff
 
 [Desktop Action History]
 Name=Open History
 Name[es]=Abrir Historial
 Exec=rustdiff --history
-Icon=rustdiff
+Icon=com.digitalgex.RustDiff
