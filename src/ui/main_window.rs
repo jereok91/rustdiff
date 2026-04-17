@@ -16,6 +16,7 @@
 use gtk4 as gtk;
 use gtk::prelude::*;
 use libadwaita as adw;
+use adw::prelude::*;
 use sourceview5 as sv;
 use sv::prelude::*;
 
@@ -156,13 +157,26 @@ impl MainWindow {
             .child(&history_list)
             .build();
 
-        let history_header = gtk::Label::new(Some("Sesiones guardadas"));
-        history_header.add_css_class("heading");
-        history_header.set_margin_top(8);
+        let history_title = gtk::Label::new(Some("Sesiones guardadas"));
+        history_title.add_css_class("heading");
+        history_title.set_halign(gtk::Align::Start);
+        history_title.set_hexpand(true);
+        history_title.set_margin_start(8);
+
+        let btn_clear_history = gtk::Button::from_icon_name("user-trash-symbolic");
+        btn_clear_history.set_tooltip_text(Some("Borrar todo el historial"));
+        btn_clear_history.add_css_class("flat");
+        btn_clear_history.set_valign(gtk::Align::Center);
+
+        let history_header = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        history_header.set_margin_top(6);
         history_header.set_margin_bottom(4);
+        history_header.set_margin_end(4);
+        history_header.append(&history_title);
+        history_header.append(&btn_clear_history);
 
         let history_panel = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        history_panel.set_width_request(220);
+        history_panel.set_width_request(240);
         history_panel.append(&history_header);
         history_panel.append(&history_scroll);
         history_panel.add_css_class("sidebar");
@@ -267,6 +281,7 @@ impl MainWindow {
         main_win.connect_row_selection();
         main_win.connect_history_toggle(&btn_history);
         main_win.connect_history_selection();
+        main_win.connect_clear_history_button(&btn_clear_history);
         main_win.setup_export_actions();
         main_win.refresh_history_list();
 
@@ -381,37 +396,71 @@ impl MainWindow {
 
     /// Recarga la lista del historial desde la base de datos.
     fn refresh_history_list(&self) {
-        // Limpiar lista actual
-        while let Some(row) = self.history_list.last_child() {
-            self.history_list.remove(&row);
-        }
+        refresh_history_list_widget(&self.history_list, &self.storage);
+    }
 
-        let store = self.storage.borrow();
-        let Some(ref db) = *store else { return };
+    fn connect_clear_history_button(&self, btn: &gtk::Button) {
+        let window = self.window.clone();
+        let storage = self.storage.clone();
+        let history_list = self.history_list.clone();
+        let status = self.status_label.clone();
 
-        match db.load_sessions(20) {
-            Ok(sessions) => {
-                for session in &sessions {
-                    let label_text = format!(
-                        "#{} {} {}\n{}",
-                        session.id,
-                        session.format,
-                        session.diff_summary.short_text(),
-                        &session.created_at,
-                    );
-                    let label = gtk::Label::new(Some(&label_text));
-                    label.set_halign(gtk::Align::Start);
-                    label.set_margin_top(4);
-                    label.set_margin_bottom(4);
-                    label.set_margin_start(8);
-                    label.set_margin_end(8);
-                    self.history_list.append(&label);
+        btn.connect_clicked(move |_| {
+            // Si no hay sesiones, solo avisar
+            {
+                let store = storage.borrow();
+                if let Some(ref db) = *store {
+                    if db.count_sessions().unwrap_or(0) == 0 {
+                        status.set_text("El historial ya está vacío");
+                        return;
+                    }
+                } else {
+                    status.set_text("Historial no disponible");
+                    return;
                 }
             }
-            Err(e) => {
-                tracing::warn!("Error cargando historial: {e}");
-            }
-        }
+
+            let dialog = adw::AlertDialog::new(
+                Some("¿Borrar todo el historial?"),
+                Some(
+                    "Se eliminarán todas las sesiones guardadas. \
+                     Esta acción no se puede deshacer.",
+                ),
+            );
+            dialog.add_response("cancel", "Cancelar");
+            dialog.add_response("delete", "Borrar todo");
+            dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+            dialog.set_default_response(Some("cancel"));
+            dialog.set_close_response("cancel");
+
+            let storage_cl = storage.clone();
+            let list_cl = history_list.clone();
+            let status_cl = status.clone();
+            dialog.connect_response(None, move |dlg, response| {
+                if response == "delete" {
+                    let borradas = {
+                        let store = storage_cl.borrow();
+                        match store.as_ref().map(|db| db.clear_all_sessions()) {
+                            Some(Ok(n)) => Some(n),
+                            Some(Err(e)) => {
+                                tracing::warn!("Error borrando historial: {e}");
+                                None
+                            }
+                            None => None,
+                        }
+                    };
+                    refresh_history_list_widget(&list_cl, &storage_cl);
+                    if let Some(n) = borradas {
+                        status_cl.set_text(&format!("Historial borrado ({n} sesiones)"));
+                    } else {
+                        status_cl.set_text("No se pudo borrar el historial");
+                    }
+                }
+                dlg.close();
+            });
+
+            dialog.present(Some(&window));
+        });
     }
 
     // ─────────────────────────────────────────
@@ -732,31 +781,13 @@ fn save_session_from_shortcut(
         return;
     };
 
-    match db.save_session(&left_text, &right_text, fmt, &summary) {
+    let result = db.save_session(&left_text, &right_text, fmt, &summary);
+    drop(store); // liberar el borrow antes de refrescar la lista
+
+    match result {
         Ok(id) => {
             status.set_text(&format!("Sesión #{id} guardada en historial"));
-            // Refrescar lista
-            while let Some(row) = history_list.last_child() {
-                history_list.remove(&row);
-            }
-            if let Ok(sessions) = db.load_sessions(20) {
-                for session in &sessions {
-                    let label_text = format!(
-                        "#{} {} {}\n{}",
-                        session.id,
-                        session.format,
-                        session.diff_summary.short_text(),
-                        &session.created_at,
-                    );
-                    let label = gtk::Label::new(Some(&label_text));
-                    label.set_halign(gtk::Align::Start);
-                    label.set_margin_top(4);
-                    label.set_margin_bottom(4);
-                    label.set_margin_start(8);
-                    label.set_margin_end(8);
-                    history_list.append(&label);
-                }
-            }
+            refresh_history_list_widget(history_list, storage);
             // Mostrar el panel si está oculto
             history_panel.set_visible(true);
         }
@@ -764,6 +795,110 @@ fn save_session_from_shortcut(
             status.set_text(&format!("Error guardando: {e}"));
         }
     }
+}
+
+// ─────────────────────────────────────────────
+// Renderizado del historial
+// ─────────────────────────────────────────────
+
+/// Vacía y reconstruye la `ListBox` del historial desde la base de datos.
+/// Cada fila incluye un botón de eliminación individual.
+fn refresh_history_list_widget(
+    history_list: &gtk::ListBox,
+    storage: &Rc<RefCell<Option<Storage>>>,
+) {
+    while let Some(row) = history_list.last_child() {
+        history_list.remove(&row);
+    }
+
+    let sessions = {
+        let store = storage.borrow();
+        match store.as_ref() {
+            Some(db) => match db.load_sessions(20) {
+                Ok(s) => s,
+                Err(e) => {
+                    tracing::warn!("Error cargando historial: {e}");
+                    return;
+                }
+            },
+            None => return,
+        }
+    };
+
+    if sessions.is_empty() {
+        let empty = gtk::Label::new(Some("Sin sesiones guardadas"));
+        empty.add_css_class("dim-label");
+        empty.set_margin_top(12);
+        empty.set_margin_bottom(12);
+        empty.set_margin_start(8);
+        empty.set_margin_end(8);
+        history_list.append(&empty);
+        // Marcar la fila como no seleccionable ni activable
+        if let Some(row) = history_list.last_child() {
+            if let Some(listrow) = row.downcast_ref::<gtk::ListBoxRow>() {
+                listrow.set_selectable(false);
+                listrow.set_activatable(false);
+            }
+        }
+        return;
+    }
+
+    for session in &sessions {
+        let row_widget = build_history_row(session, history_list, storage);
+        history_list.append(&row_widget);
+    }
+}
+
+/// Construye una fila del historial con etiqueta + botón de borrado individual.
+fn build_history_row(
+    session: &crate::storage::Session,
+    history_list: &gtk::ListBox,
+    storage: &Rc<RefCell<Option<Storage>>>,
+) -> gtk::Box {
+    let row = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+    row.set_margin_start(8);
+    row.set_margin_end(4);
+    row.set_margin_top(2);
+    row.set_margin_bottom(2);
+
+    let label_text = format!(
+        "#{} {} {}\n{}",
+        session.id,
+        session.format,
+        session.diff_summary.short_text(),
+        &session.created_at,
+    );
+    let label = gtk::Label::new(Some(&label_text));
+    label.set_halign(gtk::Align::Start);
+    label.set_xalign(0.0);
+    label.set_hexpand(true);
+
+    let delete_btn = gtk::Button::from_icon_name("edit-delete-symbolic");
+    delete_btn.set_tooltip_text(Some("Eliminar esta sesión"));
+    delete_btn.add_css_class("flat");
+    delete_btn.set_valign(gtk::Align::Center);
+
+    let id = session.id;
+    let storage_cl = storage.clone();
+    let list_cl = history_list.clone();
+    delete_btn.connect_clicked(move |_| {
+        {
+            let store = storage_cl.borrow();
+            if let Some(ref db) = *store {
+                if let Err(e) = db.delete_session(id) {
+                    tracing::warn!("Error eliminando sesión {id}: {e}");
+                    return;
+                }
+            } else {
+                return;
+            }
+        }
+        refresh_history_list_widget(&list_cl, &storage_cl);
+    });
+
+    row.append(&label);
+    row.append(&delete_btn);
+    row
 }
 
 // ─────────────────────────────────────────────

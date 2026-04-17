@@ -194,6 +194,13 @@ impl Storage {
         Ok(affected > 0)
     }
 
+    /// Elimina todas las sesiones del historial.
+    /// Devuelve el número de filas borradas.
+    pub fn clear_all_sessions(&self) -> Result<usize, StorageError> {
+        let affected = self.conn.execute("DELETE FROM sessions", [])?;
+        Ok(affected)
+    }
+
     /// Devuelve el número total de sesiones guardadas.
     pub fn count_sessions(&self) -> Result<usize, StorageError> {
         let count: i64 = self
@@ -434,6 +441,27 @@ mod tests {
     fn eliminar_sesion_inexistente() {
         let db = Storage::open_in_memory().unwrap();
         assert!(!db.delete_session(999).unwrap());
+    }
+
+    #[test]
+    fn borrar_todo_el_historial() {
+        let db = Storage::open_in_memory().unwrap();
+        let s = sample_summary(0, 0, 0);
+        for i in 0..5 {
+            db.save_session(&format!("l{i}"), &format!("r{i}"), Format::Json, &s)
+                .unwrap();
+        }
+        assert_eq!(db.count_sessions().unwrap(), 5);
+
+        let borradas = db.clear_all_sessions().unwrap();
+        assert_eq!(borradas, 5);
+        assert_eq!(db.count_sessions().unwrap(), 0);
+    }
+
+    #[test]
+    fn borrar_todo_vacio() {
+        let db = Storage::open_in_memory().unwrap();
+        assert_eq!(db.clear_all_sessions().unwrap(), 0);
     }
 
     #[test]
