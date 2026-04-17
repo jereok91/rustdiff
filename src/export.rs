@@ -56,12 +56,7 @@ pub fn export_txt(result: &DiffResult, fmt: Format) -> String {
 // ─────────────────────────────────────────────
 
 /// Genera un reporte de diferencias en HTML con colores.
-pub fn export_html(
-    result: &DiffResult,
-    fmt: Format,
-    left_text: &str,
-    right_text: &str,
-) -> String {
+pub fn export_html(result: &DiffResult, fmt: Format, left_text: &str, right_text: &str) -> String {
     let mut out = String::new();
 
     out.push_str("<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n");
@@ -93,7 +88,10 @@ pub fn export_html(
             };
             out.push_str(&format!("      <tr class=\"{css_class}\">"));
             out.push_str(&format!("<td>{}</td>", escape_html(&item.kind.to_string())));
-            out.push_str(&format!("<td><code>{}</code></td>", escape_html(&item.path)));
+            out.push_str(&format!(
+                "<td><code>{}</code></td>",
+                escape_html(&item.path)
+            ));
             out.push_str(&format!(
                 "<td>{}</td>",
                 escape_html(item.left.as_deref().unwrap_or(""))
@@ -171,7 +169,7 @@ const HTML_STYLE: &str = r#"
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::diff_engine::{diff_json, DiffItem};
+    use crate::diff_engine::{DiffItem, diff_json};
     use serde_json::json;
 
     #[test]

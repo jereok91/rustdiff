@@ -6,10 +6,10 @@
 //! Cada fila representa un `DiffItem`. Los colores de fondo
 //! varían según el tipo de diferencia (Added/Removed/Changed).
 
+use gtk::glib;
+use gtk::prelude::*;
 use gtk4 as gtk;
 use gtk4::subclass::prelude::ObjectSubclassIsExt;
-use gtk::prelude::*;
-use gtk::glib;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -87,6 +87,12 @@ pub struct DiffPanel {
     all_items: Rc<RefCell<Vec<DiffItem>>>,
 }
 
+impl Default for DiffPanel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DiffPanel {
     /// Construye el panel de diferencias completo.
     pub fn new() -> Self {
@@ -151,9 +157,7 @@ impl DiffPanel {
         });
 
         // Columna: Ruta
-        let col_path = create_column("Ruta", 300, |item: &DiffItem| {
-            item.path.clone()
-        });
+        let col_path = create_column("Ruta", 300, |item: &DiffItem| item.path.clone());
 
         // Columna: Valor Izquierdo
         let col_left = create_column("Izquierdo", 250, |item: &DiffItem| {
@@ -234,7 +238,11 @@ impl DiffPanel {
         *self.all_items.borrow_mut() = items;
 
         // Aplicar filtros actuales
-        apply_filters(&self.store, &self.all_items.borrow(), &self.filters.borrow());
+        apply_filters(
+            &self.store,
+            &self.all_items.borrow(),
+            &self.filters.borrow(),
+        );
 
         // Actualizar resumen
         self.summary_label.set_text(&result.summary());
@@ -253,11 +261,7 @@ impl DiffPanel {
 // ─────────────────────────────────────────────
 
 /// Aplica los filtros activos al store, mostrando solo los tipos habilitados.
-fn apply_filters(
-    store: &gtk::gio::ListStore,
-    items: &[DiffItem],
-    filters: &(bool, bool, bool),
-) {
+fn apply_filters(store: &gtk::gio::ListStore, items: &[DiffItem], filters: &(bool, bool, bool)) {
     store.remove_all();
     let (show_added, show_removed, show_changed) = *filters;
 

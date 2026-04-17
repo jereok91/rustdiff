@@ -178,8 +178,7 @@ pub fn format_pretty(input: &str, fmt: Format) -> Result<String, ParseError> {
         Format::Json => {
             let value: JsonValue = serde_json::from_str(input)?;
             // serde_json::to_string_pretty usa 2 espacios de indentación
-            let pretty = serde_json::to_string_pretty(&value)
-                .map_err(|e| ParseError::InvalidJson(e))?;
+            let pretty = serde_json::to_string_pretty(&value).map_err(ParseError::InvalidJson)?;
             Ok(pretty)
         }
         Format::Xml => pretty_print_xml(input),
@@ -244,30 +243,30 @@ fn pretty_print_xml(input: &str) -> Result<String, ParseError> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) => {
-                writer
-                    .write_event(Event::Start(e))
-                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
+                writer.write_event(Event::Start(e)).map_err(|err| {
+                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
+                })?;
             }
             Ok(Event::End(e)) => {
-                writer
-                    .write_event(Event::End(e))
-                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
+                writer.write_event(Event::End(e)).map_err(|err| {
+                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
+                })?;
             }
             Ok(Event::Empty(e)) => {
-                writer
-                    .write_event(Event::Empty(e))
-                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
+                writer.write_event(Event::Empty(e)).map_err(|err| {
+                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
+                })?;
             }
             Ok(Event::Text(e)) => {
-                writer
-                    .write_event(Event::Text(e))
-                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
+                writer.write_event(Event::Text(e)).map_err(|err| {
+                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
+                })?;
             }
             Ok(Event::Eof) => break,
             Ok(event) => {
-                writer
-                    .write_event(event)
-                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
+                writer.write_event(event).map_err(|err| {
+                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
+                })?;
             }
             Err(e) => {
                 return Err(ParseError::InvalidXml(format!(

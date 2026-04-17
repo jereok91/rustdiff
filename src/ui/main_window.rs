@@ -13,10 +13,9 @@
 //! │  StatusBar: "X diferencias | JSON | Ctrl+S guardar"   │
 //! └──────────────────────────────────────────────────────┘
 
-use gtk4 as gtk;
-use gtk::prelude::*;
-use libadwaita as adw;
 use adw::prelude::*;
+use gtk4 as gtk;
+use libadwaita as adw;
 use sourceview5 as sv;
 use sv::prelude::*;
 
@@ -24,11 +23,11 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::diff_engine::{diff_json, diff_xml, DiffResult};
+use crate::diff_engine::{DiffResult, diff_json, diff_xml};
 use crate::export;
-use crate::parser::{auto_detect_format, format_pretty, parse_json, parse_xml, Format};
+use crate::parser::{Format, auto_detect_format, format_pretty, parse_json, parse_xml};
 use crate::storage::{DiffSummary, Storage};
-use crate::ui::diff_panel::{diff_css, DiffItemObject, DiffPanel};
+use crate::ui::diff_panel::{DiffItemObject, DiffPanel, diff_css};
 use crate::ui::highlighter;
 
 // ─────────────────────────────────────────────
@@ -560,9 +559,7 @@ impl MainWindow {
                 if let Some(diff_obj) = obj.downcast_ref::<DiffItemObject>() {
                     let inner = diff_obj.inner();
                     if let Some(ref item) = *inner {
-                        highlighter::highlight_and_scroll_to_item(
-                            &left_view, &right_view, item,
-                        );
+                        highlighter::highlight_and_scroll_to_item(&left_view, &right_view, item);
                     }
                 }
             }
@@ -614,17 +611,19 @@ impl MainWindow {
                 // Ctrl+S → guardar sesión
                 (gtk::gdk::Key::s, false) => {
                     save_session_from_shortcut(
-                        &left, &right, &last_diff, &storage, &status,
-                        &history_list, &history_panel,
+                        &left,
+                        &right,
+                        &last_diff,
+                        &storage,
+                        &status,
+                        &history_list,
+                        &history_panel,
                     );
                     gtk::glib::Propagation::Stop
                 }
                 // Ctrl+E → exportar como txt (rápido)
                 (gtk::gdk::Key::e, false) => {
-                    export_to_file(
-                        &win, &left, &right, &last_diff, &status,
-                        ExportFormat::Txt,
-                    );
+                    export_to_file(&win, &left, &right, &last_diff, &status, ExportFormat::Txt);
                     gtk::glib::Propagation::Stop
                 }
                 // Ctrl+Shift+F → formatear
@@ -677,20 +676,16 @@ fn execute_diff(
     };
 
     let result: Result<(DiffResult, Format), String> = match format {
-        Some(Format::Json) => {
-            match (parse_json(&left_text), parse_json(&right_text)) {
-                (Ok(lv), Ok(rv)) => Ok((diff_json(&lv, &rv), Format::Json)),
-                (Err(e), _) => Err(format!("Error en documento izquierdo: {e}")),
-                (_, Err(e)) => Err(format!("Error en documento derecho: {e}")),
-            }
-        }
-        Some(Format::Xml) => {
-            match (parse_xml(&left_text), parse_xml(&right_text)) {
-                (Ok(lv), Ok(rv)) => Ok((diff_xml(&lv, &rv), Format::Xml)),
-                (Err(e), _) => Err(format!("Error en documento izquierdo: {e}")),
-                (_, Err(e)) => Err(format!("Error en documento derecho: {e}")),
-            }
-        }
+        Some(Format::Json) => match (parse_json(&left_text), parse_json(&right_text)) {
+            (Ok(lv), Ok(rv)) => Ok((diff_json(&lv, &rv), Format::Json)),
+            (Err(e), _) => Err(format!("Error en documento izquierdo: {e}")),
+            (_, Err(e)) => Err(format!("Error en documento derecho: {e}")),
+        },
+        Some(Format::Xml) => match (parse_xml(&left_text), parse_xml(&right_text)) {
+            (Ok(lv), Ok(rv)) => Ok((diff_xml(&lv, &rv), Format::Xml)),
+            (Err(e), _) => Err(format!("Error en documento izquierdo: {e}")),
+            (_, Err(e)) => Err(format!("Error en documento derecho: {e}")),
+        },
         None => Err("No se pudo detectar el formato. Selecciona JSON o XML manualmente.".into()),
     };
 
@@ -929,11 +924,7 @@ fn export_to_file(
     let right_text = get_buffer_text(right);
 
     let (content, extension, mime) = match export_fmt {
-        ExportFormat::Txt => (
-            export::export_txt(result, fmt),
-            "txt",
-            "text/plain",
-        ),
+        ExportFormat::Txt => (export::export_txt(result, fmt), "txt", "text/plain"),
         ExportFormat::Html => (
             export::export_html(result, fmt, &left_text, &right_text),
             "html",
@@ -964,10 +955,7 @@ fn export_to_file(
                 if let Some(path) = file.path() {
                     match std::fs::write(&path, &content) {
                         Ok(()) => {
-                            status.set_text(&format!(
-                                "Exportado a {}",
-                                path.display()
-                            ));
+                            status.set_text(&format!("Exportado a {}", path.display()));
                         }
                         Err(e) => {
                             status.set_text(&format!("Error escribiendo archivo: {e}"));
@@ -1025,7 +1013,11 @@ fn create_source_view() -> sv::View {
     // Reaccionar a cambios de tema oscuro/claro del sistema
     let buf_clone = view.buffer();
     adw::StyleManager::default().connect_dark_notify(move |sm| {
-        let new_scheme = if sm.is_dark() { "Adwaita-dark" } else { "Adwaita" };
+        let new_scheme = if sm.is_dark() {
+            "Adwaita-dark"
+        } else {
+            "Adwaita"
+        };
         let mgr = sv::StyleSchemeManager::default();
         if let Some(scheme) = mgr.scheme(new_scheme) {
             if let Some(sv_buf) = buf_clone.downcast_ref::<sv::Buffer>() {
@@ -1139,9 +1131,7 @@ fn setup_editor_zoom(left: &sv::View, right: &sv::View) {
     }
 
     for view in [left, right] {
-        let controller = gtk::EventControllerScroll::new(
-            gtk::EventControllerScrollFlags::VERTICAL,
-        );
+        let controller = gtk::EventControllerScroll::new(gtk::EventControllerScrollFlags::VERTICAL);
         let zoom = zoom.clone();
         let provider = provider.clone();
         controller.connect_scroll(move |ctrl, _dx, dy| {
@@ -1170,7 +1160,5 @@ fn setup_editor_zoom(left: &sv::View, right: &sv::View) {
 }
 
 fn zoom_css(pt: f64) -> String {
-    format!(
-        ".rustdiff-editor, .rustdiff-editor text {{ font-size: {pt:.1}pt; }}"
-    )
+    format!(".rustdiff-editor, .rustdiff-editor text {{ font-size: {pt:.1}pt; }}")
 }

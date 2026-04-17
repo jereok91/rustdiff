@@ -7,7 +7,7 @@
 //! del diff. Esto permite al usuario recuperar comparaciones anteriores
 //! sin tener que volver a pegar los textos.
 
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -113,8 +113,7 @@ impl Storage {
         summary: &DiffSummary,
     ) -> Result<i64, StorageError> {
         let format_str = format_to_str(fmt);
-        let summary_json = serde_json::to_string(summary)
-            .unwrap_or_else(|_| "{}".to_string());
+        let summary_json = serde_json::to_string(summary).unwrap_or_else(|_| "{}".to_string());
 
         self.conn.execute(
             "INSERT INTO sessions (created_at, format, left_content, right_content, diff_summary)
@@ -257,8 +256,8 @@ struct SessionRow {
 
 fn row_to_session(row: SessionRow) -> Session {
     let format = str_to_format(&row.format);
-    let diff_summary: DiffSummary = serde_json::from_str(&row.diff_summary)
-        .unwrap_or(DiffSummary {
+    let diff_summary: DiffSummary =
+        serde_json::from_str(&row.diff_summary).unwrap_or(DiffSummary {
             added: 0,
             removed: 0,
             changed: 0,

@@ -71,10 +71,20 @@ impl fmt::Display for DiffItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
             DiffKind::Added => {
-                write!(f, "[+] {} = {}", self.path, self.right.as_deref().unwrap_or(""))
+                write!(
+                    f,
+                    "[+] {} = {}",
+                    self.path,
+                    self.right.as_deref().unwrap_or("")
+                )
             }
             DiffKind::Removed => {
-                write!(f, "[-] {} = {}", self.path, self.left.as_deref().unwrap_or(""))
+                write!(
+                    f,
+                    "[-] {} = {}",
+                    self.path,
+                    self.left.as_deref().unwrap_or("")
+                )
             }
             DiffKind::Changed => {
                 write!(
@@ -143,12 +153,7 @@ pub fn diff_json(left: &JsonValue, right: &JsonValue) -> DiffResult {
 }
 
 /// Compara recursivamente dos valores JSON y acumula diferencias.
-fn compare_json_values(
-    left: &JsonValue,
-    right: &JsonValue,
-    path: &str,
-    result: &mut DiffResult,
-) {
+fn compare_json_values(left: &JsonValue, right: &JsonValue, path: &str, result: &mut DiffResult) {
     // Si son iguales, no hay nada que reportar
     if left == right {
         return;
@@ -158,8 +163,7 @@ fn compare_json_values(
         // Ambos son objetos: comparar clave por clave
         (JsonValue::Object(left_map), JsonValue::Object(right_map)) => {
             // Recopilar todas las claves de ambos lados
-            let all_keys: BTreeSet<&String> =
-                left_map.keys().chain(right_map.keys()).collect();
+            let all_keys: BTreeSet<&String> = left_map.keys().chain(right_map.keys()).collect();
 
             for key in all_keys {
                 let child_path = format!("{path}.{key}");
@@ -263,12 +267,7 @@ pub fn diff_xml(left: &XmlNode, right: &XmlNode) -> DiffResult {
 }
 
 /// Compara recursivamente dos nodos XML y acumula diferencias.
-fn compare_xml_nodes(
-    left: &XmlNode,
-    right: &XmlNode,
-    path: &str,
-    result: &mut DiffResult,
-) {
+fn compare_xml_nodes(left: &XmlNode, right: &XmlNode, path: &str, result: &mut DiffResult) {
     // 1. Comparar nombre de etiqueta
     if left.tag != right.tag {
         result.changed.push(DiffItem {
@@ -322,7 +321,8 @@ fn compare_xml_nodes(
             (Some(ln), Some(rn)) => {
                 // Construir ruta: si el hijo tiene el mismo tag que otros hermanos,
                 // añadir índice para distinguir
-                let child_path = build_child_path(path, &ln.tag, i, &left_children, &right_children);
+                let child_path =
+                    build_child_path(path, &ln.tag, i, &left_children, &right_children);
                 compare_xml_nodes(ln, rn, &child_path, result);
             }
             (Some(ln), None) => {
@@ -363,8 +363,14 @@ fn compare_attributes(
         .collect();
 
     for key in all_keys {
-        let left_val = left_attrs.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str());
-        let right_val = right_attrs.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str());
+        let left_val = left_attrs
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| v.as_str());
+        let right_val = right_attrs
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| v.as_str());
         let attr_path = format!("{path}[@{key}]");
 
         match (left_val, right_val) {
@@ -547,7 +553,7 @@ mod tests {
         let result = diff_json(&left, &right);
         assert_eq!(result.changed.len(), 1); // b: 2 → 20
         assert_eq!(result.removed.len(), 1); // c eliminada
-        assert_eq!(result.added.len(), 1);   // d añadida
+        assert_eq!(result.added.len(), 1); // d añadida
         assert_eq!(result.total(), 3);
     }
 

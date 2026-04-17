@@ -11,8 +11,8 @@
 //! - También usamos `similar` para diff línea-por-línea como complemento
 //!   del diff semántico, resaltando las líneas exactas que difieren.
 
-use gtk4 as gtk;
 use gtk::prelude::*;
+use gtk4 as gtk;
 use similar::{ChangeTag, TextDiff};
 use sourceview5 as sv;
 
@@ -109,11 +109,9 @@ pub fn scroll_to_text(view: &sv::View, search_text: &str) -> bool {
     let buffer = view.buffer();
     let start = buffer.start_iter();
 
-    if let Some((match_start, match_end)) = start.forward_search(
-        search_text,
-        gtk::TextSearchFlags::CASE_INSENSITIVE,
-        None,
-    ) {
+    if let Some((match_start, match_end)) =
+        start.forward_search(search_text, gtk::TextSearchFlags::CASE_INSENSITIVE, None)
+    {
         // Colocar el cursor en la coincidencia
         buffer.place_cursor(&match_start);
         // Seleccionar el texto encontrado
@@ -128,11 +126,7 @@ pub fn scroll_to_text(view: &sv::View, search_text: &str) -> bool {
 
 /// Busca y resalta un `DiffItem` específico en ambos editores.
 /// Se usa cuando el usuario hace click en una fila del panel de diferencias.
-pub fn highlight_and_scroll_to_item(
-    left_view: &sv::View,
-    right_view: &sv::View,
-    item: &DiffItem,
-) {
+pub fn highlight_and_scroll_to_item(left_view: &sv::View, right_view: &sv::View, item: &DiffItem) {
     // Buscar en el panel izquierdo (valor eliminado o cambiado)
     if let Some(ref left_val) = item.left {
         let search = clean_search_value(left_val);
@@ -344,11 +338,9 @@ fn apply_semantic_highlights(
 fn highlight_first_occurrence(buffer: &gtk::TextBuffer, needle: &str, tag_name: &str) {
     let start_iter = buffer.start_iter();
 
-    if let Some((match_start, match_end)) = start_iter.forward_search(
-        needle,
-        gtk::TextSearchFlags::CASE_INSENSITIVE,
-        None,
-    ) {
+    if let Some((match_start, match_end)) =
+        start_iter.forward_search(needle, gtk::TextSearchFlags::CASE_INSENSITIVE, None)
+    {
         buffer.apply_tag_by_name(tag_name, &match_start, &match_end);
     }
 }
@@ -398,10 +390,7 @@ fn extract_key_from_path(path: &str) -> String {
 
 /// Extrae el último segmento separado por `.`
 fn extract_last_segment(path: &str) -> String {
-    path.rsplit('.')
-        .next()
-        .unwrap_or(path)
-        .to_string()
+    path.rsplit('.').next().unwrap_or(path).to_string()
 }
 
 #[cfg(test)]

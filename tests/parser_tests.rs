@@ -58,10 +58,7 @@ fn json_complejo_pretty_print_ida_y_vuelta() {
 
 #[test]
 fn json_complejo_autodeteccion() {
-    assert_eq!(
-        auto_detect_format(JSON_API_RESPONSE).unwrap(),
-        Format::Json
-    );
+    assert_eq!(auto_detect_format(JSON_API_RESPONSE).unwrap(), Format::Json);
 }
 
 // ─────────────────────────────────────────────

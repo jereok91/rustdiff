@@ -3,8 +3,8 @@
 //! Configura `adw::Application`, maneja argumentos CLI,
 //! y conecta la señal `activate` para construir la ventana principal.
 
-use gtk4 as gtk;
 use gtk::prelude::*;
+use gtk4 as gtk;
 use libadwaita as adw;
 
 use crate::ui::main_window::MainWindow;
@@ -25,9 +25,7 @@ pub fn run() -> gtk::glib::ExitCode {
         )
         .init();
 
-    let app = adw::Application::builder()
-        .application_id(APP_ID)
-        .build();
+    let app = adw::Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(build_ui);
 

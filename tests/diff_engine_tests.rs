@@ -75,34 +75,31 @@ fn json_api_diferencias_completas() {
         .changed
         .iter()
         .find(|d| d.path.contains("users") && d.path.contains("[0]") && d.path.contains("email"));
-    assert!(email_change.is_some(), "Debe detectar cambio de email de María");
+    assert!(
+        email_change.is_some(),
+        "Debe detectar cambio de email de María"
+    );
 
     // active de Pedro cambió a false
     let active_change = result
         .changed
         .iter()
         .find(|d| d.path.contains("[1]") && d.path.contains("active"));
-    assert!(active_change.is_some(), "Debe detectar cambio de active de Pedro");
+    assert!(
+        active_change.is_some(),
+        "Debe detectar cambio de active de Pedro"
+    );
 
     // total cambió de 2 a 3
-    let total_change = result
-        .changed
-        .iter()
-        .find(|d| d.path.contains("total"));
+    let total_change = result.changed.iter().find(|d| d.path.contains("total"));
     assert!(total_change.is_some(), "Debe detectar cambio en total");
 
     // Se añadió un tercer usuario
-    let user_added = result
-        .added
-        .iter()
-        .any(|d| d.path.contains("[2]"));
+    let user_added = result.added.iter().any(|d| d.path.contains("[2]"));
     assert!(user_added, "Debe detectar usuario añadido en índice 2");
 
     // Se añadió el campo page
-    let page_added = result
-        .added
-        .iter()
-        .any(|d| d.path.contains("page"));
+    let page_added = result.added.iter().any(|d| d.path.contains("page"));
     assert!(page_added, "Debe detectar campo page añadido");
 }
 
@@ -258,13 +255,19 @@ fn xml_config_servidor_diferencias() {
 
     // host cambió
     assert!(
-        result.changed.iter().any(|d| d.path.contains("host") && d.path.contains("[text]")),
+        result
+            .changed
+            .iter()
+            .any(|d| d.path.contains("host") && d.path.contains("[text]")),
         "Debe detectar cambio en host"
     );
 
     // cache enabled: true → false
     assert!(
-        result.changed.iter().any(|d| d.path.contains("cache") && d.path.contains("@enabled")),
+        result
+            .changed
+            .iter()
+            .any(|d| d.path.contains("cache") && d.path.contains("@enabled")),
         "Debe detectar cambio en cache enabled"
     );
 
@@ -339,10 +342,20 @@ fn xml_lista_items_multiples() {
     let result = diff_xml(&left, &right);
 
     // Primer item: precio cambió 5.00 → 5.50
-    assert!(result.changed.iter().any(|d| d.path.contains("item[0]") && d.path.contains("@precio")));
+    assert!(
+        result
+            .changed
+            .iter()
+            .any(|d| d.path.contains("item[0]") && d.path.contains("@precio"))
+    );
 
     // Tercer item: texto cambió Jugo → Limonada
-    assert!(result.changed.iter().any(|d| d.path.contains("item[2]") && d.path.contains("[text]")));
+    assert!(
+        result
+            .changed
+            .iter()
+            .any(|d| d.path.contains("item[2]") && d.path.contains("[text]"))
+    );
 
     // Segundo item (Té) no cambió
     let te_changes: Vec<_> = result
@@ -358,7 +371,7 @@ fn xml_lista_items_multiples() {
 // Integración: flujo completo detect → parse → diff
 // ═══════════════════════════════════════════════
 
-use rustdiff::parser::{auto_detect_format, Format};
+use rustdiff::parser::{Format, auto_detect_format};
 
 #[test]
 fn flujo_completo_json() {
@@ -376,7 +389,7 @@ fn flujo_completo_json() {
     // 3. Comparar
     let result = diff_json(&left, &right);
     assert_eq!(result.changed.len(), 1); // y: 2 → 3
-    assert_eq!(result.added.len(), 1);   // z añadida
+    assert_eq!(result.added.len(), 1); // z añadida
     assert_eq!(result.total(), 2);
 }
 
@@ -393,5 +406,5 @@ fn flujo_completo_xml() {
 
     let result = diff_xml(&left, &right);
     assert_eq!(result.changed.len(), 1); // a text: 1 → 2
-    assert_eq!(result.added.len(), 1);   // <b> añadido
+    assert_eq!(result.added.len(), 1); // <b> añadido
 }
