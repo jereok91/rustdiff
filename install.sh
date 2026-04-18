@@ -129,8 +129,12 @@ cargo install rustdiff
 ok "rustdiff instalado en $(which rustdiff || echo '~/.cargo/bin/rustdiff')"
 
 # ── Instalar icono y .desktop ────────────────
+# Se instala en ~/.local/share/... (per-user) para que coincida con el
+# binario que `cargo install` colocó en ~/.cargo/bin/. Ademas se parchea
+# la linea `Exec=` del .desktop para usar la ruta absoluta del binario,
+# porque los launchers graficos no tienen ~/.cargo/bin en su PATH.
 install_desktop_files() {
-    info "Instalando icono y entrada de menu..."
+    info "Instalando icono y entrada de menu en ~/.local/share/ ..."
 
     # Descargar archivos si no estamos en el repo
     local app_id="com.digitalgex.RustDiff"
@@ -153,33 +157,49 @@ install_desktop_files() {
             -o "$metainfo_src" || warn "No se pudo descargar el metainfo."
     fi
 
-    # Instalar icono
+    # Directorios per-user
+    local home_apps="$HOME/.local/share/applications"
+    local home_icons="$HOME/.local/share/icons/hicolor/scalable/apps"
+    local home_metainfo="$HOME/.local/share/metainfo"
+    mkdir -p "$home_apps" "$home_icons" "$home_metainfo"
+
+    # Ruta absoluta del binario (los launchers graficos no heredan ~/.cargo/bin)
+    local rustdiff_bin
+    rustdiff_bin="$(command -v rustdiff 2>/dev/null || true)"
+    if [ -z "$rustdiff_bin" ]; then
+        rustdiff_bin="$HOME/.cargo/bin/rustdiff"
+    fi
+
+    # Icono
     if [ -f "$icon_src" ]; then
-        sudo install -Dm644 "$icon_src" \
-            "/usr/share/icons/hicolor/scalable/apps/${app_id}.svg"
-        ok "Icono instalado."
+        install -Dm644 "$icon_src" "${home_icons}/${app_id}.svg"
+        ok "Icono instalado en ${home_icons}/"
     fi
 
-    # Instalar .desktop
+    # .desktop — parchear Exec= con la ruta absoluta del binario
     if [ -f "$desktop_src" ]; then
-        sudo install -Dm644 "$desktop_src" \
-            "/usr/share/applications/${app_id}.desktop"
-        ok "Entrada de menu instalada."
+        # sed portable (macOS + Linux): dos patrones cubren 'Exec=rustdiff$' y 'Exec=rustdiff ...'
+        sed -E \
+            -e "s|^Exec=rustdiff$|Exec=${rustdiff_bin}|" \
+            -e "s|^Exec=rustdiff |Exec=${rustdiff_bin} |" \
+            "$desktop_src" > "${home_apps}/${app_id}.desktop"
+        chmod 644 "${home_apps}/${app_id}.desktop"
+        ok "Entrada de menu instalada en ${home_apps}/"
     fi
 
-    # Instalar AppStream metainfo
+    # AppStream metainfo
     if [ -f "$metainfo_src" ]; then
-        sudo install -Dm644 "$metainfo_src" \
-            "/usr/share/metainfo/${app_id}.metainfo.xml"
-        ok "Metadata AppStream instalada."
+        install -Dm644 "$metainfo_src" \
+            "${home_metainfo}/${app_id}.metainfo.xml"
+        ok "Metadata AppStream instalada en ${home_metainfo}/"
     fi
 
-    # Actualizar caches del sistema
+    # Refrescar caches per-user para que el menu vea la app inmediatamente
     if command -v gtk-update-icon-cache &>/dev/null; then
-        sudo gtk-update-icon-cache -f /usr/share/icons/hicolor/ 2>/dev/null || true
+        gtk-update-icon-cache -f "$HOME/.local/share/icons/hicolor/" 2>/dev/null || true
     fi
     if command -v update-desktop-database &>/dev/null; then
-        sudo update-desktop-database /usr/share/applications/ 2>/dev/null || true
+        update-desktop-database "$home_apps" 2>/dev/null || true
     fi
 
     # Limpiar temporales
