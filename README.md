@@ -49,22 +49,24 @@ rustc --version  # debe ser >= 1.85
 
 La aplicacion usa bindings nativos a GTK4, Libadwaita y GtkSourceView 5. Necesitas las librerias de desarrollo instaladas.
 
+Además de las librerias GTK necesitas un **toolchain C** (gcc + make + pkg-config) — Rust lo usa como linker y lo pide `build.rs` para detectar las librerias.
+
 **Arch Linux / CachyOS / Manjaro:**
 
 ```bash
-sudo pacman -S gtk4 libadwaita gtksourceview5
+sudo pacman -S base-devel gtk4 libadwaita gtksourceview5
 ```
 
 **Fedora:**
 
 ```bash
-sudo dnf install gtk4-devel libadwaita-devel gtksourceview5-devel
+sudo dnf install gcc make pkgconf-pkg-config gtk4-devel libadwaita-devel gtksourceview5-devel
 ```
 
 **Ubuntu / Debian (24.04+):**
 
 ```bash
-sudo apt install libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev
+sudo apt install build-essential pkg-config libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev
 ```
 
 **macOS (experimental, via Homebrew):**

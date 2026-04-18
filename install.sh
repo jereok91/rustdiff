@@ -54,29 +54,42 @@ PM=$(detect_pm)
 info "Package manager detectado: ${BOLD}${PM}${NC}"
 
 # ── Instalar dependencias del sistema ────────
+# Además de las librerias GTK, Rust necesita un compilador C (cc/gcc) y
+# make para enlazar el binario y compilar build-scripts de crates nativos
+# como rusqlite. Incluimos ambos grupos en la misma invocación del PM.
 install_deps() {
-    info "Instalando dependencias GTK del sistema..."
+    info "Instalando dependencias GTK y toolchain C del sistema..."
 
     case "$PM" in
         pacman)
-            sudo pacman -S --needed --noconfirm gtk4 libadwaita gtksourceview5
+            sudo pacman -S --needed --noconfirm \
+                base-devel \
+                gtk4 libadwaita gtksourceview5
             ;;
         dnf)
-            sudo dnf install -y gtk4-devel libadwaita-devel gtksourceview5-devel
+            sudo dnf install -y \
+                gcc make pkgconf-pkg-config \
+                gtk4-devel libadwaita-devel gtksourceview5-devel
             ;;
         apt)
             sudo apt update
-            sudo apt install -y libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev
+            sudo apt install -y \
+                build-essential pkg-config \
+                libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev
             ;;
         zypper)
-            sudo zypper install -y gtk4-devel libadwaita-devel gtksourceview5-devel
+            sudo zypper install -y \
+                gcc make pkg-config \
+                gtk4-devel libadwaita-devel gtksourceview5-devel
             ;;
         brew)
+            # En macOS el compilador llega con las Xcode Command Line Tools.
             brew install pkgconf gtk4 libadwaita gtksourceview5
             ;;
         *)
             fail "Package manager no soportado. Instala manualmente:\n" \
-                 "        gtk4, libadwaita y gtksourceview5 (paquetes de desarrollo)"
+                 "        - Toolchain C: gcc / clang + make + pkg-config\n" \
+                 "        - Librerias:   gtk4, libadwaita, gtksourceview5 (paquetes -devel)"
             ;;
     esac
 
@@ -85,12 +98,24 @@ install_deps() {
 
 # Verificar si las deps ya estan instaladas
 deps_ok=true
-for lib in gtk4 libadwaita-1 gtksourceview-5; do
-    if ! pkg-config --exists "$lib" 2>/dev/null; then
+
+# Toolchain C requerido por rustc (linker) y build-scripts de crates nativos.
+for tool in cc make pkg-config; do
+    if ! command -v "$tool" &>/dev/null; then
         deps_ok=false
         break
     fi
 done
+
+# Librerias GTK — solo revisamos si el chequeo anterior no falló ya.
+if [ "$deps_ok" = true ]; then
+    for lib in gtk4 libadwaita-1 gtksourceview-5; do
+        if ! pkg-config --exists "$lib" 2>/dev/null; then
+            deps_ok=false
+            break
+        fi
+    done
+fi
 
 if [ "$deps_ok" = true ]; then
     ok "Dependencias del sistema ya instaladas."
