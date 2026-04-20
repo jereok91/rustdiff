@@ -27,8 +27,10 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Install flatpak-cargo-generator dependencies
-        run: python3 -m pip install --user aiohttp toml tomlkit
+      - name: Install Python dependencies
+        # aiohttp/toml/tomlkit: flatpak-cargo-generator.py
+        # pyyaml: validar el manifest antes de pushear
+        run: python3 -m pip install --user aiohttp toml tomlkit pyyaml
 
       - name: Download flatpak-cargo-generator.py
         run: |
@@ -79,16 +81,23 @@ jobs:
           python3 -c "import yaml; yaml.safe_load(open('$MANIFEST'))"
           python3 -c "import json; assert json.load(open('cargo-sources.json'))"
 
-          # Commit y push.
+          # Commit y push (force-with-lease para tolerar re-runs del workflow).
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git add "$MANIFEST" cargo-sources.json
           git commit -m "Update to ${TAG}"
-          git push -u origin "$BRANCH"
+          git push --force-with-lease -u origin "$BRANCH"
 
-          # Abre el PR (usa la default branch del repo automáticamente).
-          gh pr create \
+          # Abre el PR o avisa si ya existe (idempotente).
+          if ! gh pr create \
               --repo "$FLATHUB_REPO" \
               --title "Update to ${TAG}" \
               --body "Automated update from rustdiff ${TAG} (commit ${COMMIT}). Regenerated cargo-sources.json via flatpak-cargo-generator." \
-              --head "$BRANCH"
+              --head "$BRANCH" 2>&1 | tee /tmp/pr.out; then
+              if grep -q "a pull request .* already exists" /tmp/pr.out; then
+                  echo "PR ya existe, solo se actualizó la rama."
+              else
+                  cat /tmp/pr.out
+                  exit 1
+              fi
+          fi
