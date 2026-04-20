@@ -100,6 +100,16 @@
   </branding>
 
   <releases>
+    <release version="0.1.4" date="2026-04-20">
+      <description>
+        <p>Internationalization: the UI now ships in English by default and switches to Spanish automatically on Spanish systems.</p>
+        <ul>
+          <li>Bilingual UI powered by rust-i18n; English is the default and fallback.</li>
+          <li>New primary menu in the header bar with a Language picker (Auto / English / Español). The selection is stored in ~/.config/rustdiff/settings.json.</li>
+          <li>Format and Export entries moved into the primary menu; the Format button stays in the header for quick access. Keyboard shortcuts appear next to each menu item.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.3" date="2026-04-17">
       <description>
         <p>Packaging milestone: the application is now ready to ship as a Flatpak on Flathub.</p>
