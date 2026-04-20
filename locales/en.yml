@@ -71,6 +71,16 @@
 "export.section_changed": "── CHANGED (%{count}) ──"
 "export.identical_text": "Documents are identical."
 
+"menu.tooltip": "Main menu"
+"menu.format_documents": "Format Documents"
+"menu.export_txt": "Export as .txt"
+"menu.export_html": "Export as .html"
+"menu.language": "Language"
+"menu.language_auto": "Auto (system)"
+"menu.language_en": "English"
+"menu.language_es": "Español"
+"toast.language_changed": "Language changed. Restart RustDiff to apply."
+
 "diff.identical": "Identical"
 "diff.summary_identical": "Documents are identical"
 "diff.summary_counts": "%{total} difference(s): %{added} added, %{removed} removed, %{changed} changed"

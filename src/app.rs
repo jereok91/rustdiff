@@ -36,27 +36,38 @@ pub fn run() -> gtk::glib::ExitCode {
     app.run()
 }
 
-/// Lee `LC_ALL` / `LC_MESSAGES` / `LANG` y configura `rust_i18n` con el
-/// idioma soportado mas cercano. Si no hay match, queda en ingles
-/// (fallback configurado en `i18n!()`).
+/// Determina el idioma activo. Prioridad:
+///   1. `Settings::language` si es `"en"` o `"es"` (preferencia explicita del usuario).
+///   2. `LC_ALL` / `LC_MESSAGES` / `LANG` del entorno.
+///   3. Fallback a ingles.
+///
+/// El valor se propaga a `rust_i18n` para que `t!()` resuelva contra el
+/// idioma correcto en toda la aplicacion.
 fn setup_locale() {
-    const SUPPORTED: &[&str] = &["en", "es"];
+    use crate::settings::{SUPPORTED_LANGUAGES, Settings};
 
-    let code = ["LC_ALL", "LC_MESSAGES", "LANG"]
-        .iter()
-        .filter_map(|var| std::env::var(var).ok())
-        .find(|v| !v.is_empty())
-        .and_then(|raw| {
-            // "es_ES.UTF-8" -> "es"
-            raw.split(['.', '@'])
-                .next()
-                .and_then(|s| s.split('_').next())
-                .map(|s| s.to_lowercase())
-        })
-        .filter(|code| SUPPORTED.contains(&code.as_str()))
-        .unwrap_or_else(|| "en".into());
+    let settings = Settings::load();
 
-    tracing::info!("Idioma seleccionado: {code}");
+    let code = if SUPPORTED_LANGUAGES.contains(&settings.language.as_str()) {
+        settings.language.clone()
+    } else {
+        // `"auto"` o cualquier valor no soportado -> detectar del entorno
+        ["LC_ALL", "LC_MESSAGES", "LANG"]
+            .iter()
+            .filter_map(|var| std::env::var(var).ok())
+            .find(|v| !v.is_empty())
+            .and_then(|raw| {
+                // "es_ES.UTF-8" -> "es"
+                raw.split(['.', '@'])
+                    .next()
+                    .and_then(|s| s.split('_').next())
+                    .map(|s| s.to_lowercase())
+            })
+            .filter(|code| SUPPORTED_LANGUAGES.contains(&code.as_str()))
+            .unwrap_or_else(|| "en".into())
+    };
+
+    tracing::info!("Idioma activo: {code} (pref={})", settings.language);
     rust_i18n::set_locale(&code);
 }
 

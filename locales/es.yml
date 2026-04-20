@@ -71,6 +71,16 @@
 "export.section_changed": "── MODIFICADOS (%{count}) ──"
 "export.identical_text": "Los documentos son idénticos."
 
+"menu.tooltip": "Menú principal"
+"menu.format_documents": "Formatear documentos"
+"menu.export_txt": "Exportar como .txt"
+"menu.export_html": "Exportar como .html"
+"menu.language": "Idioma"
+"menu.language_auto": "Auto (sistema)"
+"menu.language_en": "English"
+"menu.language_es": "Español"
+"toast.language_changed": "Idioma cambiado. Reinicia RustDiff para aplicarlo."
+
 "diff.identical": "Idénticos"
 "diff.summary_identical": "Los documentos son idénticos"
 "diff.summary_counts": "%{total} diferencia(s): %{added} añadida(s), %{removed} eliminada(s), %{changed} modificada(s)"

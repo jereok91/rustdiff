@@ -56,6 +56,8 @@ pub struct MainWindow {
     history_list: gtk::ListBox,
     /// Panel lateral de historial (para toggle visibilidad).
     history_panel: gtk::Box,
+    /// Overlay para toasts (mensajes no bloqueantes).
+    toast_overlay: adw::ToastOverlay,
 }
 
 impl MainWindow {
@@ -117,30 +119,55 @@ impl MainWindow {
         btn_format.set_tooltip_text(Some(&t!("header.format_tooltip")));
         btn_format.add_css_class("flat");
 
-        // ── Botón Exportar con menú ─────────────
-        let export_menu = gtk::gio::Menu::new();
-        export_menu.append(Some(&t!("header.export_txt")), Some("win.export-txt"));
-        export_menu.append(Some(&t!("header.export_html")), Some("win.export-html"));
-
-        let btn_export = gtk::MenuButton::new();
-        btn_export.set_label(&t!("header.export"));
-        btn_export.set_menu_model(Some(&export_menu));
-        btn_export.set_tooltip_text(Some(&t!("header.export_tooltip")));
-        btn_export.add_css_class("flat");
-
         // ── Botón Historial toggle ──────────────
         let btn_history = gtk::ToggleButton::with_label(&t!("header.history"));
         btn_history.set_tooltip_text(Some(&t!("header.history_tooltip")));
         btn_history.add_css_class("flat");
 
+        // ── Menú principal (hamburger) ──────────
+        // Agrupa acciones secundarias: Formatear, Exportar, Idioma.
+        // Los atajos se muestran automaticamente porque se registran
+        // con `gtk::Application::set_accels_for_action` mas abajo.
+        let primary_menu = gtk::gio::Menu::new();
+
+        // Seccion 1: accion "Formatear" (tambien accesible via boton).
+        let format_section = gtk::gio::Menu::new();
+        format_section.append(
+            Some(&t!("menu.format_documents")),
+            Some("win.format-documents"),
+        );
+        primary_menu.append_section(None, &format_section);
+
+        // Seccion 2: Exportar (.txt, .html)
+        let export_section = gtk::gio::Menu::new();
+        export_section.append(Some(&t!("menu.export_txt")), Some("win.export-txt"));
+        export_section.append(Some(&t!("menu.export_html")), Some("win.export-html"));
+        primary_menu.append_section(None, &export_section);
+
+        // Seccion 3: Idioma (submenu con seleccion radio).
+        let language_submenu = gtk::gio::Menu::new();
+        language_submenu.append(Some(&t!("menu.language_auto")), Some("win.language::auto"));
+        language_submenu.append(Some(&t!("menu.language_en")), Some("win.language::en"));
+        language_submenu.append(Some(&t!("menu.language_es")), Some("win.language::es"));
+        let language_section = gtk::gio::Menu::new();
+        language_section.append_submenu(Some(&t!("menu.language")), &language_submenu);
+        primary_menu.append_section(None, &language_section);
+
+        let btn_menu = gtk::MenuButton::new();
+        btn_menu.set_icon_name("open-menu-symbolic");
+        btn_menu.set_menu_model(Some(&primary_menu));
+        btn_menu.set_tooltip_text(Some(&t!("menu.tooltip")));
+        btn_menu.add_css_class("flat");
+
         // ── HeaderBar ───────────────────────────
+        // Layout: [Open Izq] [Open Der] [Formato▼]  ...  [History] [Format] [Compare] [☰]
         let header = adw::HeaderBar::new();
         header.pack_start(&btn_open_left);
         header.pack_start(&btn_open_right);
         header.pack_start(&format_dropdown);
+        header.pack_end(&btn_menu);
         header.pack_end(&btn_compare);
         header.pack_end(&btn_format);
-        header.pack_end(&btn_export);
         header.pack_end(&btn_history);
 
         // ── Panel de historial (lateral izq) ────
@@ -240,10 +267,14 @@ impl MainWindow {
         content_with_sidebar.append(&history_panel);
         content_with_sidebar.append(&main_paned);
 
+        // ── ToastOverlay para notificaciones no bloqueantes ─
+        let toast_overlay = adw::ToastOverlay::new();
+        toast_overlay.set_child(Some(&content_with_sidebar));
+
         // ── Layout vertical: header + contenido + status
         let toolbar_view = adw::ToolbarView::new();
         toolbar_view.add_top_bar(&header);
-        toolbar_view.set_content(Some(&content_with_sidebar));
+        toolbar_view.set_content(Some(&toast_overlay));
 
         let outer_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
         outer_box.append(&toolbar_view);
@@ -269,6 +300,7 @@ impl MainWindow {
             storage: Rc::new(RefCell::new(storage)),
             history_list,
             history_panel,
+            toast_overlay,
         };
 
         // ── Conectar señales ────────────────────
@@ -282,6 +314,9 @@ impl MainWindow {
         main_win.connect_history_selection();
         main_win.connect_clear_history_button(&btn_clear_history);
         main_win.setup_export_actions();
+        main_win.setup_format_action();
+        main_win.setup_language_action();
+        main_win.register_menu_accels(app);
         main_win.refresh_history_list();
 
         main_win
@@ -463,6 +498,62 @@ impl MainWindow {
     // Exportación
     // ─────────────────────────────────────────
 
+    /// Accion `win.format-documents` usada por el menu principal.
+    /// La misma funcion que ya usa el boton "Format" de la header bar.
+    fn setup_format_action(&self) {
+        let action = gtk::gio::SimpleAction::new("format-documents", None);
+        let left = self.left_view.clone();
+        let right = self.right_view.clone();
+        let status = self.status_label.clone();
+        let dropdown = self.format_dropdown.clone();
+        action.connect_activate(move |_, _| {
+            format_both_panels(&left, &right, &status, &dropdown);
+        });
+        self.window.add_action(&action);
+    }
+
+    /// Accion stateful `win.language` que alimenta el submenu radio
+    /// (Auto / English / Español). Persiste la seleccion en
+    /// `~/.config/rustdiff/settings.json` y muestra un toast pidiendo
+    /// reinicio porque los `&str` de la UI ya se construyeron.
+    fn setup_language_action(&self) {
+        use gtk::glib::{Variant, VariantTy, variant::ToVariant};
+
+        let initial = crate::settings::Settings::load().language;
+        let action = gtk::gio::SimpleAction::new_stateful(
+            "language",
+            Some(VariantTy::STRING),
+            &initial.to_variant(),
+        );
+
+        let toast_overlay = self.toast_overlay.clone();
+        action.connect_activate(move |action, parameter: Option<&Variant>| {
+            let Some(new_lang) = parameter.and_then(|p| p.get::<String>()) else {
+                return;
+            };
+            action.set_state(&new_lang.to_variant());
+
+            let mut settings = crate::settings::Settings::load();
+            if settings.language == new_lang {
+                return;
+            }
+            settings.language = new_lang;
+            settings.save();
+
+            let toast = adw::Toast::new(&t!("toast.language_changed"));
+            toast.set_timeout(5);
+            toast_overlay.add_toast(toast);
+        });
+        self.window.add_action(&action);
+    }
+
+    /// Registra en `gtk::Application` los atajos que deben mostrarse en
+    /// el menu (Adwaita los renderiza automaticamente al lado del label).
+    fn register_menu_accels(&self, app: &adw::Application) {
+        app.set_accels_for_action("win.format-documents", &["<Control><Shift>F"]);
+        app.set_accels_for_action("win.export-txt", &["<Control>E"]);
+    }
+
     fn setup_export_actions(&self) {
         // Acción: exportar TXT
         let action_txt = gtk::gio::SimpleAction::new("export-txt", None);
@@ -618,16 +709,10 @@ impl MainWindow {
                     );
                     gtk::glib::Propagation::Stop
                 }
-                // Ctrl+E → exportar como txt (rápido)
-                (gtk::gdk::Key::e, false) => {
-                    export_to_file(&win, &left, &right, &last_diff, &status, ExportFormat::Txt);
-                    gtk::glib::Propagation::Stop
-                }
-                // Ctrl+Shift+F → formatear
-                (gtk::gdk::Key::F, true) | (gtk::gdk::Key::f, true) => {
-                    format_both_panels(&left, &right, &status, &dropdown);
-                    gtk::glib::Propagation::Stop
-                }
+                // Ctrl+E y Ctrl+Shift+F se registran via
+                // `gtk::Application::set_accels_for_action` para que
+                // aparezcan en el menu principal. No los duplicamos aqui.
+
                 // Ctrl+H → toggle historial
                 (gtk::gdk::Key::h, false) => {
                     history_panel.set_visible(!history_panel.is_visible());
