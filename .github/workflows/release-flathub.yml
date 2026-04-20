@@ -1,0 +1,94 @@
+name: Open PR on Flathub repo for new tag
+
+# Se dispara cuando empujas un tag con formato v*.
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  FLATHUB_REPO: flathub/com.digitalgex.RustDiff
+  APP_ID: com.digitalgex.RustDiff
+
+jobs:
+  update-flathub:
+    name: Update Flathub manifest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout rustdiff at the pushed tag
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install flatpak-cargo-generator dependencies
+        run: python3 -m pip install --user aiohttp toml tomlkit
+
+      - name: Download flatpak-cargo-generator.py
+        run: |
+          curl -fsSL \
+            -o flatpak-cargo-generator.py \
+            https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py
+
+      - name: Regenerate cargo-sources.json
+        run: python3 flatpak-cargo-generator.py Cargo.lock -o cargo-sources.json
+
+      - name: Clone Flathub repo
+        env:
+          FLATHUB_PAT: ${{ secrets.FLATHUB_PAT }}
+        run: |
+          if [ -z "$FLATHUB_PAT" ]; then
+            echo "ERROR: FLATHUB_PAT secret is not set."
+            echo "See .github/workflows/release-flathub.yml header for instructions."
+            exit 1
+          fi
+          git clone \
+            "https://x-access-token:${FLATHUB_PAT}@github.com/${FLATHUB_REPO}.git" \
+            flathub-repo
+
+      - name: Update manifest and open PR
+        env:
+          GH_TOKEN: ${{ secrets.FLATHUB_PAT }}
+          TAG: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cd flathub-repo
+
+          # Rama nueva para el PR
+          BRANCH="update-${TAG}"
+          git checkout -b "$BRANCH"
+
+          # Actualizar tag y commit del source remoto en el manifest.
+          MANIFEST="${APP_ID}.yaml"
+          sed -i -E \
+              -e "s|^(\s*tag:)\s+.*|\1 ${TAG}|" \
+              -e "s|^(\s*commit:)\s+.*|\1 ${COMMIT}|" \
+              "$MANIFEST"
+
+          # Reemplazar cargo-sources.json con el recién generado.
+          cp ../cargo-sources.json .
+
+          # Validación mínima: YAML bien formado, cargo-sources no vacío.
+          python3 -c "import yaml; yaml.safe_load(open('$MANIFEST'))"
+          python3 -c "import json; assert json.load(open('cargo-sources.json'))"
+
+          # Commit y push.
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add "$MANIFEST" cargo-sources.json
+          git commit -m "Update to ${TAG}"
+          git push -u origin "$BRANCH"
+
+          # Abre el PR (usa la default branch del repo automáticamente).
+          gh pr create \
+              --repo "$FLATHUB_REPO" \
+              --title "Update to ${TAG}" \
+              --body "Automated update from rustdiff ${TAG} (commit ${COMMIT}). Regenerated cargo-sources.json via flatpak-cargo-generator." \
+              --head "$BRANCH"

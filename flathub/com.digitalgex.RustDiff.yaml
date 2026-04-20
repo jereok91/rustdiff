@@ -31,4 +31,10 @@ modules:
         url: https://github.com/jereok91/rustdiff.git
         tag: v0.1.4
         commit: aa1fa0ae5b636b1fc0e9e0b8fde0f3881c4f6e23
+        # flatpak-external-data-checker: si el workflow `release-flathub`
+        # del repo upstream falla, este metadato deja que el bot oficial
+        # de Flathub detecte nuevos tags y abra un PR por su cuenta.
+        x-checker-data:
+          type: git
+          tag-pattern: ^v(\d+\.\d+\.\d+)$
       - cargo-sources.json
