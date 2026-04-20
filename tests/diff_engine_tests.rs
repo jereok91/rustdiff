@@ -313,7 +313,8 @@ fn xml_identicos_parseados() {
     let right = parse_xml(xml).unwrap();
     let result = diff_xml(&left, &right);
     assert!(result.is_empty());
-    assert_eq!(result.summary(), "Los documentos son idénticos");
+    // Locale por defecto en tests = "en" (fallback).
+    assert_eq!(result.summary(), "Documents are identical");
 }
 
 // ═══════════════════════════════════════════════

@@ -24,19 +24,19 @@ pub enum Format {
 /// Errores posibles durante el parseo de documentos.
 #[derive(Debug, Error)]
 pub enum ParseError {
-    #[error("JSON inválido: {0}")]
+    #[error("invalid JSON: {0}")]
     InvalidJson(#[from] serde_json::Error),
 
-    #[error("XML inválido: {0}")]
+    #[error("invalid XML: {0}")]
     InvalidXml(String),
 
-    #[error("Formato no reconocido: el texto no parece ser JSON ni XML válido")]
+    #[error("unknown format: the text does not look like valid JSON or XML")]
     UnknownFormat,
 
-    #[error("El documento está vacío")]
+    #[error("the document is empty")]
     EmptyInput,
 
-    #[error("El documento excede el límite de {limit} bytes (tiene {actual} bytes)")]
+    #[error("document exceeds the {limit}-byte limit (is {actual} bytes)")]
     InputTooLarge { limit: usize, actual: usize },
 }
 

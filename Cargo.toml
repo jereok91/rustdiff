@@ -43,6 +43,7 @@ include = [
     "Cargo.lock",
     "LICENSE",
     "README.md",
+    "locales/*.yml",
     "data/com.digitalgex.RustDiff.desktop",
     "data/com.digitalgex.RustDiff.metainfo.xml",
     "data/icons/com.digitalgex.RustDiff.svg",
@@ -90,6 +91,10 @@ tokio = { version = "1", features = [
     "time",
     "macros",
 ] }
+
+# ── I18N ─────────────────────────────────────
+# Strings traducibles via locales/<lang>.yml embebidos en tiempo de compilacion.
+rust-i18n = "3"
 
 # ── UTILIDADES ───────────────────────────────
 dirs               = "5"

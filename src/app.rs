@@ -25,12 +25,39 @@ pub fn run() -> gtk::glib::ExitCode {
         )
         .init();
 
+    // Seleccionar el idioma activo en funcion del locale del sistema.
+    setup_locale();
+
     let app = adw::Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(build_ui);
 
     // Ejecutar la aplicación pasando los argumentos del sistema
     app.run()
+}
+
+/// Lee `LC_ALL` / `LC_MESSAGES` / `LANG` y configura `rust_i18n` con el
+/// idioma soportado mas cercano. Si no hay match, queda en ingles
+/// (fallback configurado en `i18n!()`).
+fn setup_locale() {
+    const SUPPORTED: &[&str] = &["en", "es"];
+
+    let code = ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .filter_map(|var| std::env::var(var).ok())
+        .find(|v| !v.is_empty())
+        .and_then(|raw| {
+            // "es_ES.UTF-8" -> "es"
+            raw.split(['.', '@'])
+                .next()
+                .and_then(|s| s.split('_').next())
+                .map(|s| s.to_lowercase())
+        })
+        .filter(|code| SUPPORTED.contains(&code.as_str()))
+        .unwrap_or_else(|| "en".into());
+
+    tracing::info!("Idioma seleccionado: {code}");
+    rust_i18n::set_locale(&code);
 }
 
 /// Callback principal: se invoca cuando la aplicación se activa.

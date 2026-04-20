@@ -124,16 +124,18 @@ impl DiffResult {
 
     /// Resumen textual de las diferencias (para la barra de estado).
     pub fn summary(&self) -> String {
+        use rust_i18n::t;
         if self.is_empty() {
-            "Los documentos son idénticos".into()
+            t!("diff.summary_identical").to_string()
         } else {
-            format!(
-                "{} diferencia(s): {} añadida(s), {} eliminada(s), {} modificada(s)",
-                self.total(),
-                self.added.len(),
-                self.removed.len(),
-                self.changed.len()
+            t!(
+                "diff.summary_counts",
+                total = self.total(),
+                added = self.added.len(),
+                removed = self.removed.len(),
+                changed = self.changed.len()
             )
+            .to_string()
         }
     }
 }
@@ -488,7 +490,7 @@ mod tests {
         let result = diff_json(&left, &right);
         assert!(result.is_empty());
         assert_eq!(result.total(), 0);
-        assert_eq!(result.summary(), "Los documentos son idénticos");
+        assert_eq!(result.summary(), "Documents are identical");
     }
 
     // ── JSON: valores primitivos cambiados ──────
@@ -935,9 +937,9 @@ mod tests {
         let right = json!({"a": 10, "c": 3});
         let result = diff_json(&left, &right);
         let summary = result.summary();
-        assert!(summary.contains("3 diferencia(s)"));
-        assert!(summary.contains("1 añadida(s)"));
-        assert!(summary.contains("1 eliminada(s)"));
-        assert!(summary.contains("1 modificada(s)"));
+        assert!(summary.contains("3 difference(s)"));
+        assert!(summary.contains("1 added"));
+        assert!(summary.contains("1 removed"));
+        assert!(summary.contains("1 changed"));
     }
 }

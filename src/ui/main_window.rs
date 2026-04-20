@@ -16,6 +16,7 @@
 use adw::prelude::*;
 use gtk4 as gtk;
 use libadwaita as adw;
+use rust_i18n::t;
 use sourceview5 as sv;
 use sv::prelude::*;
 
@@ -84,9 +85,7 @@ impl MainWindow {
         let diff_panel = Rc::new(DiffPanel::new());
 
         // ── Barra de estado ─────────────────────
-        let status_label = gtk::Label::new(Some(
-            "Listo — Ctrl+O abrir | Ctrl+Enter comparar | Ctrl+S guardar sesión",
-        ));
+        let status_label = gtk::Label::new(Some(&t!("app.status_ready")));
         status_label.set_halign(gtk::Align::Start);
         status_label.set_margin_start(8);
         status_label.set_margin_end(8);
@@ -95,42 +94,43 @@ impl MainWindow {
         status_label.add_css_class("dim-label");
 
         // ── Dropdown de formato ─────────────────
-        let formats = gtk::StringList::new(&["Auto-detectar", "JSON", "XML"]);
+        let auto_label = t!("header.format_auto");
+        let formats = gtk::StringList::new(&[&auto_label, "JSON", "XML"]);
         let format_dropdown = gtk::DropDown::new(Some(formats), gtk::Expression::NONE);
         format_dropdown.set_selected(0);
-        format_dropdown.set_tooltip_text(Some("Formato del documento"));
+        format_dropdown.set_tooltip_text(Some(&t!("header.format_dropdown_tooltip")));
 
         // ── Botones de la HeaderBar ─────────────
-        let btn_open_left = gtk::Button::with_label("Abrir Izq");
-        btn_open_left.set_tooltip_text(Some("Abrir archivo en panel izquierdo (Ctrl+O)"));
+        let btn_open_left = gtk::Button::with_label(&t!("header.open_left"));
+        btn_open_left.set_tooltip_text(Some(&t!("header.open_left_tooltip")));
         btn_open_left.add_css_class("flat");
 
-        let btn_open_right = gtk::Button::with_label("Abrir Der");
-        btn_open_right.set_tooltip_text(Some("Abrir archivo en panel derecho (Ctrl+Shift+O)"));
+        let btn_open_right = gtk::Button::with_label(&t!("header.open_right"));
+        btn_open_right.set_tooltip_text(Some(&t!("header.open_right_tooltip")));
         btn_open_right.add_css_class("flat");
 
-        let btn_compare = gtk::Button::with_label("Comparar");
-        btn_compare.set_tooltip_text(Some("Comparar documentos (Ctrl+Enter)"));
+        let btn_compare = gtk::Button::with_label(&t!("header.compare"));
+        btn_compare.set_tooltip_text(Some(&t!("header.compare_tooltip")));
         btn_compare.add_css_class("suggested-action");
 
-        let btn_format = gtk::Button::with_label("Formatear");
-        btn_format.set_tooltip_text(Some("Pretty-print ambos documentos (Ctrl+Shift+F)"));
+        let btn_format = gtk::Button::with_label(&t!("header.format"));
+        btn_format.set_tooltip_text(Some(&t!("header.format_tooltip")));
         btn_format.add_css_class("flat");
 
         // ── Botón Exportar con menú ─────────────
         let export_menu = gtk::gio::Menu::new();
-        export_menu.append(Some("Exportar como .txt"), Some("win.export-txt"));
-        export_menu.append(Some("Exportar como .html"), Some("win.export-html"));
+        export_menu.append(Some(&t!("header.export_txt")), Some("win.export-txt"));
+        export_menu.append(Some(&t!("header.export_html")), Some("win.export-html"));
 
         let btn_export = gtk::MenuButton::new();
-        btn_export.set_label("Exportar");
+        btn_export.set_label(&t!("header.export"));
         btn_export.set_menu_model(Some(&export_menu));
-        btn_export.set_tooltip_text(Some("Exportar resultado (Ctrl+E)"));
+        btn_export.set_tooltip_text(Some(&t!("header.export_tooltip")));
         btn_export.add_css_class("flat");
 
         // ── Botón Historial toggle ──────────────
-        let btn_history = gtk::ToggleButton::with_label("Historial");
-        btn_history.set_tooltip_text(Some("Mostrar/ocultar historial de sesiones (Ctrl+H)"));
+        let btn_history = gtk::ToggleButton::with_label(&t!("header.history"));
+        btn_history.set_tooltip_text(Some(&t!("header.history_tooltip")));
         btn_history.add_css_class("flat");
 
         // ── HeaderBar ───────────────────────────
@@ -156,14 +156,14 @@ impl MainWindow {
             .child(&history_list)
             .build();
 
-        let history_title = gtk::Label::new(Some("Sesiones guardadas"));
+        let history_title = gtk::Label::new(Some(&t!("history.title")));
         history_title.add_css_class("heading");
         history_title.set_halign(gtk::Align::Start);
         history_title.set_hexpand(true);
         history_title.set_margin_start(8);
 
         let btn_clear_history = gtk::Button::from_icon_name("user-trash-symbolic");
-        btn_clear_history.set_tooltip_text(Some("Borrar todo el historial"));
+        btn_clear_history.set_tooltip_text(Some(&t!("history.clear_tooltip")));
         btn_clear_history.add_css_class("flat");
         btn_clear_history.set_valign(gtk::Align::Center);
 
@@ -200,7 +200,7 @@ impl MainWindow {
 
         // ── Labels de panel ─────────────────────
         let left_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        let left_label = gtk::Label::new(Some("Documento Izquierdo"));
+        let left_label = gtk::Label::new(Some(&t!("editor.left_label")));
         left_label.add_css_class("heading");
         left_label.set_margin_top(4);
         left_label.set_margin_bottom(4);
@@ -208,7 +208,7 @@ impl MainWindow {
         left_box.append(&left_scroll);
 
         let right_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
-        let right_label = gtk::Label::new(Some("Documento Derecho"));
+        let right_label = gtk::Label::new(Some(&t!("editor.right_label")));
         right_label.add_css_class("heading");
         right_label.set_margin_top(4);
         right_label.set_margin_bottom(4);
@@ -252,7 +252,7 @@ impl MainWindow {
         // ── Ventana principal ───────────────────
         let window = adw::ApplicationWindow::builder()
             .application(app)
-            .title("RustDiff — Comparador Semántico")
+            .title(&*t!("app.title"))
             .default_width(1200)
             .default_height(800)
             .content(&outer_box)
@@ -379,15 +379,15 @@ impl MainWindow {
                     if let Some(session) = sessions.get(idx as usize) {
                         left.buffer().set_text(&session.left_content);
                         right.buffer().set_text(&session.right_content);
-                        status.set_text(&format!(
-                            "Sesión #{} restaurada — {}",
-                            session.id,
-                            session.diff_summary.short_text()
+                        status.set_text(&t!(
+                            "history.status_restored",
+                            id = session.id,
+                            summary = session.diff_summary.short_text()
                         ));
                     }
                 }
                 Err(e) => {
-                    status.set_text(&format!("Error cargando sesión: {e}"));
+                    status.set_text(&t!("history.status_load_error", error = e.to_string()));
                 }
             }
         });
@@ -410,24 +410,21 @@ impl MainWindow {
                 let store = storage.borrow();
                 if let Some(ref db) = *store {
                     if db.count_sessions().unwrap_or(0) == 0 {
-                        status.set_text("El historial ya está vacío");
+                        status.set_text(&t!("history.status_already_empty"));
                         return;
                     }
                 } else {
-                    status.set_text("Historial no disponible");
+                    status.set_text(&t!("history.status_unavailable"));
                     return;
                 }
             }
 
             let dialog = adw::AlertDialog::new(
-                Some("¿Borrar todo el historial?"),
-                Some(
-                    "Se eliminarán todas las sesiones guardadas. \
-                     Esta acción no se puede deshacer.",
-                ),
+                Some(&t!("history.clear_dialog_title")),
+                Some(&t!("history.clear_dialog_body")),
             );
-            dialog.add_response("cancel", "Cancelar");
-            dialog.add_response("delete", "Borrar todo");
+            dialog.add_response("cancel", &t!("history.cancel"));
+            dialog.add_response("delete", &t!("history.clear_confirm"));
             dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
             dialog.set_default_response(Some("cancel"));
             dialog.set_close_response("cancel");
@@ -450,9 +447,9 @@ impl MainWindow {
                     };
                     refresh_history_list_widget(&list_cl, &storage_cl);
                     if let Some(n) = borradas {
-                        status_cl.set_text(&format!("Historial borrado ({n} sesiones)"));
+                        status_cl.set_text(&t!("history.status_cleared", count = n));
                     } else {
-                        status_cl.set_text("No se pudo borrar el historial");
+                        status_cl.set_text(&t!("history.status_clear_failed"));
                     }
                 }
                 dlg.close();
@@ -665,7 +662,7 @@ fn execute_diff(
         highlighter::clear_highlights(&left_view.buffer());
         highlighter::clear_highlights(&right_view.buffer());
         *last_diff.borrow_mut() = None;
-        status.set_text("Introduce texto en ambos paneles para comparar");
+        status.set_text(&t!("compare.need_input"));
         return;
     }
 
@@ -686,12 +683,16 @@ fn execute_diff(
             (Err(e), _) => Err(format!("Error en documento izquierdo: {e}")),
             (_, Err(e)) => Err(format!("Error en documento derecho: {e}")),
         },
-        None => Err("No se pudo detectar el formato. Selecciona JSON o XML manualmente.".into()),
+        None => Err(t!("compare.detect_failed_hint").to_string()),
     };
 
     match result {
         Ok((diff, fmt)) => {
-            status.set_text(&format!("{} | {fmt}", diff.summary()));
+            status.set_text(&t!(
+                "compare.summary_format",
+                summary = diff.summary(),
+                fmt = fmt.to_string()
+            ));
             panel.update(&diff);
             highlighter::apply_highlights(left_view, right_view, &left_text, &right_text, &diff);
             *last_diff.borrow_mut() = Some((diff, fmt));
@@ -723,7 +724,7 @@ fn format_both_panels(
     };
 
     let Some(fmt) = format else {
-        status.set_text("No se pudo detectar el formato para formatear");
+        status.set_text(&t!("format.detect_failed"));
         return;
     };
 
@@ -731,7 +732,7 @@ fn format_both_panels(
         match format_pretty(&left_text, fmt) {
             Ok(pretty) => left.buffer().set_text(&pretty),
             Err(e) => {
-                status.set_text(&format!("Error formateando izquierdo: {e}"));
+                status.set_text(&t!("format.format_error_left", error = e.to_string()));
                 return;
             }
         }
@@ -741,13 +742,13 @@ fn format_both_panels(
         match format_pretty(&right_text, fmt) {
             Ok(pretty) => right.buffer().set_text(&pretty),
             Err(e) => {
-                status.set_text(&format!("Error formateando derecho: {e}"));
+                status.set_text(&t!("format.format_error_right", error = e.to_string()));
                 return;
             }
         }
     }
 
-    status.set_text(&format!("Documentos formateados como {fmt}"));
+    status.set_text(&t!("format.formatted_ok", fmt = fmt.to_string()));
 }
 
 /// Guarda sesión desde atajo de teclado (Ctrl+S).
@@ -762,7 +763,7 @@ fn save_session_from_shortcut(
 ) {
     let diff_data = last_diff.borrow();
     let Some((ref result, fmt)) = *diff_data else {
-        status.set_text("No hay comparación para guardar. Compara primero.");
+        status.set_text(&t!("history.no_comparison"));
         return;
     };
 
@@ -772,7 +773,7 @@ fn save_session_from_shortcut(
 
     let store = storage.borrow();
     let Some(ref db) = *store else {
-        status.set_text("Historial no disponible");
+        status.set_text(&t!("history.status_unavailable"));
         return;
     };
 
@@ -781,13 +782,13 @@ fn save_session_from_shortcut(
 
     match result {
         Ok(id) => {
-            status.set_text(&format!("Sesión #{id} guardada en historial"));
+            status.set_text(&t!("history.status_saved", id = id));
             refresh_history_list_widget(history_list, storage);
             // Mostrar el panel si está oculto
             history_panel.set_visible(true);
         }
         Err(e) => {
-            status.set_text(&format!("Error guardando: {e}"));
+            status.set_text(&t!("history.status_save_error", error = e.to_string()));
         }
     }
 }
@@ -821,7 +822,7 @@ fn refresh_history_list_widget(
     };
 
     if sessions.is_empty() {
-        let empty = gtk::Label::new(Some("Sin sesiones guardadas"));
+        let empty = gtk::Label::new(Some(&t!("history.empty")));
         empty.add_css_class("dim-label");
         empty.set_margin_top(12);
         empty.set_margin_bottom(12);
@@ -869,7 +870,7 @@ fn build_history_row(
     label.set_hexpand(true);
 
     let delete_btn = gtk::Button::from_icon_name("edit-delete-symbolic");
-    delete_btn.set_tooltip_text(Some("Eliminar esta sesión"));
+    delete_btn.set_tooltip_text(Some(&t!("history.delete_tooltip")));
     delete_btn.add_css_class("flat");
     delete_btn.set_valign(gtk::Align::Center);
 
@@ -916,7 +917,7 @@ fn export_to_file(
 ) {
     let diff_data = last_diff.borrow();
     let Some((ref result, fmt)) = *diff_data else {
-        status.set_text("No hay comparación para exportar. Compara primero.");
+        status.set_text(&t!("export.none"));
         return;
     };
 
@@ -934,7 +935,7 @@ fn export_to_file(
 
     // Diálogo para guardar archivo
     let dialog = gtk::FileDialog::builder()
-        .title("Exportar resultado")
+        .title(&*t!("export.dialog_title"))
         .modal(true)
         .initial_name(format!("rustdiff-report.{extension}"))
         .build();
@@ -955,10 +956,13 @@ fn export_to_file(
                 if let Some(path) = file.path() {
                     match std::fs::write(&path, &content) {
                         Ok(()) => {
-                            status.set_text(&format!("Exportado a {}", path.display()));
+                            status.set_text(&t!(
+                                "export.write_success",
+                                path = path.display().to_string()
+                            ));
                         }
                         Err(e) => {
-                            status.set_text(&format!("Error escribiendo archivo: {e}"));
+                            status.set_text(&t!("export.write_error", error = e.to_string()));
                         }
                     }
                 }
@@ -1049,7 +1053,7 @@ fn load_css() {
 
 fn open_file_dialog(window: &adw::ApplicationWindow, view: &sv::View) {
     let dialog = gtk::FileDialog::builder()
-        .title("Abrir archivo")
+        .title(&*t!("export.open_dialog_title"))
         .modal(true)
         .build();
 

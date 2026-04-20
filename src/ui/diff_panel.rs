@@ -10,6 +10,7 @@ use gtk::glib;
 use gtk::prelude::*;
 use gtk4 as gtk;
 use gtk4::subclass::prelude::ObjectSubclassIsExt;
+use rust_i18n::t;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -110,21 +111,21 @@ impl DiffPanel {
         toolbar.set_margin_top(4);
         toolbar.set_margin_bottom(4);
 
-        let summary_label = gtk::Label::new(Some("Sin diferencias"));
+        let summary_label = gtk::Label::new(Some(&t!("panel.summary_none")));
         summary_label.set_hexpand(true);
         summary_label.set_halign(gtk::Align::Start);
         summary_label.add_css_class("dim-label");
 
         // Botones toggle para filtrar tipos de diferencia
-        let btn_added = gtk::ToggleButton::with_label("✚ Añadidos");
+        let btn_added = gtk::ToggleButton::with_label(&t!("panel.filter_added"));
         btn_added.set_active(true);
         btn_added.add_css_class("success");
 
-        let btn_removed = gtk::ToggleButton::with_label("✖ Eliminados");
+        let btn_removed = gtk::ToggleButton::with_label(&t!("panel.filter_removed"));
         btn_removed.set_active(true);
         btn_removed.add_css_class("error");
 
-        let btn_changed = gtk::ToggleButton::with_label("● Modificados");
+        let btn_changed = gtk::ToggleButton::with_label(&t!("panel.filter_changed"));
         btn_changed.set_active(true);
         btn_changed.add_css_class("warning");
 
@@ -147,25 +148,26 @@ impl DiffPanel {
         column_view.set_show_column_separators(true);
 
         // Columna: Tipo
-        let col_type = create_column("Tipo", 80, |item: &DiffItem| {
-            let label = match item.kind {
-                DiffKind::Added => "✚ ADDED",
-                DiffKind::Removed => "✖ REMOVED",
-                DiffKind::Changed => "● CHANGED",
-            };
-            label.to_string()
+        let col_type = create_column(&t!("panel.col_type"), 80, |item: &DiffItem| {
+            match item.kind {
+                DiffKind::Added => t!("diff.added_label").to_string(),
+                DiffKind::Removed => t!("diff.removed_label").to_string(),
+                DiffKind::Changed => t!("diff.changed_label").to_string(),
+            }
         });
 
         // Columna: Ruta
-        let col_path = create_column("Ruta", 300, |item: &DiffItem| item.path.clone());
+        let col_path = create_column(&t!("panel.col_path"), 300, |item: &DiffItem| {
+            item.path.clone()
+        });
 
         // Columna: Valor Izquierdo
-        let col_left = create_column("Izquierdo", 250, |item: &DiffItem| {
+        let col_left = create_column(&t!("panel.col_left"), 250, |item: &DiffItem| {
             item.left.clone().unwrap_or_default()
         });
 
         // Columna: Valor Derecho
-        let col_right = create_column("Derecho", 250, |item: &DiffItem| {
+        let col_right = create_column(&t!("panel.col_right"), 250, |item: &DiffItem| {
             item.right.clone().unwrap_or_default()
         });
 
@@ -252,7 +254,7 @@ impl DiffPanel {
     pub fn clear(&self) {
         self.store.remove_all();
         self.all_items.borrow_mut().clear();
-        self.summary_label.set_text("Sin diferencias");
+        self.summary_label.set_text(&t!("panel.summary_none"));
     }
 }
 

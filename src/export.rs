@@ -3,6 +3,8 @@
 //! Genera reportes legibles de las diferencias encontradas,
 //! útiles para compartir o archivar comparaciones.
 
+use rust_i18n::t;
+
 use crate::diff_engine::{DiffKind, DiffResult};
 use crate::parser::Format;
 
@@ -15,13 +17,19 @@ pub fn export_txt(result: &DiffResult, fmt: Format) -> String {
     let mut out = String::new();
 
     out.push_str("═══════════════════════════════════════════\n");
-    out.push_str("  RustDiff — Reporte de diferencias\n");
-    out.push_str(&format!("  Formato: {fmt}\n"));
+    out.push_str(&format!("  {}\n", t!("export.report_title")));
+    out.push_str(&format!(
+        "  {}\n",
+        t!("export.report_meta_format", fmt = fmt.to_string())
+    ));
     out.push_str(&format!("  {}\n", result.summary()));
     out.push_str("═══════════════════════════════════════════\n\n");
 
     if !result.added.is_empty() {
-        out.push_str(&format!("── AÑADIDOS ({}) ──\n", result.added.len()));
+        out.push_str(&format!(
+            "{}\n",
+            t!("export.section_added", count = result.added.len())
+        ));
         for item in &result.added {
             out.push_str(&format!("  {item}\n"));
         }
@@ -29,7 +37,10 @@ pub fn export_txt(result: &DiffResult, fmt: Format) -> String {
     }
 
     if !result.removed.is_empty() {
-        out.push_str(&format!("── ELIMINADOS ({}) ──\n", result.removed.len()));
+        out.push_str(&format!(
+            "{}\n",
+            t!("export.section_removed", count = result.removed.len())
+        ));
         for item in &result.removed {
             out.push_str(&format!("  {item}\n"));
         }
@@ -37,7 +48,10 @@ pub fn export_txt(result: &DiffResult, fmt: Format) -> String {
     }
 
     if !result.changed.is_empty() {
-        out.push_str(&format!("── MODIFICADOS ({}) ──\n", result.changed.len()));
+        out.push_str(&format!(
+            "{}\n",
+            t!("export.section_changed", count = result.changed.len())
+        ));
         for item in &result.changed {
             out.push_str(&format!("  {item}\n"));
         }
@@ -45,7 +59,7 @@ pub fn export_txt(result: &DiffResult, fmt: Format) -> String {
     }
 
     if result.is_empty() {
-        out.push_str("  Los documentos son idénticos.\n");
+        out.push_str(&format!("  {}\n", t!("export.identical_text")));
     }
 
     out
@@ -59,25 +73,42 @@ pub fn export_txt(result: &DiffResult, fmt: Format) -> String {
 pub fn export_html(result: &DiffResult, fmt: Format, left_text: &str, right_text: &str) -> String {
     let mut out = String::new();
 
-    out.push_str("<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n");
+    let lang = rust_i18n::locale();
+    out.push_str(&format!(
+        "<!DOCTYPE html>\n<html lang=\"{}\">\n<head>\n",
+        &*lang
+    ));
     out.push_str("  <meta charset=\"UTF-8\">\n");
-    out.push_str("  <title>RustDiff — Reporte</title>\n");
+    out.push_str(&format!(
+        "  <title>{}</title>\n",
+        escape_html(&t!("export.report_title"))
+    ));
     out.push_str("  <style>\n");
     out.push_str(HTML_STYLE);
     out.push_str("  </style>\n</head>\n<body>\n");
 
     // Encabezado
-    out.push_str("  <h1>RustDiff — Reporte de diferencias</h1>\n");
     out.push_str(&format!(
-        "  <p class=\"meta\">Formato: <strong>{fmt}</strong> | {}</p>\n",
-        result.summary()
+        "  <h1>{}</h1>\n",
+        escape_html(&t!("export.report_title"))
+    ));
+    out.push_str(&format!(
+        "  <p class=\"meta\">{} | {}</p>\n",
+        escape_html(&t!("export.report_meta_format", fmt = fmt.to_string())),
+        escape_html(&result.summary())
     ));
 
     // Tabla de diferencias
     if !result.is_empty() {
         out.push_str("  <table>\n");
         out.push_str("    <thead><tr>");
-        out.push_str("<th>Tipo</th><th>Ruta</th><th>Izquierdo</th><th>Derecho</th>");
+        out.push_str(&format!(
+            "<th>{}</th><th>{}</th><th>{}</th><th>{}</th>",
+            escape_html(&t!("panel.col_type")),
+            escape_html(&t!("panel.col_path")),
+            escape_html(&t!("panel.col_left")),
+            escape_html(&t!("panel.col_right")),
+        ));
         out.push_str("</tr></thead>\n    <tbody>\n");
 
         for item in result.all_items() {
@@ -105,18 +136,27 @@ pub fn export_html(result: &DiffResult, fmt: Format, left_text: &str, right_text
 
         out.push_str("    </tbody>\n  </table>\n");
     } else {
-        out.push_str("  <p class=\"identical\">Los documentos son idénticos.</p>\n");
+        out.push_str(&format!(
+            "  <p class=\"identical\">{}</p>\n",
+            escape_html(&t!("export.identical_text"))
+        ));
     }
 
     // Documentos originales (colapsables)
-    out.push_str("  <details>\n    <summary>Documento Izquierdo</summary>\n");
+    out.push_str(&format!(
+        "  <details>\n    <summary>{}</summary>\n",
+        escape_html(&t!("export.html_left"))
+    ));
     out.push_str(&format!(
         "    <pre><code>{}</code></pre>\n",
         escape_html(left_text)
     ));
     out.push_str("  </details>\n");
 
-    out.push_str("  <details>\n    <summary>Documento Derecho</summary>\n");
+    out.push_str(&format!(
+        "  <details>\n    <summary>{}</summary>\n",
+        escape_html(&t!("export.html_right"))
+    ));
     out.push_str(&format!(
         "    <pre><code>{}</code></pre>\n",
         escape_html(right_text)
@@ -176,7 +216,7 @@ mod tests {
     fn txt_documentos_identicos() {
         let result = DiffResult::default();
         let txt = export_txt(&result, Format::Json);
-        assert!(txt.contains("idénticos"));
+        assert!(txt.contains("identical"));
         assert!(txt.contains("JSON"));
     }
 
@@ -187,9 +227,9 @@ mod tests {
         let result = diff_json(&left, &right);
         let txt = export_txt(&result, Format::Json);
 
-        assert!(txt.contains("AÑADIDOS"));
-        assert!(txt.contains("ELIMINADOS"));
-        assert!(txt.contains("MODIFICADOS"));
+        assert!(txt.contains("ADDED"));
+        assert!(txt.contains("REMOVED"));
+        assert!(txt.contains("CHANGED"));
         assert!(txt.contains("$.a"));
     }
 
@@ -230,7 +270,7 @@ mod tests {
     fn html_documentos_identicos() {
         let result = DiffResult::default();
         let html = export_html(&result, Format::Xml, "<r/>", "<r/>");
-        assert!(html.contains("idénticos"));
+        assert!(html.contains("identical"));
         assert!(!html.contains("<table>"));
     }
 

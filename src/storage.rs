@@ -8,6 +8,7 @@
 //! sin tener que volver a pegar los textos.
 
 use rusqlite::{Connection, OptionalExtension, params};
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -20,16 +21,16 @@ use crate::parser::Format;
 
 #[derive(Debug, Error)]
 pub enum StorageError {
-    #[error("Error de SQLite: {0}")]
+    #[error("SQLite error: {0}")]
     Sqlite(#[from] rusqlite::Error),
 
-    #[error("No se pudo determinar el directorio de datos del usuario")]
+    #[error("could not determine the user data directory")]
     NoDataDir,
 
-    #[error("Error creando directorio: {0}")]
+    #[error("error creating directory: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("Sesión no encontrada: id={0}")]
+    #[error("session not found: id={0}")]
     NotFound(i64),
 }
 
@@ -319,7 +320,7 @@ impl DiffSummary {
     /// Texto corto para mostrar en la lista de historial.
     pub fn short_text(&self) -> String {
         if self.total == 0 {
-            "Idénticos".into()
+            t!("diff.identical").to_string()
         } else {
             format!("+{} −{} ~{}", self.added, self.removed, self.changed)
         }
@@ -518,7 +519,8 @@ mod tests {
 
     #[test]
     fn diff_summary_short_text() {
-        assert_eq!(sample_summary(0, 0, 0).short_text(), "Idénticos");
+        // Locale por defecto en tests = "en" (fallback).
+        assert_eq!(sample_summary(0, 0, 0).short_text(), "Identical");
         assert_eq!(sample_summary(2, 1, 3).short_text(), "+2 −1 ~3");
     }
 
