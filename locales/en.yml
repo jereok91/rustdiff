@@ -1,4 +1,4 @@
-"app.title": "RustDiff — Semantic Comparator"
+"app.title": "RustDiff"
 "app.status_ready": "Ready — Ctrl+O open | Ctrl+Enter compare | Ctrl+S save session"
 
 "header.open_left": "Open Left"
@@ -7,6 +7,8 @@
 "header.open_right_tooltip": "Open a file in the right panel (Ctrl+Shift+O)"
 "header.compare": "Compare"
 "header.compare_tooltip": "Compare documents (Ctrl+Enter)"
+"header.enable_comparison": "Enable comparison"
+"header.enable_comparison_tooltip": "Enable second editor for comparison"
 "header.format": "Format"
 "header.format_tooltip": "Pretty-print both documents (Ctrl+Shift+F)"
 "header.export": "Export"
@@ -47,6 +49,11 @@
 "history.status_load_error": "Error loading session: %{error}"
 "history.status_save_error": "Error saving: %{error}"
 "history.no_comparison": "No comparison to save. Compare first."
+"history.search_placeholder": "Search history..."
+"history.load_more": "Load more"
+
+"search.prev": "Previous match"
+"search.next": "Next match"
 
 "format.formatted_ok": "Documents formatted as %{fmt}"
 "format.format_error_left": "Error formatting left panel: %{error}"
@@ -87,3 +94,16 @@
 "diff.added_label": "✚ ADDED"
 "diff.removed_label": "✖ REMOVED"
 "diff.changed_label": "● CHANGED"
+
+"welcome.subtitle": "Semantic JSON & XML comparator"
+"welcome.open_document": "Open document"
+"welcome.new_comparison": "New comparison"
+"welcome.view_history": "View History"
+
+"exit.dialog_title": "What would you like to do?"
+"exit.dialog_body": "You have unsaved content in the editors."
+"exit.cancel": "Cancel"
+"exit.save_history": "Save to History"
+"exit.export_txt": "Export .txt"
+"exit.export_html": "Export .html"
+"exit.close_without_saving": "Close without saving"

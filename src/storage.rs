@@ -132,14 +132,53 @@ impl Storage {
 
     /// Carga las últimas `limit` sesiones, ordenadas de más reciente a más antigua.
     pub fn load_sessions(&self, limit: usize) -> Result<Vec<Session>, StorageError> {
+        self.load_sessions_offset(0, limit)
+    }
+
+    /// Carga sesiones paginadas: salta `offset` y devuelve `limit`.
+    pub fn load_sessions_offset(&self, offset: usize, limit: usize) -> Result<Vec<Session>, StorageError> {
         let mut stmt = self.conn.prepare(
             "SELECT id, created_at, format, left_content, right_content, diff_summary
              FROM sessions
              ORDER BY id DESC
-             LIMIT ?1",
+             LIMIT ?1 OFFSET ?2",
         )?;
 
-        let rows = stmt.query_map(params![limit as i64], |row| {
+        let rows = stmt.query_map(params![limit as i64, offset as i64], |row| {
+            Ok(SessionRow {
+                id: row.get(0)?,
+                created_at: row.get(1)?,
+                format: row.get(2)?,
+                left_content: row.get(3)?,
+                right_content: row.get(4)?,
+                diff_summary: row.get(5)?,
+            })
+        })?;
+
+        let mut sessions = Vec::new();
+        for row_result in rows {
+            let row = row_result?;
+            sessions.push(row_to_session(row));
+        }
+
+        Ok(sessions)
+    }
+
+    /// Busca sesiones que contengan `query` en el contenido, formato o fecha.
+    pub fn search_sessions(&self, query: &str, limit: usize) -> Result<Vec<Session>, StorageError> {
+        let pattern = format!("%{}%", query);
+        let mut stmt = self.conn.prepare(
+            "SELECT id, created_at, format, left_content, right_content, diff_summary
+             FROM sessions
+             WHERE format LIKE ?1
+                OR created_at LIKE ?1
+                OR left_content LIKE ?1
+                OR right_content LIKE ?1
+             ORDER BY id DESC
+             LIMIT ?2",
+        )?;
+
+        let rows = stmt.query_map(params![&pattern, limit as i64], |row| {
             Ok(SessionRow {
                 id: row.get(0)?,
                 created_at: row.get(1)?,

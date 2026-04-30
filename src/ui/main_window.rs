@@ -31,6 +31,13 @@ use crate::storage::{DiffSummary, Storage};
 use crate::ui::diff_panel::{DiffItemObject, DiffPanel, diff_css};
 use crate::ui::highlighter;
 
+/// Indica qué editor tiene el foco actualmente.
+#[derive(Clone, Copy, PartialEq)]
+enum FocusedEditor {
+    Left,
+    Right,
+}
+
 // ─────────────────────────────────────────────
 // Constantes
 // ─────────────────────────────────────────────
@@ -58,6 +65,28 @@ pub struct MainWindow {
     history_panel: gtk::Box,
     /// Overlay para toasts (mensajes no bloqueantes).
     toast_overlay: adw::ToastOverlay,
+    /// Campo de búsqueda en el historial.
+    history_search_entry: gtk::SearchEntry,
+    /// Botón "Cargar más" en el historial.
+    history_load_more_btn: gtk::Button,
+    /// Cantidad de sesiones visibles actualmente en el historial.
+    history_visible_count: Cell<usize>,
+    /// Pantalla de bienvenida (visible inicialmente).
+    welcome_screen: gtk::Box,
+    /// Contenedor principal de editores (oculto inicialmente).
+    editors_container: gtk::Box,
+    /// Barra de búsqueda (Ctrl+F).
+    search_revealer: gtk::Revealer,
+    search_entry: gtk::SearchEntry,
+    focused_editor: Rc<Cell<FocusedEditor>>,
+    /// Paned de editores (para mostrar/ocultar el derecho).
+    editors_paned: gtk::Paned,
+    /// Caja del editor derecho (para reinsertar en el paned).
+    right_editor_box: gtk::Box,
+    /// Botón "Habilitar comparación".
+    btn_enable_comparison: gtk::Button,
+    /// Botón "Abrir derecho" (para mostrar/ocultar).
+    btn_open_right: gtk::Button,
 }
 
 impl MainWindow {
@@ -110,10 +139,16 @@ impl MainWindow {
         let btn_open_right = gtk::Button::with_label(&t!("header.open_right"));
         btn_open_right.set_tooltip_text(Some(&t!("header.open_right_tooltip")));
         btn_open_right.add_css_class("flat");
+        btn_open_right.set_visible(false);
+
+        let btn_enable_comparison = gtk::Button::with_label(&t!("header.enable_comparison"));
+        btn_enable_comparison.set_tooltip_text(Some(&t!("header.enable_comparison_tooltip")));
+        btn_enable_comparison.add_css_class("suggested-action");
 
         let btn_compare = gtk::Button::with_label(&t!("header.compare"));
         btn_compare.set_tooltip_text(Some(&t!("header.compare_tooltip")));
         btn_compare.add_css_class("suggested-action");
+        btn_compare.set_visible(false);
 
         let btn_format = gtk::Button::with_label(&t!("header.format"));
         btn_format.set_tooltip_text(Some(&t!("header.format_tooltip")));
@@ -167,8 +202,31 @@ impl MainWindow {
         header.pack_start(&format_dropdown);
         header.pack_end(&btn_menu);
         header.pack_end(&btn_compare);
+        header.pack_end(&btn_enable_comparison);
         header.pack_end(&btn_format);
         header.pack_end(&btn_history);
+
+        // ── Pantalla de bienvenida (Welcome) ───
+        let (welcome_screen, welcome_btn_doc, welcome_btn_new, welcome_btn_history) = build_welcome_screen();
+
+        // ── Barra de búsqueda (Ctrl+F) ──────────
+        let search_entry = gtk::SearchEntry::new();
+        search_entry.set_hexpand(true);
+        search_entry.set_width_request(200);
+
+        let search_box = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        search_box.set_margin_start(8);
+        search_box.set_margin_end(8);
+        search_box.set_margin_top(4);
+        search_box.set_margin_bottom(4);
+
+        let search_revealer = gtk::Revealer::new();
+        search_revealer.set_child(Some(&search_box));
+        search_revealer.set_reveal_child(false);
+        search_revealer.set_transition_type(gtk::RevealerTransitionType::SlideDown);
+
+        // ── Foco de editor (para búsqueda Ctrl+F) ─
+        let focused_editor = Rc::new(Cell::new(FocusedEditor::Left));
 
         // ── Panel de historial (lateral izq) ────
         let history_list = gtk::ListBox::new();
@@ -201,10 +259,27 @@ impl MainWindow {
         history_header.append(&history_title);
         history_header.append(&btn_clear_history);
 
+        let history_search_entry = gtk::SearchEntry::new();
+        history_search_entry.set_placeholder_text(Some(&t!("history.search_placeholder")));
+        history_search_entry.set_margin_start(8);
+        history_search_entry.set_margin_end(8);
+        history_search_entry.set_margin_top(4);
+        history_search_entry.set_margin_bottom(4);
+
+        let history_load_more_btn = gtk::Button::with_label(&t!("history.load_more"));
+        history_load_more_btn.set_halign(gtk::Align::Center);
+        history_load_more_btn.set_margin_top(8);
+        history_load_more_btn.set_margin_bottom(8);
+        history_load_more_btn.set_margin_start(8);
+        history_load_more_btn.set_margin_end(8);
+        history_load_more_btn.set_visible(false);
+
         let history_panel = gtk::Box::new(gtk::Orientation::Vertical, 0);
         history_panel.set_width_request(240);
         history_panel.append(&history_header);
+        history_panel.append(&history_search_entry);
         history_panel.append(&history_scroll);
+        history_panel.append(&history_load_more_btn);
         history_panel.add_css_class("sidebar");
         history_panel.set_visible(false); // Oculto por defecto
 
@@ -245,7 +320,8 @@ impl MainWindow {
         // ── Split horizontal editores 50/50 ─────
         let editors_paned = gtk::Paned::new(gtk::Orientation::Horizontal);
         editors_paned.set_start_child(Some(&left_box));
-        editors_paned.set_end_child(Some(&right_box));
+        // Editor derecho oculto inicialmente
+        editors_paned.set_end_child(None::<&gtk::Box>);
         editors_paned.set_resize_start_child(true);
         editors_paned.set_resize_end_child(true);
         editors_paned.set_shrink_start_child(false);
@@ -260,16 +336,32 @@ impl MainWindow {
         main_paned.set_resize_end_child(true);
         main_paned.set_shrink_start_child(false);
         main_paned.set_shrink_end_child(false);
-        main_paned.set_position(450);
+        // La posición del paned determina el tamaño del panel superior (editores).
+        // Valor alto = editores grandes, diff panel pequeño (abajo).
+        main_paned.set_position(650);
 
         // ── Layout con historial lateral ────────
         let content_with_sidebar = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         content_with_sidebar.append(&history_panel);
-        content_with_sidebar.append(&main_paned);
+
+        // Contenedor de editores + barra de búsqueda
+        let editors_container = gtk::Box::new(gtk::Orientation::Vertical, 0);
+        editors_container.append(&search_revealer);
+        editors_container.append(&main_paned);
+        // Inicialmente oculto hasta que se cargue contenido
+        editors_container.set_visible(false);
+
+        content_with_sidebar.append(&editors_container);
+
+        // Stack para alternar entre bienvenida y editores
+        let main_stack = gtk::Stack::new();
+        main_stack.add_named(&welcome_screen, Some("welcome"));
+        main_stack.add_named(&content_with_sidebar, Some("editors"));
+        main_stack.set_visible_child_name("welcome");
 
         // ── ToastOverlay para notificaciones no bloqueantes ─
         let toast_overlay = adw::ToastOverlay::new();
-        toast_overlay.set_child(Some(&content_with_sidebar));
+        toast_overlay.set_child(Some(&main_stack));
 
         // ── Layout vertical: header + contenido + status
         let toolbar_view = adw::ToolbarView::new();
@@ -301,6 +393,18 @@ impl MainWindow {
             history_list,
             history_panel,
             toast_overlay,
+            welcome_screen,
+            editors_container,
+            search_revealer,
+            search_entry,
+            focused_editor,
+            editors_paned,
+            right_editor_box: right_box,
+            btn_enable_comparison: btn_enable_comparison.clone(),
+            btn_open_right: btn_open_right.clone(),
+            history_search_entry,
+            history_load_more_btn,
+            history_visible_count: Cell::new(3),
         };
 
         // ── Conectar señales ────────────────────
@@ -318,6 +422,15 @@ impl MainWindow {
         main_win.setup_language_action();
         main_win.register_menu_accels(app);
         main_win.refresh_history_list();
+
+        // ── Nuevas conexiones ─────────────────
+        main_win.connect_welcome_screen(&welcome_btn_doc, &welcome_btn_new, &welcome_btn_history);
+        main_win.connect_enable_comparison(&btn_enable_comparison, &btn_compare, &btn_open_right);
+        main_win.connect_search_bar();
+        main_win.connect_history_search();
+        main_win.connect_history_load_more();
+        main_win.connect_close_request();
+        main_win.connect_editor_focus();
 
         main_win
     }
@@ -402,24 +515,23 @@ impl MainWindow {
         let status = self.status_label.clone();
 
         self.history_list.connect_row_activated(move |_, row| {
-            let idx = row.index();
-            if idx < 0 {
+            let name = row.widget_name();
+            let id: i64 = name.parse().unwrap_or(-1);
+            if id <= 0 {
                 return;
             }
             let store = storage.borrow();
             let Some(ref db) = *store else { return };
 
-            match db.load_sessions(20) {
-                Ok(sessions) => {
-                    if let Some(session) = sessions.get(idx as usize) {
-                        left.buffer().set_text(&session.left_content);
-                        right.buffer().set_text(&session.right_content);
-                        status.set_text(&t!(
-                            "history.status_restored",
-                            id = session.id,
-                            summary = session.diff_summary.short_text()
-                        ));
-                    }
+            match db.get_session(id) {
+                Ok(session) => {
+                    left.buffer().set_text(&session.left_content);
+                    right.buffer().set_text(&session.right_content);
+                    status.set_text(&t!(
+                        "history.status_restored",
+                        id = session.id,
+                        summary = session.diff_summary.short_text()
+                    ));
                 }
                 Err(e) => {
                     status.set_text(&t!("history.status_load_error", error = e.to_string()));
@@ -430,7 +542,20 @@ impl MainWindow {
 
     /// Recarga la lista del historial desde la base de datos.
     fn refresh_history_list(&self) {
-        refresh_history_list_widget(&self.history_list, &self.storage);
+        self.history_visible_count.set(3);
+        self.load_history_page();
+    }
+
+    fn load_history_page(&self) {
+        let count = self.history_visible_count.get();
+        let query = self.history_search_entry.text().to_string();
+        load_history_page_widget(
+            &self.history_list,
+            &self.history_load_more_btn,
+            &self.storage,
+            count,
+            &query,
+        );
     }
 
     fn connect_clear_history_button(&self, btn: &gtk::Button) {
@@ -480,7 +605,7 @@ impl MainWindow {
                             None => None,
                         }
                     };
-                    refresh_history_list_widget(&list_cl, &storage_cl);
+                    load_history_page_widget(&list_cl, &gtk::Button::new(), &storage_cl, 3, "");
                     if let Some(n) = borradas {
                         status_cl.set_text(&t!("history.status_cleared", count = n));
                     } else {
@@ -671,6 +796,8 @@ impl MainWindow {
         let storage = self.storage.clone();
         let history_list = self.history_list.clone();
         let history_panel = self.history_panel.clone();
+        let search_revealer = self.search_revealer.clone();
+        let search_entry = self.search_entry.clone();
 
         controller.connect_key_pressed(move |_, key, _, modifier| {
             let ctrl = modifier.contains(gtk::gdk::ModifierType::CONTROL_MASK);
@@ -718,11 +845,406 @@ impl MainWindow {
                     history_panel.set_visible(!history_panel.is_visible());
                     gtk::glib::Propagation::Stop
                 }
+                // Ctrl+F → mostrar barra de búsqueda
+                (gtk::gdk::Key::f, false) => {
+                    search_revealer.set_reveal_child(!search_revealer.reveals_child());
+                    if search_revealer.reveals_child() {
+                        search_entry.grab_focus();
+                    }
+                    gtk::glib::Propagation::Stop
+                }
                 _ => gtk::glib::Propagation::Proceed,
             }
         });
 
         self.window.add_controller(controller);
+    }
+
+    // ─────────────────────────────────────────
+    // Pantalla de bienvenida
+    // ─────────────────────────────────────────
+
+    fn connect_welcome_screen(&self, btn_doc: &gtk::Button, btn_new: &gtk::Button, btn_history: &gtk::Button) {
+        let win = self.window.clone();
+        let welcome = self.welcome_screen.clone();
+        let editors = self.editors_container.clone();
+        let left_view = self.left_view.clone();
+        let status = self.status_label.clone();
+        let history_panel = self.history_panel.clone();
+
+        let transition_to_editors = {
+            let welcome = welcome.clone();
+            let editors = editors.clone();
+            let status = status.clone();
+            move || {
+                welcome.set_visible(false);
+                editors.set_visible(true);
+                if let Some(parent) = welcome.parent() {
+                    if let Some(stack) = parent.downcast_ref::<gtk::Stack>() {
+                        stack.set_visible_child_name("editors");
+                    }
+                }
+                status.set_text(&t!("app.status_ready"));
+            }
+        };
+
+        {
+            let win = win.clone();
+            let left_view = left_view.clone();
+            let transition = transition_to_editors.clone();
+            btn_doc.connect_clicked(move |_| {
+                open_file_dialog(&win, &left_view);
+                transition();
+            });
+        }
+        {
+            let transition = transition_to_editors.clone();
+            btn_new.connect_clicked(move |_| {
+                transition();
+            });
+        }
+        {
+            let transition = transition_to_editors.clone();
+            let history_panel = history_panel.clone();
+            btn_history.connect_clicked(move |_| {
+                transition();
+                history_panel.set_visible(true);
+            });
+        }
+    }
+
+    // ─────────────────────────────────────────
+    // Habilitar comparación (segundo editor)
+    // ─────────────────────────────────────────
+
+    fn connect_enable_comparison(&self, btn: &gtk::Button, btn_compare: &gtk::Button, btn_open_right: &gtk::Button) {
+        let editors_paned = self.editors_paned.clone();
+        let right_editor_box = self.right_editor_box.clone();
+        let status = self.status_label.clone();
+        let btn_for_closure = btn.clone();
+        let btn_compare = btn_compare.clone();
+        let btn_open_right = btn_open_right.clone();
+
+        btn.connect_clicked(move |_| {
+            editors_paned.set_end_child(Some(&right_editor_box));
+            btn_for_closure.set_visible(false);
+            btn_compare.set_visible(true);
+            btn_open_right.set_visible(true);
+            status.set_text(&t!("compare.need_input"));
+        });
+    }
+
+    // ─────────────────────────────────────────
+    // Historial: paginación y búsqueda
+    // ─────────────────────────────────────────
+
+    fn connect_history_search(&self) {
+        let history_list = self.history_list.clone();
+        let load_more_btn = self.history_load_more_btn.clone();
+        let storage = self.storage.clone();
+        let count = self.history_visible_count.clone();
+        let search_entry = self.history_search_entry.clone();
+
+        search_entry.connect_search_changed(move |entry| {
+            let query = entry.text().to_string();
+            count.set(3);
+            load_history_page_widget(&history_list, &load_more_btn, &storage, 3, &query);
+        });
+    }
+
+    fn connect_history_load_more(&self) {
+        let history_list = self.history_list.clone();
+        let load_more_btn = self.history_load_more_btn.clone();
+        let storage = self.storage.clone();
+        let count = self.history_visible_count.clone();
+        let search_entry = self.history_search_entry.clone();
+        let btn = self.history_load_more_btn.clone();
+
+        btn.connect_clicked(move |_| {
+            let new_count = count.get() + 3;
+            count.set(new_count);
+            let query = search_entry.text().to_string();
+            load_history_page_widget(&history_list, &load_more_btn, &storage, new_count, &query);
+        });
+    }
+
+    // ─────────────────────────────────────────
+    // Búsqueda (Ctrl+F)
+    // ─────────────────────────────────────────
+
+    fn connect_search_bar(&self) {
+        let search_revealer = self.search_revealer.clone();
+        let search_entry = self.search_entry.clone();
+        let left_view = self.left_view.clone();
+        let right_view = self.right_view.clone();
+        let focused = self.focused_editor.clone();
+        let current_query = Rc::new(RefCell::new(String::new()));
+
+        // Layout: [Prev] [Entry] [Next]
+        let search_box = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+        search_box.set_margin_start(8);
+        search_box.set_margin_end(8);
+        search_box.set_margin_top(4);
+        search_box.set_margin_bottom(4);
+
+        let btn_prev = gtk::Button::from_icon_name("go-up-symbolic");
+        let btn_next = gtk::Button::from_icon_name("go-down-symbolic");
+        btn_prev.add_css_class("flat");
+        btn_next.add_css_class("flat");
+        btn_prev.set_tooltip_text(Some(&t!("search.prev")));
+        btn_next.set_tooltip_text(Some(&t!("search.next")));
+
+        search_box.append(&btn_prev);
+        search_box.append(&search_entry);
+        search_box.append(&btn_next);
+        search_revealer.set_child(Some(&search_box));
+
+        let query_for_entry = current_query.clone();
+        search_entry.connect_search_changed(move |entry| {
+            *query_for_entry.borrow_mut() = entry.text().to_string();
+        });
+
+        // Función auxiliar: buscar siguiente
+        let search_next = {
+            let query = current_query.clone();
+            let focused = focused.clone();
+            let left_view = left_view.clone();
+            let right_view = right_view.clone();
+            move || {
+                let q = query.borrow().clone();
+                if q.is_empty() {
+                    return;
+                }
+                let view = match focused.get() {
+                    FocusedEditor::Left => &left_view,
+                    FocusedEditor::Right => &right_view,
+                };
+                let buf = view.buffer();
+                let iter = if let Some((_, end)) = buf.selection_bounds() {
+                    end
+                } else {
+                    buf.iter_at_offset(buf.cursor_position())
+                };
+
+                if let Some((ms, me)) = iter.forward_search(
+                    &q,
+                    gtk::TextSearchFlags::CASE_INSENSITIVE,
+                    None,
+                ) {
+                    buf.select_range(&ms, &me);
+                    let mut scroll = ms.clone();
+                    view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
+                } else {
+                    let start = buf.start_iter();
+                    if let Some((ms, me)) = start.forward_search(
+                        &q,
+                        gtk::TextSearchFlags::CASE_INSENSITIVE,
+                        None,
+                    ) {
+                        buf.select_range(&ms, &me);
+                        let mut scroll = ms.clone();
+                        view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
+                    }
+                }
+            }
+        };
+
+        // Función auxiliar: buscar anterior
+        let search_prev = {
+            let query = current_query.clone();
+            let focused = focused.clone();
+            let left_view = left_view.clone();
+            let right_view = right_view.clone();
+            move || {
+                let q = query.borrow().clone();
+                if q.is_empty() {
+                    return;
+                }
+                let view = match focused.get() {
+                    FocusedEditor::Left => &left_view,
+                    FocusedEditor::Right => &right_view,
+                };
+                let buf = view.buffer();
+                let iter = if let Some((start, _)) = buf.selection_bounds() {
+                    start
+                } else {
+                    buf.iter_at_offset(buf.cursor_position())
+                };
+
+                if let Some((ms, me)) = iter.backward_search(
+                    &q,
+                    gtk::TextSearchFlags::CASE_INSENSITIVE,
+                    None,
+                ) {
+                    buf.select_range(&ms, &me);
+                    let mut scroll = ms.clone();
+                    view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
+                } else {
+                    let end = buf.end_iter();
+                    if let Some((ms, me)) = end.backward_search(
+                        &q,
+                        gtk::TextSearchFlags::CASE_INSENSITIVE,
+                        None,
+                    ) {
+                        buf.select_range(&ms, &me);
+                        let mut scroll = ms.clone();
+                        view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
+                    }
+                }
+            }
+        };
+
+        // Conectar botones y Enter
+        btn_next.connect_clicked(move |_| search_next());
+        btn_prev.connect_clicked(move |_| search_prev());
+
+        // Enter en el campo de búsqueda = buscar siguiente
+        {
+            let query = current_query.clone();
+            let focused = focused.clone();
+            let left_view = left_view.clone();
+            let right_view = right_view.clone();
+            search_entry.connect_activate(move |_| {
+                let q = query.borrow().clone();
+                if q.is_empty() {
+                    return;
+                }
+                let view = match focused.get() {
+                    FocusedEditor::Left => &left_view,
+                    FocusedEditor::Right => &right_view,
+                };
+                let buf = view.buffer();
+                let iter = if let Some((_, end)) = buf.selection_bounds() {
+                    end
+                } else {
+                    buf.iter_at_offset(buf.cursor_position())
+                };
+
+                if let Some((ms, me)) = iter.forward_search(
+                    &q,
+                    gtk::TextSearchFlags::CASE_INSENSITIVE,
+                    None,
+                ) {
+                    buf.select_range(&ms, &me);
+                    let mut scroll = ms.clone();
+                    view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
+                } else {
+                    let start = buf.start_iter();
+                    if let Some((ms, me)) = start.forward_search(
+                        &q,
+                        gtk::TextSearchFlags::CASE_INSENSITIVE,
+                        None,
+                    ) {
+                        buf.select_range(&ms, &me);
+                        let mut scroll = ms.clone();
+                        view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
+                    }
+                }
+            });
+        }
+    }
+
+    fn connect_editor_focus(&self) {
+        let focused_left = self.focused_editor.clone();
+        let focus_left = gtk::EventControllerFocus::new();
+        focus_left.connect_enter(move |_| {
+            focused_left.set(FocusedEditor::Left);
+        });
+        self.left_view.add_controller(focus_left);
+
+        let focused_right = self.focused_editor.clone();
+        let focus_right = gtk::EventControllerFocus::new();
+        focus_right.connect_enter(move |_| {
+            focused_right.set(FocusedEditor::Right);
+        });
+        self.right_view.add_controller(focus_right);
+    }
+
+    // ─────────────────────────────────────────
+    // Diálogo al salir / guardar
+    // ─────────────────────────────────────────
+
+    fn connect_close_request(&self) {
+        let win = self.window.clone();
+        let left = self.left_view.clone();
+        let right = self.right_view.clone();
+        let last_diff = self.last_diff.clone();
+        let storage = self.storage.clone();
+        let status = self.status_label.clone();
+        let history_list = self.history_list.clone();
+        let history_panel = self.history_panel.clone();
+        let should_close = Rc::new(Cell::new(false));
+
+        win.connect_close_request(move |win_ref| {
+            if should_close.get() {
+                return gtk::glib::Propagation::Proceed;
+            }
+
+            let has_content = {
+                let l = get_buffer_text(&left);
+                let r = get_buffer_text(&right);
+                !l.trim().is_empty() || !r.trim().is_empty()
+            };
+
+            if !has_content {
+                return gtk::glib::Propagation::Proceed;
+            }
+
+            let dialog = adw::AlertDialog::new(
+                Some(&t!("exit.dialog_title")),
+                Some(&t!("exit.dialog_body")),
+            );
+            dialog.add_response("cancel", &t!("exit.cancel"));
+            dialog.add_response("save_history", &t!("exit.save_history"));
+            dialog.add_response("export_txt", &t!("exit.export_txt"));
+            dialog.add_response("export_html", &t!("exit.export_html"));
+            dialog.add_response("close", &t!("exit.close_without_saving"));
+            dialog.set_response_appearance("close", adw::ResponseAppearance::Destructive);
+            dialog.set_default_response(Some("cancel"));
+            dialog.set_close_response("cancel");
+
+            let window = win_ref.clone();
+            let window_for_response = window.clone();
+            let should_close = should_close.clone();
+            let left = left.clone();
+            let right = right.clone();
+            let last_diff = last_diff.clone();
+            let storage = storage.clone();
+            let status = status.clone();
+            let history_list = history_list.clone();
+            let history_panel = history_panel.clone();
+
+            dialog.connect_response(None, move |dlg, response| {
+                match response {
+                    "save_history" => {
+                        save_session_from_shortcut(
+                            &left, &right, &last_diff, &storage, &status, &history_list, &history_panel
+                        );
+                        should_close.set(true);
+                        window_for_response.close();
+                    }
+                    "export_txt" => {
+                        export_to_file(&window_for_response, &left, &right, &last_diff, &status, ExportFormat::Txt);
+                        should_close.set(true);
+                        window_for_response.close();
+                    }
+                    "export_html" => {
+                        export_to_file(&window_for_response, &left, &right, &last_diff, &status, ExportFormat::Html);
+                        should_close.set(true);
+                        window_for_response.close();
+                    }
+                    "close" => {
+                        should_close.set(true);
+                        window_for_response.close();
+                    }
+                    _ => {}
+                }
+                dlg.close();
+            });
+
+            dialog.present(Some(&window));
+            gtk::glib::Propagation::Stop
+        });
     }
 }
 
@@ -868,7 +1390,7 @@ fn save_session_from_shortcut(
     match result {
         Ok(id) => {
             status.set_text(&t!("history.status_saved", id = id));
-            refresh_history_list_widget(history_list, storage);
+            load_history_page_widget(history_list, &gtk::Button::new(), storage, 3, "");
             // Mostrar el panel si está oculto
             history_panel.set_visible(true);
         }
@@ -882,11 +1404,13 @@ fn save_session_from_shortcut(
 // Renderizado del historial
 // ─────────────────────────────────────────────
 
-/// Vacía y reconstruye la `ListBox` del historial desde la base de datos.
-/// Cada fila incluye un botón de eliminación individual.
-fn refresh_history_list_widget(
+/// Vacía y reconstruye la `ListBox` del historial con paginación y búsqueda.
+fn load_history_page_widget(
     history_list: &gtk::ListBox,
+    load_more_btn: &gtk::Button,
     storage: &Rc<RefCell<Option<Storage>>>,
+    limit: usize,
+    query: &str,
 ) {
     while let Some(row) = history_list.last_child() {
         history_list.remove(&row);
@@ -895,13 +1419,20 @@ fn refresh_history_list_widget(
     let sessions = {
         let store = storage.borrow();
         match store.as_ref() {
-            Some(db) => match db.load_sessions(20) {
-                Ok(s) => s,
-                Err(e) => {
-                    tracing::warn!("Error cargando historial: {e}");
-                    return;
+            Some(db) => {
+                let result = if query.trim().is_empty() {
+                    db.load_sessions_offset(0, limit)
+                } else {
+                    db.search_sessions(query, limit)
+                };
+                match result {
+                    Ok(s) => s,
+                    Err(e) => {
+                        tracing::warn!("Error cargando historial: {e}");
+                        return;
+                    }
                 }
-            },
+            }
             None => return,
         }
     };
@@ -914,13 +1445,13 @@ fn refresh_history_list_widget(
         empty.set_margin_start(8);
         empty.set_margin_end(8);
         history_list.append(&empty);
-        // Marcar la fila como no seleccionable ni activable
         if let Some(row) = history_list.last_child() {
             if let Some(listrow) = row.downcast_ref::<gtk::ListBoxRow>() {
                 listrow.set_selectable(false);
                 listrow.set_activatable(false);
             }
         }
+        load_more_btn.set_visible(false);
         return;
     }
 
@@ -928,6 +1459,9 @@ fn refresh_history_list_widget(
         let row_widget = build_history_row(session, history_list, storage);
         history_list.append(&row_widget);
     }
+
+    // Mostrar "Cargar más" solo si podría haber más resultados
+    load_more_btn.set_visible(sessions.len() == limit);
 }
 
 /// Construye una fila del historial con etiqueta + botón de borrado individual.
@@ -935,12 +1469,12 @@ fn build_history_row(
     session: &crate::storage::Session,
     history_list: &gtk::ListBox,
     storage: &Rc<RefCell<Option<Storage>>>,
-) -> gtk::Box {
-    let row = gtk::Box::new(gtk::Orientation::Horizontal, 4);
-    row.set_margin_start(8);
-    row.set_margin_end(4);
-    row.set_margin_top(2);
-    row.set_margin_bottom(2);
+) -> gtk::ListBoxRow {
+    let box_widget = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+    box_widget.set_margin_start(8);
+    box_widget.set_margin_end(4);
+    box_widget.set_margin_top(2);
+    box_widget.set_margin_bottom(2);
 
     let label_text = format!(
         "#{} {} {}\n{}",
@@ -974,11 +1508,15 @@ fn build_history_row(
                 return;
             }
         }
-        refresh_history_list_widget(&list_cl, &storage_cl);
+        load_history_page_widget(&list_cl, &gtk::Button::new(), &storage_cl, 3, "");
     });
 
-    row.append(&label);
-    row.append(&delete_btn);
+    box_widget.append(&label);
+    box_widget.append(&delete_btn);
+
+    let row = gtk::ListBoxRow::new();
+    row.set_child(Some(&box_widget));
+    row.set_widget_name(&session.id.to_string());
     row
 }
 
@@ -1246,6 +1784,44 @@ fn setup_editor_zoom(left: &sv::View, right: &sv::View) {
         });
         view.add_controller(controller);
     }
+}
+
+/// Construye la pantalla de bienvenida que se muestra al iniciar.
+fn build_welcome_screen() -> (gtk::Box, gtk::Button, gtk::Button, gtk::Button) {
+    let container = gtk::Box::new(gtk::Orientation::Vertical, 16);
+    container.set_valign(gtk::Align::Center);
+    container.set_halign(gtk::Align::Center);
+    container.set_margin_top(40);
+    container.set_margin_bottom(40);
+
+    let title = gtk::Label::new(Some("RustDiff"));
+    title.add_css_class("title-1");
+    title.set_margin_bottom(4);
+
+    let subtitle = gtk::Label::new(Some(&t!("welcome.subtitle")));
+    subtitle.add_css_class("body");
+    subtitle.set_margin_bottom(24);
+
+    let btn_doc = gtk::Button::with_label(&t!("welcome.open_document"));
+    btn_doc.add_css_class("suggested-action");
+    btn_doc.set_halign(gtk::Align::Center);
+    btn_doc.set_width_request(220);
+
+    let btn_new = gtk::Button::with_label(&t!("welcome.new_comparison"));
+    btn_new.set_halign(gtk::Align::Center);
+    btn_new.set_width_request(220);
+
+    let btn_history = gtk::Button::with_label(&t!("welcome.view_history"));
+    btn_history.add_css_class("flat");
+    btn_history.set_halign(gtk::Align::Center);
+
+    container.append(&title);
+    container.append(&subtitle);
+    container.append(&btn_doc);
+    container.append(&btn_new);
+    container.append(&btn_history);
+
+    (container, btn_doc, btn_new, btn_history)
 }
 
 fn zoom_css(pt: f64) -> String {
