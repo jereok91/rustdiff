@@ -83,10 +83,6 @@ pub struct MainWindow {
     editors_paned: gtk::Paned,
     /// Caja del editor derecho (para reinsertar en el paned).
     right_editor_box: gtk::Box,
-    /// Botón "Habilitar comparación".
-    btn_enable_comparison: gtk::Button,
-    /// Botón "Abrir derecho" (para mostrar/ocultar).
-    btn_open_right: gtk::Button,
 }
 
 impl MainWindow {
@@ -400,8 +396,6 @@ impl MainWindow {
             focused_editor,
             editors_paned,
             right_editor_box: right_box,
-            btn_enable_comparison: btn_enable_comparison.clone(),
-            btn_open_right: btn_open_right.clone(),
             history_search_entry,
             history_load_more_btn,
             history_visible_count: Cell::new(3),
@@ -1032,7 +1026,7 @@ impl MainWindow {
                     None,
                 ) {
                     buf.select_range(&ms, &me);
-                    let mut scroll = ms.clone();
+                    let mut scroll = ms;
                     view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
                 } else {
                     let start = buf.start_iter();
@@ -1042,7 +1036,7 @@ impl MainWindow {
                         None,
                     ) {
                         buf.select_range(&ms, &me);
-                        let mut scroll = ms.clone();
+                        let mut scroll = ms;
                         view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
                     }
                 }
@@ -1077,7 +1071,7 @@ impl MainWindow {
                     None,
                 ) {
                     buf.select_range(&ms, &me);
-                    let mut scroll = ms.clone();
+                    let mut scroll = ms;
                     view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
                 } else {
                     let end = buf.end_iter();
@@ -1087,7 +1081,7 @@ impl MainWindow {
                         None,
                     ) {
                         buf.select_range(&ms, &me);
-                        let mut scroll = ms.clone();
+                        let mut scroll = ms;
                         view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
                     }
                 }
@@ -1126,7 +1120,7 @@ impl MainWindow {
                     None,
                 ) {
                     buf.select_range(&ms, &me);
-                    let mut scroll = ms.clone();
+                    let mut scroll = ms;
                     view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
                 } else {
                     let start = buf.start_iter();
@@ -1136,7 +1130,7 @@ impl MainWindow {
                         None,
                     ) {
                         buf.select_range(&ms, &me);
-                        let mut scroll = ms.clone();
+                        let mut scroll = ms;
                         view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
                     }
                 }
