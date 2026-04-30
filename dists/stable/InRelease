@@ -1,0 +1,40 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Architectures: amd64
+Codename: stable
+Components: main
+Date: Thu, 30 Apr 2026 23:38:25 +0000
+Label: RustDiff
+Origin: RustDiff
+Suite: stable
+MD5Sum:
+ d0823e0ac260a3710bac5540e2597254              140 Release
+ fbdb43f878de6e3721dffb8abebe21a6              876 main/binary-amd64/Packages
+ fe6ece1d560f388d1ff157b51e2316fb              592 main/binary-amd64/Packages.gz
+SHA1:
+ a856394ae835efcff736bd5cc1eaf5c286b3fb50              140 Release
+ 4554f0c86485ed56d8760bc4de51a266c6acfc30              876 main/binary-amd64/Packages
+ 30d889bc4cb3f7f8cbb2dcd448983878cefdb6c5              592 main/binary-amd64/Packages.gz
+SHA256:
+ 5ebc3bb2c8b73e7942ccbf74207581e1af129b2c3cb13ca6a6ed5a879f028d1b              140 Release
+ b51c3aed3fe6e3cdf6c22d0183d7f8b22d4f87a7fa1628cf27ccd33500e0b250              876 main/binary-amd64/Packages
+ 5f204984f997bf48fc449e632bcaad6797d46a59dfc0d7a4d498b931e3d8eb11              592 main/binary-amd64/Packages.gz
+SHA512:
+ 0ff7758c3f5508b81be0ea83fdb000b60bc7486a19c5dbdf7bb24eda2ecb152c01d41ccd7b3f5b7defd1f8af33f8d110dfa8988feb1723079bebc581669f1224              140 Release
+ 9fd2e1f2ab6043128d3d6deff991bc73b9b467d0b028df7f49fc971c6b3a09d7ff95d6624bb4acf3327570a76238fcffbc525c018aa928e033ace8859c0ddd0b              876 main/binary-amd64/Packages
+ 8ae486bc49554bef6b097c40770e8fae906c59cb119e92a0a4b539b513d6b7f732feae6acc50a52c8e4167ed8ee0ff17eff4113b6da73853ee61449cbf3bb3dc              592 main/binary-amd64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAEBCgAdFiEEqoyqIllouH3nqBkvBk+/7eIl6WsFAmnz5/EACgkQBk+/7eIl
+6Wt5CgwAvGvRGJtU69lF6HrrSeW5gR1pVqBcoInKw3OCCz/nBVOD5EUlEZxKnqfL
+H9IGNuPJg4XKQNsGWRmmHyLdqdDsWPFS+rjd+qSjl6+AmOU+tfqxy4V5OANCuPqV
+rAjZFvbaSgZDmuX3duA2uBj6NnkCtGzcvTOoZEK+zck6fdWhoriJit4/0sCaSgUS
+UuUIWg87m90vL3YeToxLaxMvNKBz5LnpvPxKBPnjzwUPSyVwaksLIJbMHrCK2Gkb
+Hm8YalcwxXwIoYh7Qu4UxPSHKterAWfi3VQnrjXqopq0H07k2/DbVjkvj67vFlJ3
+OGhnqk0f6TRaH8IrHvJv+hEZhnguyVMyQcvkag1urZOFX/1Eh1hNyYr9Bc0FCkdl
+93r7hkp3REHpO+xMTKL9BG6rAl+GbyCUOo8VSQqQxkIqpmrZ/rDl6o7t/98q7XYT
+cQIx6ekXXBm6qIh3J6ixSU/kduppr4woPoF0zCGfNAOvNkICl6Qj3ilWdN+5UWrL
+KK8SuRiF
+=jTgD
+-----END PGP SIGNATURE-----
