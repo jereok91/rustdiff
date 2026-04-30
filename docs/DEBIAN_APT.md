@@ -13,7 +13,7 @@ The automation lives in:
 
 ## What the workflow does
 
-When a tag like `v0.1.5` is pushed:
+When a tag like `v0.1.6` is pushed:
 
 1. Builds a `.deb` package with `cargo-deb`.
 2. Uploads it as a workflow artifact.
@@ -56,8 +56,8 @@ Copy the full armored block into `APT_GPG_PRIVATE_KEY`.
 
 ```bash
 # Example release
-git tag v0.1.5
-git push origin v0.1.5
+git tag v0.1.6
+git push origin v0.1.6
 ```
 
 After the workflow finishes:

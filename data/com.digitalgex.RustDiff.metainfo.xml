@@ -100,6 +100,11 @@
   </branding>
 
   <releases>
+    <release version="0.1.6" date="2026-04-30">
+      <description>
+        <p>Release 0.1.6 aligns the published version across Cargo, Flatpak, and Debian packaging.</p>
+      </description>
+    </release>
     <release version="0.1.4" date="2026-04-20">
       <description>
         <p>Internationalization: the UI now ships in English by default and switches to Spanish automatically on Spanish systems.</p>
