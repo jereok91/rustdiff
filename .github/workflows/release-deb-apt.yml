@@ -1,0 +1,176 @@
+name: Build .deb and publish APT repository
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-deb:
+    name: Build Debian package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install GTK4 system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-4-dev \
+            libadwaita-1-dev \
+            libgtksourceview-5-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build .deb package
+        run: bash scripts/packaging/build-deb.sh
+
+      - name: Locate generated .deb
+        id: deb
+        run: |
+          shopt -s nullglob
+          debs=(target/debian/*.deb)
+          if [ "${#debs[@]}" -eq 0 ]; then
+            echo "No .deb artifacts were generated."
+            exit 1
+          fi
+
+          DEB_PATH="${debs[0]}"
+          DEB_NAME="$(basename "$DEB_PATH")"
+
+          echo "deb_path=$DEB_PATH" >> "$GITHUB_OUTPUT"
+          echo "deb_name=$DEB_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustdiff-deb
+          path: ${{ steps.deb.outputs.deb_path }}
+
+      - name: Attach .deb to GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.deb.outputs.deb_path }}
+          generate_release_notes: true
+
+  publish-apt:
+    name: Publish APT repository on GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build-deb
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download .deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rustdiff-deb
+          path: dist
+
+      - name: Install APT repository tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            apt-utils \
+            dpkg-dev \
+            gnupg
+
+      - name: Validate signing secrets
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APT_GPG_PRIVATE_KEY" ]; then
+            echo "Missing required secrets for APT signing."
+            echo "Please configure APT_GPG_PRIVATE_KEY."
+            exit 1
+          fi
+
+      - name: Import GPG signing key
+        id: gpg
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+
+          KEY_FPR="$(gpg --batch --list-secret-keys --with-colons | awk -F: '/^fpr:/ { print $10; exit }')"
+          if [ -z "$KEY_FPR" ]; then
+            echo "No secret key fingerprint found after import."
+            exit 1
+          fi
+
+          echo "key_fpr=$KEY_FPR" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed APT repository
+        env:
+          APT_GPG_KEY_FPR: ${{ steps.gpg.outputs.key_fpr }}
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+          APT_ORIGIN: RustDiff
+          APT_LABEL: RustDiff
+          APT_SUITE: stable
+          APT_CODENAME: stable
+          APT_COMPONENT: main
+        run: |
+          shopt -s nullglob
+          debs=(dist/*.deb)
+          if [ "${#debs[@]}" -eq 0 ]; then
+            echo "No downloaded .deb artifact found."
+            exit 1
+          fi
+
+          bash scripts/packaging/build-apt-repo.sh "${debs[0]}" apt-repo
+
+      - name: Generate installation page
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          REPO_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${REPO_NAME}"
+
+          cat > apt-repo/index.html <<EOF
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RustDiff APT repository</title>
+</head>
+<body>
+  <h1>RustDiff APT repository</h1>
+  <p>Install keyring:</p>
+  <pre><code>curl -fsSL ${REPO_URL}/KEY.gpg | sudo tee /usr/share/keyrings/rustdiff-archive-keyring.gpg >/dev/null</code></pre>
+  <p>Add repository:</p>
+  <pre><code>echo "deb [arch=amd64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] ${REPO_URL} stable main" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null</code></pre>
+  <p>Install package:</p>
+  <pre><code>sudo apt update && sudo apt install rustdiff</code></pre>
+</body>
+</html>
+EOF
+
+      - name: Publish APT repository
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./apt-repo
+          force_orphan: true

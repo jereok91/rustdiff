@@ -73,6 +73,33 @@ curl -fsSL https://raw.githubusercontent.com/jereok91/rustdiff/main/install.sh |
 cargo install rustdiff
 ```
 
+### 4) Paquete Debian (`.deb`) y repositorio APT (estilo PPA)
+
+Instalar desde un `.deb` descargado (GitHub Releases):
+
+```bash
+sudo apt install ./rustdiff_*.deb
+```
+
+Instalar desde el repositorio APT publicado en GitHub:
+
+```bash
+curl -fsSL https://jereok91.github.io/rustdiff/KEY.gpg | sudo tee /usr/share/keyrings/rustdiff-archive-keyring.gpg >/dev/null
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] https://jereok91.github.io/rustdiff stable main" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null
+sudo apt update
+sudo apt install rustdiff
+```
+
+Actualmente el repositorio APT publica builds para `amd64`.
+
+Eliminar paquete y repositorio:
+
+```bash
+sudo apt remove rustdiff
+sudo rm -f /etc/apt/sources.list.d/rustdiff.list /usr/share/keyrings/rustdiff-archive-keyring.gpg
+sudo apt update
+```
+
 ## Requisitos del sistema (build local/Cargo)
 
 ### Rust
@@ -186,6 +213,7 @@ cargo test --test diff_engine_tests
 - Archivos para Flathub: `flathub/com.digitalgex.RustDiff.yaml`, `flathub/cargo-sources.json`
 - Flujo de envio a Flathub: `flathub/README.md`
 - Requisitos de screenshots (AppStream/Flathub): `data/screenshots/README.md`
+- Empaquetado Debian/APT y configuracion de GitHub Actions: `docs/DEBIAN_APT.md`
 
 Referencias externas:
 
