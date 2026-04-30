@@ -10,11 +10,13 @@ Idioma: [English](README.md) | **Espanol**
 ## Caracteristicas
 
 - Diff semantico para JSON y XML (objetos, arrays, nodos XML, atributos y texto)
+- Pantalla de bienvenida con flujo guiado (un solo editor inicialmente)
 - Editores lado a lado con resaltado de sintaxis
+- **Busqueda en editores** (`Ctrl+F`) con navegacion siguiente/anterior y wrap-around
 - Comparacion automatica al escribir (con debounce) y comparacion manual
 - Tabla de diferencias con filtros y navegacion por click
 - Exportacion a `.txt` y `.html` con estilos
-- Historial de sesiones en SQLite
+- Historial de sesiones en SQLite (paginado, con busqueda)
 
 ## Instalacion
 
@@ -180,15 +182,15 @@ rustdiff esquema_v1.xml esquema_v2.xml
 
 ## Atajos de teclado
 
-| Atajo | Accion |
-|---|---|
-| `Ctrl+O` | Abrir archivo en panel izquierdo |
-| `Ctrl+Shift+O` | Abrir archivo en panel derecho |
-| `Ctrl+Enter` | Forzar comparacion |
-| `Ctrl+S` | Guardar sesion en historial |
-| `Ctrl+E` | Exportar resultado a `.txt` |
-| `Ctrl+Shift+F` | Formatear ambos paneles |
-| `Ctrl+H` | Mostrar/ocultar historial |
+| Atajo          | Accion                           |
+| -------------- | -------------------------------- |
+| `Ctrl+O`       | Abrir archivo en panel izquierdo |
+| `Ctrl+Shift+O` | Abrir archivo en panel derecho   |
+| `Ctrl+Enter`   | Forzar comparacion               |
+| `Ctrl+S`       | Guardar sesion en historial      |
+| `Ctrl+E`       | Exportar resultado a `.txt`      |
+| `Ctrl+Shift+F` | Formatear ambos paneles          |
+| `Ctrl+H`       | Mostrar/ocultar historial        |
 
 ## Datos, configuracion y salidas
 
@@ -217,8 +219,8 @@ cargo test --test diff_engine_tests
 
 Referencias externas:
 
-- Guia de setup Flathub: https://flathub.org/setup
-- Documentacion Flatpak: https://docs.flatpak.org/
+- Guia de setup Flathub: <https://flathub.org/setup>
+- Documentacion Flatpak: <https://docs.flatpak.org/>
 
 ## Licencia
 

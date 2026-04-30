@@ -1,6 +1,6 @@
 app-id: com.digitalgex.RustDiff
 runtime: org.gnome.Platform
-runtime-version: '50'
+runtime-version: "50"
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
@@ -29,8 +29,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/jereok91/rustdiff.git
-        tag: v0.1.6
-        commit: cc17d03b417d7ba4ed85103cee594124133135fc
+        tag: v0.1.7
+        commit: 81d1a55bc8ece540932ba6df901ff4b606c41e4a
         # flatpak-external-data-checker: si el workflow `release-flathub`
         # del repo upstream falla, este metadato deja que el bot oficial
         # de Flathub detecte nuevos tags y abra un PR por su cuenta.

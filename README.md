@@ -10,11 +10,13 @@ Language: **English** | [Espanol](README.es.md)
 ## Features
 
 - Semantic JSON and XML diff (objects, arrays, XML nodes, attributes, and text)
+- Welcome screen with guided comparison flow (single editor initially)
 - Side-by-side editors with syntax highlighting
+- **Busqueda en editores** (`Ctrl+F`) con navegacion siguiente/anterior y wrap-around
 - Auto compare while typing (debounced) + manual compare
 - Difference table with filters and click-to-jump navigation
 - Export to `.txt` and styled `.html`
-- Session history stored in SQLite
+- Session history stored in SQLite (paginated, searchable)
 
 ## Installation
 
@@ -180,15 +182,15 @@ rustdiff schema_v1.xml schema_v2.xml
 
 ## Keyboard shortcuts
 
-| Shortcut | Action |
-|---|---|
-| `Ctrl+O` | Open file in left panel |
+| Shortcut       | Action                   |
+| -------------- | ------------------------ |
+| `Ctrl+O`       | Open file in left panel  |
 | `Ctrl+Shift+O` | Open file in right panel |
-| `Ctrl+Enter` | Force compare |
-| `Ctrl+S` | Save session to history |
-| `Ctrl+E` | Export result as `.txt` |
+| `Ctrl+Enter`   | Force compare            |
+| `Ctrl+S`       | Save session to history  |
+| `Ctrl+E`       | Export result as `.txt`  |
 | `Ctrl+Shift+F` | Pretty-print both panels |
-| `Ctrl+H` | Toggle history panel |
+| `Ctrl+H`       | Toggle history panel     |
 
 ## Data, config, and outputs
 
@@ -217,8 +219,8 @@ cargo test --test diff_engine_tests
 
 Useful external references:
 
-- Flathub setup guide: https://flathub.org/setup
-- Flatpak documentation: https://docs.flatpak.org/
+- Flathub setup guide: <https://flathub.org/setup>
+- Flatpak documentation: <https://docs.flatpak.org/>
 
 ## License
 

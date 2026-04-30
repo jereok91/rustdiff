@@ -148,24 +148,25 @@ jobs:
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
           REPO_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${REPO_NAME}"
 
-          cat > apt-repo/index.html <<EOF
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>RustDiff APT repository</title>
-</head>
-<body>
-  <h1>RustDiff APT repository</h1>
-  <p>Install keyring:</p>
-  <pre><code>curl -fsSL ${REPO_URL}/KEY.gpg | sudo tee /usr/share/keyrings/rustdiff-archive-keyring.gpg >/dev/null</code></pre>
-  <p>Add repository:</p>
-  <pre><code>echo "deb [arch=amd64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] ${REPO_URL} stable main" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null</code></pre>
-  <p>Install package:</p>
-  <pre><code>sudo apt update && sudo apt install rustdiff</code></pre>
-</body>
-</html>
-EOF
+          mkdir -p apt-repo
+          {
+            echo '<!doctype html>'
+            echo '<html lang="en">'
+            echo '<head>'
+            echo '  <meta charset="utf-8">'
+            echo '  <title>RustDiff APT repository</title>'
+            echo '</head>'
+            echo '<body>'
+            echo '  <h1>RustDiff APT repository</h1>'
+            echo '  <p>Install keyring:</p>'
+            echo "  <pre><code>curl -fsSL ${REPO_URL}/KEY.gpg | sudo tee /usr/share/keyrings/rustdiff-archive-keyring.gpg >/dev/null</code></pre>"
+            echo '  <p>Add repository:</p>'
+            echo "  <pre><code>echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] ${REPO_URL} stable main\" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null</code></pre>"
+            echo '  <p>Install package:</p>'
+            echo '  <pre><code>sudo apt update && sudo apt install rustdiff</code></pre>'
+            echo '</body>'
+            echo '</html>'
+          } > apt-repo/index.html
 
       - name: Publish APT repository
         uses: peaceiris/actions-gh-pages@v4

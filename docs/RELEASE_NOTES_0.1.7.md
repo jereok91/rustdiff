@@ -56,8 +56,8 @@ Copy the full armored block into `APT_GPG_PRIVATE_KEY`.
 
 ```bash
 # Example release
-git tag v0.1.7
-git push origin v0.1.7
+git tag v0.1.6
+git push origin v0.1.6
 ```
 
 After the workflow finishes:

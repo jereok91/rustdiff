@@ -100,6 +100,19 @@
   </branding>
 
   <releases>
+    <release version="0.1.7" date="2026-04-30">
+      <description>
+        <p>New user experience: welcome screen, in-editor search, history pagination, and a guided comparison flow.</p>
+        <ul>
+          <li>Welcome screen: choose between opening a document, starting a new comparison, or viewing history.</li>
+          <li>Single-editor startup: only the left editor is shown initially; "Enable comparison" reveals the right panel.</li>
+          <li>Ctrl+F search: find text inside the left or right editor with Next/Prev navigation and wrap-around.</li>
+          <li>History pagination: shows the last 3 sessions by default with a "Load more" button and a search field.</li>
+          <li>Exit dialog: prompts to save to history, export as .txt/.html, or close without saving when unsaved content exists.</li>
+          <li>Improved layout: larger editor area and a more compact diff panel at the bottom.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.6" date="2026-04-30">
       <description>
         <p>Release 0.1.6 aligns the published version across Cargo, Flatpak, and Debian packaging.</p>
