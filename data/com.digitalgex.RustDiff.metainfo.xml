@@ -100,6 +100,11 @@
   </branding>
 
   <releases>
+    <release version="0.1.8" date="2026-05-27">
+      <description>
+        <p>Fixed Flatpak build configuration and offline compilation support. Added SQL syntax highlighting support for source editors.</p>
+      </description>
+    </release>
     <release version="0.1.7" date="2026-04-30">
       <description>
         <p>New user experience: welcome screen, in-editor search, history pagination, and a guided comparison flow.</p>
