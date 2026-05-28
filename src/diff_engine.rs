@@ -71,20 +71,10 @@ impl fmt::Display for DiffItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
             DiffKind::Added => {
-                write!(
-                    f,
-                    "[+] {} = {}",
-                    self.path,
-                    self.right.as_deref().unwrap_or("")
-                )
+                write!(f, "[+] {} = {}", self.path, self.right.as_deref().unwrap_or(""))
             }
             DiffKind::Removed => {
-                write!(
-                    f,
-                    "[-] {} = {}",
-                    self.path,
-                    self.left.as_deref().unwrap_or("")
-                )
+                write!(f, "[-] {} = {}", self.path, self.left.as_deref().unwrap_or(""))
             }
             DiffKind::Changed => {
                 write!(
@@ -323,8 +313,7 @@ fn compare_xml_nodes(left: &XmlNode, right: &XmlNode, path: &str, result: &mut D
             (Some(ln), Some(rn)) => {
                 // Construir ruta: si el hijo tiene el mismo tag que otros hermanos,
                 // añadir índice para distinguir
-                let child_path =
-                    build_child_path(path, &ln.tag, i, &left_children, &right_children);
+                let child_path = build_child_path(path, &ln.tag, i, &left_children, &right_children);
                 compare_xml_nodes(ln, rn, &child_path, result);
             }
             (Some(ln), None) => {
@@ -365,14 +354,8 @@ fn compare_attributes(
         .collect();
 
     for key in all_keys {
-        let left_val = left_attrs
-            .iter()
-            .find(|(k, _)| k == key)
-            .map(|(_, v)| v.as_str());
-        let right_val = right_attrs
-            .iter()
-            .find(|(k, _)| k == key)
-            .map(|(_, v)| v.as_str());
+        let left_val = left_attrs.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str());
+        let right_val = right_attrs.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str());
         let attr_path = format!("{path}[@{key}]");
 
         match (left_val, right_val) {

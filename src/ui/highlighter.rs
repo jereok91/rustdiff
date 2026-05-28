@@ -92,13 +92,7 @@ pub fn clear_highlights(buffer: &gtk::TextBuffer) {
     let start = buffer.start_iter();
     let end = buffer.end_iter();
 
-    for tag in [
-        TAG_LINE_ADDED,
-        TAG_LINE_REMOVED,
-        TAG_ADDED,
-        TAG_REMOVED,
-        TAG_CHANGED,
-    ] {
+    for tag in [TAG_LINE_ADDED, TAG_LINE_REMOVED, TAG_ADDED, TAG_REMOVED, TAG_CHANGED] {
         buffer.remove_tag_by_name(tag, &start, &end);
     }
 }
@@ -210,12 +204,7 @@ fn ensure_tags(buffer: &gtk::TextBuffer) {
 
 /// Diff línea-por-línea entre los dos textos usando `similar`.
 /// Resalta líneas completas que fueron añadidas, eliminadas o cambiadas.
-fn apply_line_diff(
-    left_buf: &gtk::TextBuffer,
-    right_buf: &gtk::TextBuffer,
-    left_text: &str,
-    right_text: &str,
-) {
+fn apply_line_diff(left_buf: &gtk::TextBuffer, right_buf: &gtk::TextBuffer, left_text: &str, right_text: &str) {
     let diff = TextDiff::from_lines(left_text, right_text);
 
     // Rastrear la línea actual en cada buffer
@@ -263,12 +252,7 @@ fn tag_line(buffer: &gtk::TextBuffer, line: i32, tag_name: &str) {
 }
 
 /// Resaltado semántico: busca valores específicos del diff en el texto del editor.
-fn apply_semantic_highlights(
-    buffer: &gtk::TextBuffer,
-    _text: &str,
-    diff_result: &DiffResult,
-    side: Side,
-) {
+fn apply_semantic_highlights(buffer: &gtk::TextBuffer, _text: &str, diff_result: &DiffResult, side: Side) {
     // Para cada item del diff, buscar su valor en el texto
     let items = match side {
         Side::Left => {

@@ -87,9 +87,7 @@ mod tests {
 
     #[test]
     fn serializa_y_deserializa() {
-        let original = Settings {
-            language: "es".into(),
-        };
+        let original = Settings { language: "es".into() };
         let json = serde_json::to_string(&original).unwrap();
         let parsed: Settings = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.language, "es");

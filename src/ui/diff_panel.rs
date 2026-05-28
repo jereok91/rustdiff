@@ -148,18 +148,14 @@ impl DiffPanel {
         column_view.set_show_column_separators(true);
 
         // Columna: Tipo
-        let col_type = create_column(&t!("panel.col_type"), 80, |item: &DiffItem| {
-            match item.kind {
-                DiffKind::Added => t!("diff.added_label").to_string(),
-                DiffKind::Removed => t!("diff.removed_label").to_string(),
-                DiffKind::Changed => t!("diff.changed_label").to_string(),
-            }
+        let col_type = create_column(&t!("panel.col_type"), 80, |item: &DiffItem| match item.kind {
+            DiffKind::Added => t!("diff.added_label").to_string(),
+            DiffKind::Removed => t!("diff.removed_label").to_string(),
+            DiffKind::Changed => t!("diff.changed_label").to_string(),
         });
 
         // Columna: Ruta
-        let col_path = create_column(&t!("panel.col_path"), 300, |item: &DiffItem| {
-            item.path.clone()
-        });
+        let col_path = create_column(&t!("panel.col_path"), 300, |item: &DiffItem| item.path.clone());
 
         // Columna: Valor Izquierdo
         let col_left = create_column(&t!("panel.col_left"), 250, |item: &DiffItem| {
@@ -240,11 +236,7 @@ impl DiffPanel {
         *self.all_items.borrow_mut() = items;
 
         // Aplicar filtros actuales
-        apply_filters(
-            &self.store,
-            &self.all_items.borrow(),
-            &self.filters.borrow(),
-        );
+        apply_filters(&self.store, &self.all_items.borrow(), &self.filters.borrow());
 
         // Actualizar resumen
         self.summary_label.set_text(&result.summary());
@@ -280,11 +272,7 @@ fn apply_filters(store: &gtk::gio::ListStore, items: &[DiffItem], filters: &(boo
 }
 
 /// Crea una columna para el `ColumnView` con un factory que extrae texto del `DiffItem`.
-fn create_column(
-    title: &str,
-    fixed_width: i32,
-    extractor: fn(&DiffItem) -> String,
-) -> gtk::ColumnViewColumn {
+fn create_column(title: &str, fixed_width: i32, extractor: fn(&DiffItem) -> String) -> gtk::ColumnViewColumn {
     let factory = gtk::SignalListItemFactory::new();
 
     factory.connect_setup(|_, list_item| {

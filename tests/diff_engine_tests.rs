@@ -75,20 +75,14 @@ fn json_api_diferencias_completas() {
         .changed
         .iter()
         .find(|d| d.path.contains("users") && d.path.contains("[0]") && d.path.contains("email"));
-    assert!(
-        email_change.is_some(),
-        "Debe detectar cambio de email de María"
-    );
+    assert!(email_change.is_some(), "Debe detectar cambio de email de María");
 
     // active de Pedro cambió a false
     let active_change = result
         .changed
         .iter()
         .find(|d| d.path.contains("[1]") && d.path.contains("active"));
-    assert!(
-        active_change.is_some(),
-        "Debe detectar cambio de active de Pedro"
-    );
+    assert!(active_change.is_some(), "Debe detectar cambio de active de Pedro");
 
     // total cambió de 2 a 3
     let total_change = result.changed.iter().find(|d| d.path.contains("total"));
@@ -110,11 +104,7 @@ fn json_api_todas_las_rutas_empiezan_con_dolar() {
     let result = diff_json(&left, &right);
 
     for item in result.all_items() {
-        assert!(
-            item.path.starts_with('$'),
-            "Ruta '{}' no empieza con '$'",
-            item.path
-        );
+        assert!(item.path.starts_with('$'), "Ruta '{}' no empieza con '$'", item.path);
     }
 }
 

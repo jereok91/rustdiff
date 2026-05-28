@@ -73,12 +73,9 @@ pub enum XmlChild {
 
 // SQL keywords used for auto-detection (must be a complete first word).
 const SQL_DETECT_KEYWORDS: &[&str] = &[
-    "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER",
-    "WITH", "TRUNCATE", "MERGE", "REPLACE", "EXPLAIN", "CALL", "BEGIN",
-    "COMMIT", "ROLLBACK",
-    // T-SQL / PL-SQL specific openers
-    "DECLARE", "SET", "EXEC", "EXECUTE", "USE", "IF", "WHILE", "PRINT",
-    "GO", "GRANT", "REVOKE", "PRAGMA",
+    "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER", "WITH", "TRUNCATE", "MERGE", "REPLACE",
+    "EXPLAIN", "CALL", "BEGIN", "COMMIT", "ROLLBACK", // T-SQL / PL-SQL specific openers
+    "DECLARE", "SET", "EXEC", "EXECUTE", "USE", "IF", "WHILE", "PRINT", "GO", "GRANT", "REVOKE", "PRAGMA",
 ];
 
 /// Detecta automáticamente si el texto es JSON, XML o SQL.
@@ -121,9 +118,26 @@ fn looks_like_sql(input: &str) -> bool {
     let sample = &input[..input.len().min(1024)].to_uppercase();
     // Count how many distinct SQL clause words appear
     const CLAUSE_WORDS: &[&str] = &[
-        "SELECT", "FROM", "WHERE", "JOIN", "GROUP BY", "ORDER BY", "HAVING",
-        "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP", "WITH",
-        "INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "UNION", "SET ", "VALUES",
+        "SELECT",
+        "FROM",
+        "WHERE",
+        "JOIN",
+        "GROUP BY",
+        "ORDER BY",
+        "HAVING",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "CREATE",
+        "ALTER",
+        "DROP",
+        "WITH",
+        "INNER JOIN",
+        "LEFT JOIN",
+        "RIGHT JOIN",
+        "UNION",
+        "SET ",
+        "VALUES",
     ];
     let hits = CLAUSE_WORDS.iter().filter(|&&kw| sample.contains(kw)).count();
     hits >= 2
@@ -231,9 +245,9 @@ pub fn parse_xml(input: &str) -> Result<XmlNode, ParseError> {
                 }
             }
             Ok(Event::End(_)) => {
-                let finished = stack.pop().ok_or_else(|| {
-                    ParseError::InvalidXml("Etiqueta de cierre sin apertura".into())
-                })?;
+                let finished = stack
+                    .pop()
+                    .ok_or_else(|| ParseError::InvalidXml("Etiqueta de cierre sin apertura".into()))?;
                 if let Some(parent) = stack.last_mut() {
                     parent.children.push(XmlChild::Node(finished));
                 } else {
@@ -312,8 +326,7 @@ fn build_node_from_start(e: &BytesStart, reader: &Reader<&[u8]>) -> Result<XmlNo
 
     let mut attributes = Vec::new();
     for attr_result in e.attributes() {
-        let attr = attr_result
-            .map_err(|err| ParseError::InvalidXml(format!("Error en atributo: {err}")))?;
+        let attr = attr_result.map_err(|err| ParseError::InvalidXml(format!("Error en atributo: {err}")))?;
         let key = reader
             .decoder()
             .decode(attr.key.as_ref())
@@ -344,9 +357,7 @@ fn format_sql_pretty(input: &str) -> Result<String, ParseError> {
     };
     let formatted = sqlformat::format(input, &QueryParams::None, &opts);
     if formatted.trim().is_empty() && !input.trim().is_empty() {
-        return Err(ParseError::InvalidSql(
-            "sqlformat returned empty output".into(),
-        ));
+        return Err(ParseError::InvalidSql("sqlformat returned empty output".into()));
     }
     Ok(formatted)
 }
@@ -363,30 +374,30 @@ fn pretty_print_xml(input: &str) -> Result<String, ParseError> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) => {
-                writer.write_event(Event::Start(e)).map_err(|err| {
-                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
-                })?;
+                writer
+                    .write_event(Event::Start(e))
+                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
             }
             Ok(Event::End(e)) => {
-                writer.write_event(Event::End(e)).map_err(|err| {
-                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
-                })?;
+                writer
+                    .write_event(Event::End(e))
+                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
             }
             Ok(Event::Empty(e)) => {
-                writer.write_event(Event::Empty(e)).map_err(|err| {
-                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
-                })?;
+                writer
+                    .write_event(Event::Empty(e))
+                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
             }
             Ok(Event::Text(e)) => {
-                writer.write_event(Event::Text(e)).map_err(|err| {
-                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
-                })?;
+                writer
+                    .write_event(Event::Text(e))
+                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
             }
             Ok(Event::Eof) => break,
             Ok(event) => {
-                writer.write_event(event).map_err(|err| {
-                    ParseError::InvalidXml(format!("Error escribiendo XML: {err}"))
-                })?;
+                writer
+                    .write_event(event)
+                    .map_err(|err| ParseError::InvalidXml(format!("Error escribiendo XML: {err}")))?;
             }
             Err(e) => {
                 return Err(ParseError::InvalidXml(format!(
@@ -398,8 +409,7 @@ fn pretty_print_xml(input: &str) -> Result<String, ParseError> {
     }
 
     let result = writer.into_inner().into_inner();
-    String::from_utf8(result)
-        .map_err(|err| ParseError::InvalidXml(format!("XML resultante no es UTF-8 válido: {err}")))
+    String::from_utf8(result).map_err(|err| ParseError::InvalidXml(format!("XML resultante no es UTF-8 válido: {err}")))
 }
 
 // ─────────────────────────────────────────────
@@ -438,10 +448,7 @@ impl XmlNode {
 
     /// Devuelve el valor de un atributo por nombre, si existe.
     pub fn get_attribute(&self, name: &str) -> Option<&str> {
-        self.attributes
-            .iter()
-            .find(|(k, _)| k == name)
-            .map(|(_, v)| v.as_str())
+        self.attributes.iter().find(|(k, _)| k == name).map(|(_, v)| v.as_str())
     }
 }
 
@@ -497,14 +504,8 @@ mod tests {
 
     #[test]
     fn error_entrada_vacia() {
-        assert!(matches!(
-            auto_detect_format(""),
-            Err(ParseError::EmptyInput)
-        ));
-        assert!(matches!(
-            auto_detect_format("   \n\t  "),
-            Err(ParseError::EmptyInput)
-        ));
+        assert!(matches!(auto_detect_format(""), Err(ParseError::EmptyInput)));
+        assert!(matches!(auto_detect_format("   \n\t  "), Err(ParseError::EmptyInput)));
     }
 
     // ── parse_json ──────────────────────────────
@@ -572,10 +573,7 @@ mod tests {
         assert_eq!(node.tag, "libro");
         assert_eq!(node.get_attribute("isbn"), Some("978-3-16"));
         assert_eq!(node.get_attribute("idioma"), Some("es"));
-        assert_eq!(
-            node.find_child("titulo").unwrap().text_content(),
-            "Rust en Acción"
-        );
+        assert_eq!(node.find_child("titulo").unwrap().text_content(), "Rust en Acción");
     }
 
     #[test]
@@ -596,14 +594,8 @@ mod tests {
         assert_eq!(node.tag, "biblioteca");
         let libros = node.child_nodes();
         assert_eq!(libros.len(), 2);
-        assert_eq!(
-            libros[0].find_child("titulo").unwrap().text_content(),
-            "Don Quijote"
-        );
-        assert_eq!(
-            libros[1].find_child("autor").unwrap().text_content(),
-            "García Márquez"
-        );
+        assert_eq!(libros[0].find_child("titulo").unwrap().text_content(), "Don Quijote");
+        assert_eq!(libros[1].find_child("autor").unwrap().text_content(), "García Márquez");
     }
 
     #[test]
@@ -761,4 +753,3 @@ mod tests {
         assert_eq!(format!("{}", Format::Sql), "SQL");
     }
 }
-

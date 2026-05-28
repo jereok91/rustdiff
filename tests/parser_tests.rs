@@ -151,10 +151,7 @@ fn json_con_unicode_y_escapes() {
 fn xml_con_entidades_html() {
     let xml = "<msg><texto>5 &gt; 3 &amp; 3 &lt; 5</texto></msg>";
     let node = parse_xml(xml).unwrap();
-    assert_eq!(
-        node.find_child("texto").unwrap().text_content(),
-        "5 > 3 & 3 < 5"
-    );
+    assert_eq!(node.find_child("texto").unwrap().text_content(), "5 > 3 & 3 < 5");
 }
 
 // ─────────────────────────────────────────────
@@ -210,14 +207,8 @@ fn xml_nodo_raiz_autocerrado() {
 fn rechaza_input_demasiado_grande() {
     // Crear una cadena que exceda el límite
     let enorme = "x".repeat(MAX_INPUT_SIZE + 1);
-    assert!(matches!(
-        parse_json(&enorme),
-        Err(ParseError::InputTooLarge { .. })
-    ));
-    assert!(matches!(
-        parse_xml(&enorme),
-        Err(ParseError::InputTooLarge { .. })
-    ));
+    assert!(matches!(parse_json(&enorme), Err(ParseError::InputTooLarge { .. })));
+    assert!(matches!(parse_xml(&enorme), Err(ParseError::InputTooLarge { .. })));
     assert!(matches!(
         format_pretty(&enorme, Format::Json),
         Err(ParseError::InputTooLarge { .. })

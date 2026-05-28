@@ -55,10 +55,7 @@ fn app_language_manager() -> sv::LanguageManager {
             .map(|p| std::path::PathBuf::from(p.as_str()))
             .collect::<Vec<_>>();
         paths.extend(extra_paths);
-        let path_refs: Vec<&str> = paths
-            .iter()
-            .map(|p| p.to_str().unwrap_or(""))
-            .collect();
+        let path_refs: Vec<&str> = paths.iter().map(|p| p.to_str().unwrap_or("")).collect();
         manager.set_search_path(&path_refs);
     }
 
@@ -197,10 +194,7 @@ impl MainWindow {
 
         // Seccion 1: accion "Formatear" (tambien accesible via boton).
         let format_section = gtk::gio::Menu::new();
-        format_section.append(
-            Some(&t!("menu.format_documents")),
-            Some("win.format-documents"),
-        );
+        format_section.append(Some(&t!("menu.format_documents")), Some("win.format-documents"));
         primary_menu.append_section(None, &format_section);
 
         // Seccion 2: Exportar (.txt, .html)
@@ -699,11 +693,7 @@ impl MainWindow {
         use gtk::glib::{Variant, VariantTy, variant::ToVariant};
 
         let initial = crate::settings::Settings::load().language;
-        let action = gtk::gio::SimpleAction::new_stateful(
-            "language",
-            Some(VariantTy::STRING),
-            &initial.to_variant(),
-        );
+        let action = gtk::gio::SimpleAction::new_stateful("language", Some(VariantTy::STRING), &initial.to_variant());
 
         let toast_overlay = self.toast_overlay.clone();
         action.connect_activate(move |action, parameter: Option<&Variant>| {
@@ -794,13 +784,10 @@ impl MainWindow {
                 let ld = last_diff.clone();
                 let tid = timeout_id.clone();
 
-                let source_id = gtk::glib::timeout_add_local_once(
-                    Duration::from_millis(DEBOUNCE_MS),
-                    move || {
-                        tid.borrow_mut().take();
-                        execute_diff(&lv, &rv, &dp, &sl, &dd, &ld);
-                    },
-                );
+                let source_id = gtk::glib::timeout_add_local_once(Duration::from_millis(DEBOUNCE_MS), move || {
+                    tid.borrow_mut().take();
+                    execute_diff(&lv, &rv, &dp, &sl, &dd, &ld);
+                });
 
                 *timeout_id.borrow_mut() = Some(source_id);
             }
@@ -1080,21 +1067,13 @@ impl MainWindow {
                     buf.iter_at_offset(buf.cursor_position())
                 };
 
-                if let Some((ms, me)) = iter.forward_search(
-                    &q,
-                    gtk::TextSearchFlags::CASE_INSENSITIVE,
-                    None,
-                ) {
+                if let Some((ms, me)) = iter.forward_search(&q, gtk::TextSearchFlags::CASE_INSENSITIVE, None) {
                     buf.select_range(&ms, &me);
                     let mut scroll = ms;
                     view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
                 } else {
                     let start = buf.start_iter();
-                    if let Some((ms, me)) = start.forward_search(
-                        &q,
-                        gtk::TextSearchFlags::CASE_INSENSITIVE,
-                        None,
-                    ) {
+                    if let Some((ms, me)) = start.forward_search(&q, gtk::TextSearchFlags::CASE_INSENSITIVE, None) {
                         buf.select_range(&ms, &me);
                         let mut scroll = ms;
                         view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
@@ -1125,21 +1104,13 @@ impl MainWindow {
                     buf.iter_at_offset(buf.cursor_position())
                 };
 
-                if let Some((ms, me)) = iter.backward_search(
-                    &q,
-                    gtk::TextSearchFlags::CASE_INSENSITIVE,
-                    None,
-                ) {
+                if let Some((ms, me)) = iter.backward_search(&q, gtk::TextSearchFlags::CASE_INSENSITIVE, None) {
                     buf.select_range(&ms, &me);
                     let mut scroll = ms;
                     view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
                 } else {
                     let end = buf.end_iter();
-                    if let Some((ms, me)) = end.backward_search(
-                        &q,
-                        gtk::TextSearchFlags::CASE_INSENSITIVE,
-                        None,
-                    ) {
+                    if let Some((ms, me)) = end.backward_search(&q, gtk::TextSearchFlags::CASE_INSENSITIVE, None) {
                         buf.select_range(&ms, &me);
                         let mut scroll = ms;
                         view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
@@ -1174,21 +1145,13 @@ impl MainWindow {
                     buf.iter_at_offset(buf.cursor_position())
                 };
 
-                if let Some((ms, me)) = iter.forward_search(
-                    &q,
-                    gtk::TextSearchFlags::CASE_INSENSITIVE,
-                    None,
-                ) {
+                if let Some((ms, me)) = iter.forward_search(&q, gtk::TextSearchFlags::CASE_INSENSITIVE, None) {
                     buf.select_range(&ms, &me);
                     let mut scroll = ms;
                     view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
                 } else {
                     let start = buf.start_iter();
-                    if let Some((ms, me)) = start.forward_search(
-                        &q,
-                        gtk::TextSearchFlags::CASE_INSENSITIVE,
-                        None,
-                    ) {
+                    if let Some((ms, me)) = start.forward_search(&q, gtk::TextSearchFlags::CASE_INSENSITIVE, None) {
                         buf.select_range(&ms, &me);
                         let mut scroll = ms;
                         view.scroll_to_iter(&mut scroll, 0.25, false, 0.5, 0.5);
@@ -1244,10 +1207,7 @@ impl MainWindow {
                 return gtk::glib::Propagation::Proceed;
             }
 
-            let dialog = adw::AlertDialog::new(
-                Some(&t!("exit.dialog_title")),
-                Some(&t!("exit.dialog_body")),
-            );
+            let dialog = adw::AlertDialog::new(Some(&t!("exit.dialog_title")), Some(&t!("exit.dialog_body")));
             dialog.add_response("cancel", &t!("exit.cancel"));
             dialog.add_response("save_history", &t!("exit.save_history"));
             dialog.add_response("export_txt", &t!("exit.export_txt"));
@@ -1272,18 +1232,38 @@ impl MainWindow {
                 match response {
                     "save_history" => {
                         save_session_from_shortcut(
-                            &left, &right, &last_diff, &storage, &status, &history_list, &history_panel
+                            &left,
+                            &right,
+                            &last_diff,
+                            &storage,
+                            &status,
+                            &history_list,
+                            &history_panel,
                         );
                         should_close.set(true);
                         window_for_response.close();
                     }
                     "export_txt" => {
-                        export_to_file(&window_for_response, &left, &right, &last_diff, &status, ExportFormat::Txt);
+                        export_to_file(
+                            &window_for_response,
+                            &left,
+                            &right,
+                            &last_diff,
+                            &status,
+                            ExportFormat::Txt,
+                        );
                         should_close.set(true);
                         window_for_response.close();
                     }
                     "export_html" => {
-                        export_to_file(&window_for_response, &left, &right, &last_diff, &status, ExportFormat::Html);
+                        export_to_file(
+                            &window_for_response,
+                            &left,
+                            &right,
+                            &last_diff,
+                            &status,
+                            ExportFormat::Html,
+                        );
                         should_close.set(true);
                         window_for_response.close();
                     }
@@ -1375,12 +1355,7 @@ fn execute_diff(
 }
 
 /// Formatea ambos paneles con pretty-print.
-fn format_both_panels(
-    left: &sv::View,
-    right: &sv::View,
-    status: &gtk::Label,
-    dropdown: &gtk::DropDown,
-) {
+fn format_both_panels(left: &sv::View, right: &sv::View, status: &gtk::Label, dropdown: &gtk::DropDown) {
     let left_text = get_buffer_text(left);
     let right_text = get_buffer_text(right);
 
@@ -1640,10 +1615,7 @@ fn export_to_file(
                 if let Some(path) = file.path() {
                     match std::fs::write(&path, &content) {
                         Ok(()) => {
-                            status.set_text(&t!(
-                                "export.write_success",
-                                path = path.display().to_string()
-                            ));
+                            status.set_text(&t!("export.write_success", path = path.display().to_string()));
                         }
                         Err(e) => {
                             status.set_text(&t!("export.write_error", error = e.to_string()));
@@ -1701,11 +1673,7 @@ fn create_source_view() -> sv::View {
     // Reaccionar a cambios de tema oscuro/claro del sistema
     let buf_clone = view.buffer();
     adw::StyleManager::default().connect_dark_notify(move |sm| {
-        let new_scheme = if sm.is_dark() {
-            "Adwaita-dark"
-        } else {
-            "Adwaita"
-        };
+        let new_scheme = if sm.is_dark() { "Adwaita-dark" } else { "Adwaita" };
         let mgr = sv::StyleSchemeManager::default();
         if let Some(scheme) = mgr.scheme(new_scheme) {
             if let Some(sv_buf) = buf_clone.downcast_ref::<sv::Buffer>() {
@@ -1815,11 +1783,7 @@ fn setup_editor_zoom(left: &sv::View, right: &sv::View) {
     provider.load_from_string(&zoom_css(ZOOM_DEFAULT_PT));
 
     if let Some(display) = gtk::gdk::Display::default() {
-        gtk::style_context_add_provider_for_display(
-            &display,
-            &provider,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION + 10,
-        );
+        gtk::style_context_add_provider_for_display(&display, &provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION + 10);
     }
 
     for view in [left, right] {

@@ -26,10 +26,7 @@ pub fn export_txt(result: &DiffResult, fmt: Format) -> String {
     out.push_str("═══════════════════════════════════════════\n\n");
 
     if !result.added.is_empty() {
-        out.push_str(&format!(
-            "{}\n",
-            t!("export.section_added", count = result.added.len())
-        ));
+        out.push_str(&format!("{}\n", t!("export.section_added", count = result.added.len())));
         for item in &result.added {
             out.push_str(&format!("  {item}\n"));
         }
@@ -74,10 +71,7 @@ pub fn export_html(result: &DiffResult, fmt: Format, left_text: &str, right_text
     let mut out = String::new();
 
     let lang = rust_i18n::locale();
-    out.push_str(&format!(
-        "<!DOCTYPE html>\n<html lang=\"{}\">\n<head>\n",
-        &*lang
-    ));
+    out.push_str(&format!("<!DOCTYPE html>\n<html lang=\"{}\">\n<head>\n", &*lang));
     out.push_str("  <meta charset=\"UTF-8\">\n");
     out.push_str(&format!(
         "  <title>{}</title>\n",
@@ -88,10 +82,7 @@ pub fn export_html(result: &DiffResult, fmt: Format, left_text: &str, right_text
     out.push_str("  </style>\n</head>\n<body>\n");
 
     // Encabezado
-    out.push_str(&format!(
-        "  <h1>{}</h1>\n",
-        escape_html(&t!("export.report_title"))
-    ));
+    out.push_str(&format!("  <h1>{}</h1>\n", escape_html(&t!("export.report_title"))));
     out.push_str(&format!(
         "  <p class=\"meta\">{} | {}</p>\n",
         escape_html(&t!("export.report_meta_format", fmt = fmt.to_string())),
@@ -119,14 +110,8 @@ pub fn export_html(result: &DiffResult, fmt: Format, left_text: &str, right_text
             };
             out.push_str(&format!("      <tr class=\"{css_class}\">"));
             out.push_str(&format!("<td>{}</td>", escape_html(&item.kind.to_string())));
-            out.push_str(&format!(
-                "<td><code>{}</code></td>",
-                escape_html(&item.path)
-            ));
-            out.push_str(&format!(
-                "<td>{}</td>",
-                escape_html(item.left.as_deref().unwrap_or(""))
-            ));
+            out.push_str(&format!("<td><code>{}</code></td>", escape_html(&item.path)));
+            out.push_str(&format!("<td>{}</td>", escape_html(item.left.as_deref().unwrap_or(""))));
             out.push_str(&format!(
                 "<td>{}</td>",
                 escape_html(item.right.as_deref().unwrap_or(""))
@@ -147,20 +132,14 @@ pub fn export_html(result: &DiffResult, fmt: Format, left_text: &str, right_text
         "  <details>\n    <summary>{}</summary>\n",
         escape_html(&t!("export.html_left"))
     ));
-    out.push_str(&format!(
-        "    <pre><code>{}</code></pre>\n",
-        escape_html(left_text)
-    ));
+    out.push_str(&format!("    <pre><code>{}</code></pre>\n", escape_html(left_text)));
     out.push_str("  </details>\n");
 
     out.push_str(&format!(
         "  <details>\n    <summary>{}</summary>\n",
         escape_html(&t!("export.html_right"))
     ));
-    out.push_str(&format!(
-        "    <pre><code>{}</code></pre>\n",
-        escape_html(right_text)
-    ));
+    out.push_str(&format!("    <pre><code>{}</code></pre>\n", escape_html(right_text)));
     out.push_str("  </details>\n");
 
     out.push_str("</body>\n</html>\n");

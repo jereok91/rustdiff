@@ -227,9 +227,7 @@ impl Storage {
 
     /// Elimina una sesión por su ID.
     pub fn delete_session(&self, id: i64) -> Result<bool, StorageError> {
-        let affected = self
-            .conn
-            .execute("DELETE FROM sessions WHERE id = ?1", params![id])?;
+        let affected = self.conn.execute("DELETE FROM sessions WHERE id = ?1", params![id])?;
         Ok(affected > 0)
     }
 
@@ -296,13 +294,12 @@ struct SessionRow {
 
 fn row_to_session(row: SessionRow) -> Session {
     let format = str_to_format(&row.format);
-    let diff_summary: DiffSummary =
-        serde_json::from_str(&row.diff_summary).unwrap_or(DiffSummary {
-            added: 0,
-            removed: 0,
-            changed: 0,
-            total: 0,
-        });
+    let diff_summary: DiffSummary = serde_json::from_str(&row.diff_summary).unwrap_or(DiffSummary {
+        added: 0,
+        removed: 0,
+        changed: 0,
+        total: 0,
+    });
 
     Session {
         id: row.id,
@@ -422,9 +419,7 @@ mod tests {
     fn sesion_xml() {
         let db = Storage::open_in_memory().unwrap();
         let summary = sample_summary(0, 0, 1);
-        let id = db
-            .save_session("<a>1</a>", "<a>2</a>", Format::Xml, &summary)
-            .unwrap();
+        let id = db.save_session("<a>1</a>", "<a>2</a>", Format::Xml, &summary).unwrap();
 
         let session = db.get_session(id).unwrap();
         assert!(matches!(session.format, Format::Xml));
@@ -525,13 +520,8 @@ mod tests {
 
         // Guardar MAX_SESSIONS + 5 sesiones
         for i in 0..(MAX_SESSIONS + 5) {
-            db.save_session(
-                &format!("left_{i}"),
-                &format!("right_{i}"),
-                Format::Json,
-                &s,
-            )
-            .unwrap();
+            db.save_session(&format!("left_{i}"), &format!("right_{i}"), Format::Json, &s)
+                .unwrap();
         }
 
         // Solo deben quedar MAX_SESSIONS
@@ -541,10 +531,7 @@ mod tests {
         let sessions = db.load_sessions(MAX_SESSIONS).unwrap();
         assert_eq!(sessions.len(), MAX_SESSIONS);
         // La primera debe ser la última insertada
-        assert_eq!(
-            sessions[0].left_content,
-            format!("left_{}", MAX_SESSIONS + 4)
-        );
+        assert_eq!(sessions[0].left_content, format!("left_{}", MAX_SESSIONS + 4));
     }
 
     #[test]
