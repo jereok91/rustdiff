@@ -18,6 +18,14 @@ Language: **English** | [Espanol](README.es.md)
 - Export to `.txt` and styled `.html`
 - Session history stored in SQLite (paginated, searchable)
 
+## Screenshots
+
+![Main view - Comparing JSON documents](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/main.png)
+
+![Difference table with filters](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/diff-table.png)
+
+![Session history sidebar](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/history.png)
+
 ## Installation
 
 ### 1) Flatpak + Flathub (recommended for desktop users)

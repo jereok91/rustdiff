@@ -18,6 +18,14 @@ Idioma: [English](README.md) | **Espanol**
 - Exportacion a `.txt` y `.html` con estilos
 - Historial de sesiones en SQLite (paginado, con busqueda)
 
+## Capturas de pantalla
+
+![Vista principal - Comparando documentos JSON](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/main.png)
+
+![Tabla de diferencias con filtros](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/diff-table.png)
+
+![Panel lateral de historial](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/history.png)
+
 ## Instalacion
 
 ### 1) Flatpak + Flathub (recomendado para escritorio)
