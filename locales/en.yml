@@ -61,7 +61,7 @@
 "format.detect_failed": "Could not detect the format to prettify"
 
 "compare.need_input": "Enter text in both panels to compare"
-"compare.detect_failed_hint": "Could not detect format. Select JSON or XML manually."
+"compare.detect_failed_hint": "Could not detect format. Select JSON, XML, or SQL manually."
 "compare.summary_format": "%{summary} | %{fmt}"
 
 "export.dialog_title": "Export result"
@@ -95,7 +95,7 @@
 "diff.removed_label": "✖ REMOVED"
 "diff.changed_label": "● CHANGED"
 
-"welcome.subtitle": "Semantic JSON & XML comparator"
+"welcome.subtitle": "Semantic JSON, XML & SQL comparator"
 "welcome.open_document": "Open document"
 "welcome.new_comparison": "New comparison"
 "welcome.view_history": "View History"

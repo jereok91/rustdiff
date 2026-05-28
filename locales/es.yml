@@ -61,7 +61,7 @@
 "format.detect_failed": "No se pudo detectar el formato para formatear"
 
 "compare.need_input": "Introduce texto en ambos paneles para comparar"
-"compare.detect_failed_hint": "No se pudo detectar el formato. Selecciona JSON o XML manualmente."
+"compare.detect_failed_hint": "No se pudo detectar el formato. Selecciona JSON, XML o SQL manualmente."
 "compare.summary_format": "%{summary} | %{fmt}"
 
 "export.dialog_title": "Exportar resultado"
@@ -95,7 +95,7 @@
 "diff.removed_label": "✖ ELIMINADO"
 "diff.changed_label": "● MODIFICADO"
 
-"welcome.subtitle": "Comparador semántico de JSON y XML"
+"welcome.subtitle": "Comparador semántico de JSON, XML y SQL"
 "welcome.open_document": "Abrir documento"
 "welcome.new_comparison": "Nueva comparación"
 "welcome.view_history": "Ver historial"

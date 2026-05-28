@@ -19,6 +19,7 @@ use thiserror::Error;
 pub enum Format {
     Json,
     Xml,
+    Sql,
 }
 
 /// Errores posibles durante el parseo de documentos.
@@ -30,7 +31,10 @@ pub enum ParseError {
     #[error("invalid XML: {0}")]
     InvalidXml(String),
 
-    #[error("unknown format: the text does not look like valid JSON or XML")]
+    #[error("invalid SQL: {0}")]
+    InvalidSql(String),
+
+    #[error("unknown format: the text does not look like valid JSON, XML, or SQL")]
     UnknownFormat,
 
     #[error("the document is empty")]
@@ -67,11 +71,22 @@ pub enum XmlChild {
 // Funciones públicas
 // ─────────────────────────────────────────────
 
-/// Detecta automáticamente si el texto es JSON o XML.
+// SQL keywords used for auto-detection (must be a complete first word).
+const SQL_DETECT_KEYWORDS: &[&str] = &[
+    "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER",
+    "WITH", "TRUNCATE", "MERGE", "REPLACE", "EXPLAIN", "CALL", "BEGIN",
+    "COMMIT", "ROLLBACK",
+    // T-SQL / PL-SQL specific openers
+    "DECLARE", "SET", "EXEC", "EXECUTE", "USE", "IF", "WHILE", "PRINT",
+    "GO", "GRANT", "REVOKE", "PRAGMA",
+];
+
+/// Detecta automáticamente si el texto es JSON, XML o SQL.
 ///
-/// Examina el primer carácter significativo (ignorando espacios en blanco):
+/// Examina el primer token significativo (ignorando espacios y comentarios SQL):
 /// - `{` o `[` → JSON
 /// - `<` → XML
+/// - Primera palabra SQL reconocida → SQL
 /// - Cualquier otro → `Err(UnknownFormat)`
 pub fn auto_detect_format(input: &str) -> Result<Format, ParseError> {
     let trimmed = input.trim();
@@ -79,9 +94,82 @@ pub fn auto_detect_format(input: &str) -> Result<Format, ParseError> {
         return Err(ParseError::EmptyInput);
     }
     match trimmed.as_bytes()[0] {
-        b'{' | b'[' => Ok(Format::Json),
-        b'<' => Ok(Format::Xml),
-        _ => Err(ParseError::UnknownFormat),
+        b'{' | b'[' => return Ok(Format::Json),
+        b'<' => return Ok(Format::Xml),
+        _ => {}
+    }
+
+    // Check for SQL: skip leading comments, then match the first keyword
+    let first_word = first_sql_keyword(trimmed).to_uppercase();
+    if SQL_DETECT_KEYWORDS.contains(&first_word.as_str()) {
+        return Ok(Format::Sql);
+    }
+
+    // Broad fallback: if the text looks structurally like SQL even without a
+    // clean first-keyword (e.g. sub-query pasted mid-document), accept it
+    // when at least two distinct SQL clause words appear in the first 1 KB.
+    if looks_like_sql(trimmed) {
+        return Ok(Format::Sql);
+    }
+
+    Err(ParseError::UnknownFormat)
+}
+
+/// Returns true when the text contains several typical SQL clause keywords,
+/// indicating it is SQL even if it doesn't start with a top-level keyword.
+fn looks_like_sql(input: &str) -> bool {
+    let sample = &input[..input.len().min(1024)].to_uppercase();
+    // Count how many distinct SQL clause words appear
+    const CLAUSE_WORDS: &[&str] = &[
+        "SELECT", "FROM", "WHERE", "JOIN", "GROUP BY", "ORDER BY", "HAVING",
+        "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP", "WITH",
+        "INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "UNION", "SET ", "VALUES",
+    ];
+    let hits = CLAUSE_WORDS.iter().filter(|&&kw| sample.contains(kw)).count();
+    hits >= 2
+}
+
+/// Skips any leading SQL comments (`-- …` and `/* … */`) and whitespace,
+/// then returns the first alphabetic token found.
+fn first_sql_keyword(input: &str) -> String {
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    loop {
+        // Skip whitespace
+        while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'\n' | b'\r') {
+            i += 1;
+        }
+        if i >= bytes.len() {
+            return String::new();
+        }
+        // Line comment: -- …
+        if i + 1 < bytes.len() && bytes[i] == b'-' && bytes[i + 1] == b'-' {
+            while i < bytes.len() && bytes[i] != b'\n' {
+                i += 1;
+            }
+            continue;
+        }
+        // Block comment: /* … */
+        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'*' {
+            i += 2;
+            while i + 1 < bytes.len() {
+                if bytes[i] == b'*' && bytes[i + 1] == b'/' {
+                    i += 2;
+                    break;
+                }
+                i += 1;
+            }
+            continue;
+        }
+        // Alphabetic token → this is our keyword candidate
+        if bytes[i].is_ascii_alphabetic() {
+            return String::from_utf8_lossy(&bytes[i..])
+                .chars()
+                .take_while(|c| c.is_alphabetic())
+                .collect();
+        }
+        // Any other character → not SQL
+        return String::new();
     }
 }
 
@@ -169,6 +257,19 @@ pub fn parse_xml(input: &str) -> Result<XmlNode, ParseError> {
     root.ok_or_else(|| ParseError::InvalidXml("No se encontró un nodo raíz".into()))
 }
 
+/// Validates a SQL document (size and non-empty) and returns the trimmed source.
+///
+/// Does not require the text to start with a specific keyword — the caller
+/// (format dropdown selection or auto-detect) already determined the format.
+pub fn parse_sql(input: &str) -> Result<String, ParseError> {
+    validate_size(input)?;
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return Err(ParseError::EmptyInput);
+    }
+    Ok(trimmed.to_string())
+}
+
 /// Formatea un documento en modo legible (pretty-print).
 ///
 /// Si el formato no coincide con el contenido real, devuelve un error.
@@ -182,6 +283,7 @@ pub fn format_pretty(input: &str, fmt: Format) -> Result<String, ParseError> {
             Ok(pretty)
         }
         Format::Xml => pretty_print_xml(input),
+        Format::Sql => format_sql_pretty(input),
     }
 }
 
@@ -229,6 +331,24 @@ fn build_node_from_start(e: &BytesStart, reader: &Reader<&[u8]>) -> Result<XmlNo
         attributes,
         children: Vec::new(),
     })
+}
+
+/// Pretty-print SQL using the `sqlformat` crate.
+fn format_sql_pretty(input: &str) -> Result<String, ParseError> {
+    use sqlformat::{FormatOptions, Indent, QueryParams};
+    let opts = FormatOptions {
+        indent: Indent::Spaces(2),
+        uppercase: Some(true),
+        lines_between_queries: 1,
+        ignore_case_convert: None,
+    };
+    let formatted = sqlformat::format(input, &QueryParams::None, &opts);
+    if formatted.trim().is_empty() && !input.trim().is_empty() {
+        return Err(ParseError::InvalidSql(
+            "sqlformat returned empty output".into(),
+        ));
+    }
+    Ok(formatted)
 }
 
 /// Pretty-print de XML usando quick-xml Writer con indentación.
@@ -330,6 +450,7 @@ impl std::fmt::Display for Format {
         match self {
             Format::Json => write!(f, "JSON"),
             Format::Xml => write!(f, "XML"),
+            Format::Sql => write!(f, "SQL"),
         }
     }
 }
@@ -587,11 +708,57 @@ mod tests {
         assert_eq!(node.get_attribute("otra"), None);
     }
 
+    // ── auto_detect SQL ─────────────────────────
+
+    #[test]
+    fn detecta_sql_select() {
+        assert_eq!(auto_detect_format("SELECT * FROM users").unwrap(), Format::Sql);
+    }
+
+    #[test]
+    fn detecta_sql_insert() {
+        assert_eq!(auto_detect_format("INSERT INTO t VALUES (1)").unwrap(), Format::Sql);
+    }
+
+    #[test]
+    fn detecta_sql_create() {
+        assert_eq!(auto_detect_format("CREATE TABLE foo (id INT)").unwrap(), Format::Sql);
+    }
+
+    // ── parse_sql ───────────────────────────────
+
+    #[test]
+    fn parsea_sql_simple() {
+        let sql = "SELECT id, name FROM users WHERE active = 1";
+        assert!(parse_sql(sql).is_ok());
+    }
+
+    #[test]
+    fn error_sql_invalido() {
+        assert!(parse_sql("").is_err());
+        assert!(parse_sql("   ").is_err());
+    }
+
+    #[test]
+    fn parsea_sql_con_comentario() {
+        let sql = "-- Get all active users\nSELECT * FROM users WHERE active = 1";
+        assert!(parse_sql(sql).is_ok());
+        assert_eq!(auto_detect_format(sql).unwrap(), Format::Sql);
+    }
+
+    #[test]
+    fn parsea_sql_con_comentario_bloque() {
+        let sql = "/* schema v2 */\nCREATE TABLE foo (id INT)";
+        assert_eq!(auto_detect_format(sql).unwrap(), Format::Sql);
+    }
+
     // ── Display para Format ─────────────────────
 
     #[test]
     fn format_display() {
         assert_eq!(format!("{}", Format::Json), "JSON");
         assert_eq!(format!("{}", Format::Xml), "XML");
+        assert_eq!(format!("{}", Format::Sql), "SQL");
     }
 }
+

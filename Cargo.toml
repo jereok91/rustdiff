@@ -47,6 +47,7 @@ include = [
     "data/com.digitalgex.RustDiff.desktop",
     "data/com.digitalgex.RustDiff.metainfo.xml",
     "data/icons/com.digitalgex.RustDiff.svg",
+    "data/language-specs/*.lang",
 ]
 
 # ─────────────────────────────────────────────
@@ -78,7 +79,8 @@ serde_json = "1"
 quick-xml  = { version = "0.36", features = ["serialize", "async-tokio"] }
 
 # ── MOTOR DE DIFF ────────────────────────────
-similar = { version = "2", features = ["text", "unicode"] }
+similar    = { version = "2", features = ["text", "unicode"] }
+sqlformat  = "0.3"
 
 # ── PERSISTENCIA (SQLite embebido) ───────────
 rusqlite = { version = "0.31", features = ["bundled", "backup"] }

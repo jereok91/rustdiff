@@ -322,12 +322,14 @@ fn format_to_str(fmt: Format) -> &'static str {
     match fmt {
         Format::Json => "json",
         Format::Xml => "xml",
+        Format::Sql => "sql",
     }
 }
 
 fn str_to_format(s: &str) -> Format {
     match s.to_lowercase().as_str() {
         "xml" => Format::Xml,
+        "sql" => Format::Sql,
         _ => Format::Json,
     }
 }

@@ -24,12 +24,46 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::diff_engine::{DiffResult, diff_json, diff_xml};
+use crate::diff_engine::{DiffResult, diff_json, diff_sql, diff_xml};
 use crate::export;
-use crate::parser::{Format, auto_detect_format, format_pretty, parse_json, parse_xml};
+use crate::parser::{Format, auto_detect_format, format_pretty, parse_json, parse_sql, parse_xml};
 use crate::storage::{DiffSummary, Storage};
 use crate::ui::diff_panel::{DiffItemObject, DiffPanel, diff_css};
 use crate::ui::highlighter;
+
+/// Devuelve un `LanguageManager` configurado para incluir los language-specs
+/// empaquetados con la aplicación (funciona tanto en desarrollo como en Flatpak).
+fn app_language_manager() -> sv::LanguageManager {
+    let manager = sv::LanguageManager::default();
+
+    let extra_paths: Vec<std::path::PathBuf> = [
+        // Desarrollo local
+        std::path::PathBuf::from("data/language-specs"),
+        // Instalación típica (install.sh / .deb)
+        std::path::PathBuf::from("/usr/share/rustdiff/language-specs"),
+        // Flatpak
+        std::path::PathBuf::from("/app/share/rustdiff/language-specs"),
+    ]
+    .into_iter()
+    .filter(|p| p.is_dir())
+    .collect();
+
+    if !extra_paths.is_empty() {
+        let mut paths = manager
+            .search_path()
+            .iter()
+            .map(|p| std::path::PathBuf::from(p.as_str()))
+            .collect::<Vec<_>>();
+        paths.extend(extra_paths);
+        let path_refs: Vec<&str> = paths
+            .iter()
+            .map(|p| p.to_str().unwrap_or(""))
+            .collect();
+        manager.set_search_path(&path_refs);
+    }
+
+    manager
+}
 
 /// Indica qué editor tiene el foco actualmente.
 #[derive(Clone, Copy, PartialEq)]
@@ -122,7 +156,7 @@ impl MainWindow {
 
         // ── Dropdown de formato ─────────────────
         let auto_label = t!("header.format_auto");
-        let formats = gtk::StringList::new(&[&auto_label, "JSON", "XML"]);
+        let formats = gtk::StringList::new(&[&auto_label, "JSON", "XML", "SQL"]);
         let format_dropdown = gtk::DropDown::new(Some(formats), gtk::Expression::NONE);
         format_dropdown.set_selected(0);
         format_dropdown.set_tooltip_text(Some(&t!("header.format_dropdown_tooltip")));
@@ -404,6 +438,7 @@ impl MainWindow {
         // ── Conectar señales ────────────────────
         main_win.connect_compare_button(&btn_compare);
         main_win.connect_format_button(&btn_format);
+        main_win.connect_format_dropdown();
         main_win.connect_open_buttons(&btn_open_left, &btn_open_right);
         main_win.connect_debounced_diff();
         main_win.connect_keyboard_shortcuts();
@@ -471,6 +506,31 @@ impl MainWindow {
 
         btn.connect_clicked(move |_| {
             format_both_panels(&left, &right, &status, &dropdown);
+        });
+    }
+
+    /// When the user explicitly picks a format from the dropdown, update
+    /// both SourceView buffers to use that language's syntax highlighting.
+    fn connect_format_dropdown(&self) {
+        let left = self.left_view.clone();
+        let right = self.right_view.clone();
+        let dropdown = self.format_dropdown.clone();
+
+        dropdown.connect_selected_notify(move |dd| {
+            let lang_id: Option<&str> = match dd.selected() {
+                1 => Some("json"),
+                2 => Some("xml"),
+                3 => Some("sql"),
+                _ => None, // Auto — don't override, let the buffer keep whatever it has
+            };
+            let manager = app_language_manager();
+            for view in [&left, &right] {
+                let buf = view.buffer();
+                if let Some(sv_buf) = buf.downcast_ref::<sv::Buffer>() {
+                    let lang = lang_id.and_then(|id| manager.language(id));
+                    sv_buf.set_language(lang.as_ref());
+                }
+            }
         });
     }
 
@@ -1270,6 +1330,7 @@ fn execute_diff(
     let format = match dropdown.selected() {
         1 => Some(Format::Json),
         2 => Some(Format::Xml),
+        3 => Some(Format::Sql),
         _ => auto_detect_format(&left_text).ok(),
     };
 
@@ -1281,6 +1342,11 @@ fn execute_diff(
         },
         Some(Format::Xml) => match (parse_xml(&left_text), parse_xml(&right_text)) {
             (Ok(lv), Ok(rv)) => Ok((diff_xml(&lv, &rv), Format::Xml)),
+            (Err(e), _) => Err(format!("Error en documento izquierdo: {e}")),
+            (_, Err(e)) => Err(format!("Error en documento derecho: {e}")),
+        },
+        Some(Format::Sql) => match (parse_sql(&left_text), parse_sql(&right_text)) {
+            (Ok(_), Ok(_)) => Ok((diff_sql(&left_text, &right_text), Format::Sql)),
             (Err(e), _) => Err(format!("Error en documento izquierdo: {e}")),
             (_, Err(e)) => Err(format!("Error en documento derecho: {e}")),
         },
@@ -1321,6 +1387,7 @@ fn format_both_panels(
     let format = match dropdown.selected() {
         1 => Some(Format::Json),
         2 => Some(Format::Xml),
+        3 => Some(Format::Sql),
         _ => auto_detect_format(&left_text).ok(),
     };
 
@@ -1600,7 +1667,7 @@ fn create_source_view() -> sv::View {
     let buffer = sv::Buffer::new(None);
 
     // Configurar language por defecto
-    let manager = sv::LanguageManager::default();
+    let manager = app_language_manager();
     if let Some(lang) = manager.language("json") {
         buffer.set_language(Some(&lang));
     }
@@ -1675,12 +1742,15 @@ fn open_file_dialog(window: &adw::ApplicationWindow, view: &sv::View) {
         .build();
 
     let filter = gtk::FileFilter::new();
-    filter.set_name(Some("JSON y XML"));
+    filter.set_name(Some("JSON, XML & SQL"));
     filter.add_pattern("*.json");
     filter.add_pattern("*.xml");
+    filter.add_pattern("*.sql");
     filter.add_mime_type("application/json");
     filter.add_mime_type("application/xml");
     filter.add_mime_type("text/xml");
+    filter.add_mime_type("application/sql");
+    filter.add_mime_type("text/x-sql");
 
     let filter_all = gtk::FileFilter::new();
     filter_all.set_name(Some("Todos los archivos"));
@@ -1700,10 +1770,11 @@ fn open_file_dialog(window: &adw::ApplicationWindow, view: &sv::View) {
                         view.buffer().set_text(&content);
 
                         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                            let manager = sv::LanguageManager::default();
+                            let manager = app_language_manager();
                             let lang_id = match ext {
                                 "json" => Some("json"),
                                 "xml" => Some("xml"),
+                                "sql" => Some("sql"),
                                 _ => None,
                             };
                             if let Some(id) = lang_id {

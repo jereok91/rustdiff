@@ -473,6 +473,150 @@ fn summarize_xml_node(node: &XmlNode) -> String {
 }
 
 // ─────────────────────────────────────────────
+// Diff para SQL
+// ─────────────────────────────────────────────
+
+/// Compares two SQL documents statement-by-statement.
+///
+/// Splits each document on `;`, normalises whitespace within each statement,
+/// and reports Added / Removed / Changed at the statement level.
+/// Paths use the `stmt[N]` notation.
+pub fn diff_sql(left: &str, right: &str) -> DiffResult {
+    let mut result = DiffResult::default();
+    let left_stmts = split_sql_statements(left);
+    let right_stmts = split_sql_statements(right);
+
+    let max_len = left_stmts.len().max(right_stmts.len());
+    for i in 0..max_len {
+        let path = format!("stmt[{i}]");
+        match (left_stmts.get(i), right_stmts.get(i)) {
+            (Some(ls), Some(rs)) => {
+                if normalize_sql(ls) != normalize_sql(rs) {
+                    result.changed.push(DiffItem {
+                        path,
+                        kind: DiffKind::Changed,
+                        left: Some(ls.clone()),
+                        right: Some(rs.clone()),
+                    });
+                }
+            }
+            (Some(ls), None) => {
+                result.removed.push(DiffItem {
+                    path,
+                    kind: DiffKind::Removed,
+                    left: Some(ls.clone()),
+                    right: None,
+                });
+            }
+            (None, Some(rs)) => {
+                result.added.push(DiffItem {
+                    path,
+                    kind: DiffKind::Added,
+                    left: None,
+                    right: Some(rs.clone()),
+                });
+            }
+            (None, None) => unreachable!(),
+        }
+    }
+    result
+}
+
+/// Splits SQL text into individual statements on `;`, respecting string
+/// literals (`'…'`, `"…"`) and both comment styles (`-- …`, `/* … */`).
+fn split_sql_statements(sql: &str) -> Vec<String> {
+    let mut stmts: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let bytes = sql.as_bytes();
+    let len = bytes.len();
+    let mut i = 0;
+
+    while i < len {
+        match bytes[i] {
+            // Single-quoted string
+            b'\'' => {
+                current.push('\'');
+                i += 1;
+                while i < len {
+                    current.push(bytes[i] as char);
+                    if bytes[i] == b'\'' {
+                        // Escaped quote: ''
+                        if i + 1 < len && bytes[i + 1] == b'\'' {
+                            i += 1;
+                            current.push('\'');
+                        } else {
+                            i += 1;
+                            break;
+                        }
+                    }
+                    i += 1;
+                }
+            }
+            // Double-quoted identifier
+            b'"' => {
+                current.push('"');
+                i += 1;
+                while i < len {
+                    current.push(bytes[i] as char);
+                    if bytes[i] == b'"' {
+                        i += 1;
+                        break;
+                    }
+                    i += 1;
+                }
+            }
+            // Line comment
+            b'-' if i + 1 < len && bytes[i + 1] == b'-' => {
+                while i < len && bytes[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            // Block comment
+            b'/' if i + 1 < len && bytes[i + 1] == b'*' => {
+                i += 2;
+                while i + 1 < len {
+                    if bytes[i] == b'*' && bytes[i + 1] == b'/' {
+                        i += 2;
+                        break;
+                    }
+                    i += 1;
+                }
+            }
+            // Statement separator
+            b';' => {
+                let trimmed = current.trim().to_string();
+                if !trimmed.is_empty() {
+                    stmts.push(trimmed);
+                }
+                current = String::new();
+                i += 1;
+            }
+            c => {
+                current.push(c as char);
+                i += 1;
+            }
+        }
+    }
+
+    let trimmed = current.trim().to_string();
+    if !trimmed.is_empty() {
+        stmts.push(trimmed);
+    }
+    stmts
+}
+
+/// Normalises a SQL statement for comparison: strips trailing `;`,
+/// collapses whitespace, and uppercases everything.
+fn normalize_sql(sql: &str) -> String {
+    sql.trim()
+        .trim_end_matches(';')
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_uppercase()
+}
+
+// ─────────────────────────────────────────────
 // Tests unitarios
 // ─────────────────────────────────────────────
 
