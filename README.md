@@ -3,13 +3,13 @@
 [![Crates.io](https://img.shields.io/crates/v/rustdiff)](https://crates.io/crates/rustdiff)
 [![License: GPL-3.0-or-later](https://img.shields.io/crates/l/rustdiff)](LICENSE)
 
-Semantic JSON and XML diff tool with a native GTK4 + Libadwaita desktop UI.
+Semantic JSON, XML & SQL diff tool with a native GTK4 + Libadwaita desktop UI.
 
 Language: **English** | [Espanol](README.es.md)
 
 ## Features
 
-- Semantic JSON and XML diff (objects, arrays, XML nodes, attributes, and text)
+- Semantic JSON, XML & SQL diff (objects, arrays, XML nodes, attributes, text, and SQL statements)
 - Welcome screen with guided comparison flow (single editor initially)
 - Side-by-side editors with syntax highlighting
 - **Busqueda en editores** (`Ctrl+F`) con navegacion siguiente/anterior y wrap-around

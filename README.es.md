@@ -3,13 +3,13 @@
 [![Crates.io](https://img.shields.io/crates/v/rustdiff)](https://crates.io/crates/rustdiff)
 [![Licencia: GPL-3.0-or-later](https://img.shields.io/crates/l/rustdiff)](LICENSE)
 
-Comparador semantico de JSON y XML con interfaz grafica nativa en GTK4 + Libadwaita.
+Comparador semantico de JSON, XML y SQL con interfaz grafica nativa en GTK4 + Libadwaita.
 
 Idioma: [English](README.md) | **Espanol**
 
 ## Caracteristicas
 
-- Diff semantico para JSON y XML (objetos, arrays, nodos XML, atributos y texto)
+- Diff semantico para JSON, XML y SQL (objetos, arrays, nodos XML, atributos, texto y sentencias SQL)
 - Pantalla de bienvenida con flujo guiado (un solo editor inicialmente)
 - Editores lado a lado con resaltado de sintaxis
 - **Busqueda en editores** (`Ctrl+F`) con navegacion siguiente/anterior y wrap-around
