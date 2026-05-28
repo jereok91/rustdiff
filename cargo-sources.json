@@ -2186,6 +2186,19 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
+        "url": "https://static.crates.io/crates/sqlformat/sqlformat-0.3.5.crate",
+        "sha256": "a0d7b3e8a3b6f2ee93ac391a0f757c13790caa0147892e3545cd549dd5b54bc0",
+        "dest": "cargo/vendor/sqlformat-0.3.5"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": \"a0d7b3e8a3b6f2ee93ac391a0f757c13790caa0147892e3545cd549dd5b54bc0\", \"files\": {}}",
+        "dest": "cargo/vendor/sqlformat-0.3.5",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "archive",
+        "archive-type": "tar-gzip",
         "url": "https://static.crates.io/crates/stable_deref_trait/stable_deref_trait-1.2.1.crate",
         "sha256": "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596",
         "dest": "cargo/vendor/stable_deref_trait-1.2.1"
@@ -2623,6 +2636,19 @@
         "type": "inline",
         "contents": "{\"package\": \"ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853\", \"files\": {}}",
         "dest": "cargo/vendor/unicode-xid-0.2.6",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "archive",
+        "archive-type": "tar-gzip",
+        "url": "https://static.crates.io/crates/unicode_categories/unicode_categories-0.1.1.crate",
+        "sha256": "39ec24b3121d976906ece63c9daad25b85969647682eee313cb5779fdd69e14e",
+        "dest": "cargo/vendor/unicode_categories-0.1.1"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": \"39ec24b3121d976906ece63c9daad25b85969647682eee313cb5779fdd69e14e\", \"files\": {}}",
+        "dest": "cargo/vendor/unicode_categories-0.1.1",
         "dest-filename": ".cargo-checksum.json"
     },
     {
@@ -3286,6 +3312,19 @@
         "type": "inline",
         "contents": "{\"package\": \"589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec\", \"files\": {}}",
         "dest": "cargo/vendor/windows_x86_64_msvc-0.52.6",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "archive",
+        "archive-type": "tar-gzip",
+        "url": "https://static.crates.io/crates/winnow/winnow-0.6.26.crate",
+        "sha256": "1e90edd2ac1aa278a5c4599b1d89cf03074b610800f866d4026dc199d7929a28",
+        "dest": "cargo/vendor/winnow-0.6.26"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": \"1e90edd2ac1aa278a5c4599b1d89cf03074b610800f866d4026dc199d7929a28\", \"files\": {}}",
+        "dest": "cargo/vendor/winnow-0.6.26",
         "dest-filename": ".cargo-checksum.json"
     },
     {
