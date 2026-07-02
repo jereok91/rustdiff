@@ -110,6 +110,14 @@ sudo rm -f /etc/apt/sources.list.d/rustdiff.list /usr/share/keyrings/rustdiff-ar
 sudo apt update
 ```
 
+### 5) Homebrew (macOS, experimental)
+
+```bash
+brew install jereok91/rustdiff/rustdiff
+```
+
+Compila desde el codigo fuente; el stack GTK4 (`gtk4`, `libadwaita`, `gtksourceview5`) se instala automaticamente como dependencia. GTK4 en macOS es funcional pero experimental.
+
 ## Requisitos del sistema (build local/Cargo)
 
 ### Rust
