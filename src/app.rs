@@ -10,7 +10,16 @@ use libadwaita as adw;
 use crate::ui::main_window::MainWindow;
 
 /// ID de la aplicación en formato reverse-DNS (requerido por Freedesktop/GNOME).
-const APP_ID: &str = "com.digitalgex.RustDiff";
+///
+/// Los builds de desarrollo usan el sufijo `.Devel` para no colisionar con
+/// una instancia instalada (Flatpak/.deb): GApplication es de instancia
+/// única por ID, y sin esto `cargo run` le reenviaría los archivos a la
+/// app instalada en vez de arrancar el binario recién compilado.
+const APP_ID: &str = if cfg!(debug_assertions) {
+    "com.digitalgex.RustDiff.Devel"
+} else {
+    "com.digitalgex.RustDiff"
+};
 
 /// Construye y ejecuta la aplicación GTK.
 ///

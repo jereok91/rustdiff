@@ -33,8 +33,23 @@ use crate::ui::highlighter;
 
 /// Devuelve un `LanguageManager` configurado para incluir los language-specs
 /// empaquetados con la aplicación (funciona tanto en desarrollo como en Flatpak).
+///
+/// Se construye una sola vez y se reutiliza (clonar un GObject solo
+/// incrementa el refcount): el search path únicamente puede modificarse
+/// antes de que el manager cargue los lenguajes, y crear un manager nuevo
+/// por llamada finaliza los `Language` que los buffers aún referencian.
 fn app_language_manager() -> sv::LanguageManager {
-    let manager = sv::LanguageManager::default();
+    thread_local! {
+        static MANAGER: sv::LanguageManager = build_language_manager();
+    }
+    MANAGER.with(|m| m.clone())
+}
+
+/// Construye el `LanguageManager` con los search paths extra de la app.
+fn build_language_manager() -> sv::LanguageManager {
+    // Instancia propia (no el singleton `default()`, que ya viene usado
+    // por GtkSourceView internamente y rechaza cambios de search path).
+    let manager = sv::LanguageManager::new();
 
     let extra_paths: Vec<std::path::PathBuf> = [
         // Desarrollo local
