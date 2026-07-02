@@ -114,6 +114,9 @@ pub struct MainWindow {
     editors_paned: gtk::Paned,
     /// Caja del editor derecho (para reinsertar en el paned).
     right_editor_box: gtk::Box,
+    /// Botón "Habilitar comparación" (para activarlo programáticamente
+    /// cuando llegan dos archivos por CLI o desde el gestor de archivos).
+    btn_enable_comparison: gtk::Button,
 }
 
 impl MainWindow {
@@ -424,6 +427,7 @@ impl MainWindow {
             focused_editor,
             editors_paned,
             right_editor_box: right_box,
+            btn_enable_comparison: btn_enable_comparison.clone(),
             history_search_entry,
             history_load_more_btn,
             history_visible_count: Cell::new(3),
@@ -462,17 +466,51 @@ impl MainWindow {
         self.window.present();
     }
 
+    /// Carga dos archivos en los editores izquierdo/derecho, sale de la
+    /// pantalla de bienvenida y activa el modo comparación.
     pub fn load_files_from_paths(&self, left_path: &str, right_path: &str) {
-        if let Ok(content) = std::fs::read_to_string(left_path) {
-            self.left_view.buffer().set_text(&content);
-        } else {
-            tracing::warn!("No se pudo leer: {left_path}");
+        for (view, path) in [(&self.left_view, left_path), (&self.right_view, right_path)] {
+            if !load_path_into_view(view, std::path::Path::new(path)) {
+                self.toast_overlay
+                    .add_toast(adw::Toast::new(&t!("app.file_open_error", path = path)));
+            }
         }
-        if let Ok(content) = std::fs::read_to_string(right_path) {
-            self.right_view.buffer().set_text(&content);
+        self.show_editors();
+        // Reutiliza la lógica del botón "Habilitar comparación" para
+        // insertar el editor derecho y mostrar los botones de comparar.
+        self.btn_enable_comparison.emit_clicked();
+    }
+
+    /// Carga un único archivo en el editor izquierdo (modo documento único).
+    ///
+    /// Es la ruta que se usa cuando el usuario hace "Abrir con RustDiff"
+    /// sobre un archivo en el gestor de archivos: la app sale de la
+    /// pantalla de bienvenida y muestra el contenido con resaltado.
+    pub fn load_single_file(&self, path: &str) {
+        let path_ref = std::path::Path::new(path);
+        if load_path_into_view(&self.left_view, path_ref) {
+            self.show_editors();
+            let name = path_ref
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| path.to_string());
+            self.status_label.set_text(&t!("app.single_file_loaded", name = name));
         } else {
-            tracing::warn!("No se pudo leer: {right_path}");
+            self.toast_overlay
+                .add_toast(adw::Toast::new(&t!("app.file_open_error", path = path)));
         }
+    }
+
+    /// Oculta la pantalla de bienvenida y muestra el área de editores.
+    fn show_editors(&self) {
+        self.welcome_screen.set_visible(false);
+        self.editors_container.set_visible(true);
+        if let Some(parent) = self.welcome_screen.parent() {
+            if let Some(stack) = parent.downcast_ref::<gtk::Stack>() {
+                stack.set_visible_child_name("editors");
+            }
+        }
+        self.status_label.set_text(&t!("app.status_ready"));
     }
 
     // ─────────────────────────────────────────
@@ -1733,35 +1771,49 @@ fn open_file_dialog(window: &adw::ApplicationWindow, view: &sv::View) {
     dialog.open(Some(window), gtk::gio::Cancellable::NONE, move |result| {
         if let Ok(file) = result {
             if let Some(path) = file.path() {
-                match std::fs::read_to_string(&path) {
-                    Ok(content) => {
-                        view.buffer().set_text(&content);
-
-                        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                            let manager = app_language_manager();
-                            let lang_id = match ext {
-                                "json" => Some("json"),
-                                "xml" => Some("xml"),
-                                "sql" => Some("sql"),
-                                _ => None,
-                            };
-                            if let Some(id) = lang_id {
-                                if let Some(lang) = manager.language(id) {
-                                    let buf = view.buffer();
-                                    if let Some(sv_buf) = buf.downcast_ref::<sv::Buffer>() {
-                                        sv_buf.set_language(Some(&lang));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!("Error leyendo archivo: {e}");
-                    }
-                }
+                load_path_into_view(&view, &path);
             }
         }
     });
+}
+
+/// Lee un archivo y carga su contenido en el editor dado, aplicando
+/// resaltado de sintaxis según la extensión del archivo (con autodetección
+/// por contenido como fallback para extensiones desconocidas).
+///
+/// Devuelve `false` si el archivo no se pudo leer (el buffer no se toca).
+fn load_path_into_view(view: &sv::View, path: &std::path::Path) -> bool {
+    let content = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("No se pudo leer {}: {e}", path.display());
+            return false;
+        }
+    };
+
+    view.buffer().set_text(&content);
+
+    let lang_id = match path.extension().and_then(|e| e.to_str()) {
+        Some("json") => Some("json"),
+        Some("xml") => Some("xml"),
+        Some("sql") => Some("sql"),
+        _ => auto_detect_format(&content).ok().map(|fmt| match fmt {
+            Format::Json => "json",
+            Format::Xml => "xml",
+            Format::Sql => "sql",
+        }),
+    };
+
+    if let Some(id) = lang_id {
+        if let Some(lang) = app_language_manager().language(id) {
+            let buf = view.buffer();
+            if let Some(sv_buf) = buf.downcast_ref::<sv::Buffer>() {
+                sv_buf.set_language(Some(&lang));
+            }
+        }
+    }
+
+    true
 }
 
 // ─────────────────────────────────────────────

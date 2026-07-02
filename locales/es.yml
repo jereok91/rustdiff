@@ -1,5 +1,7 @@
 "app.title": "RustDiff"
 "app.status_ready": "Listo — Ctrl+O abrir | Ctrl+Enter comparar | Ctrl+S guardar sesión"
+"app.single_file_loaded": "Se cargó %{name} — usa \"Habilitar comparación\" para comparar con otro documento"
+"app.file_open_error": "No se pudo leer el archivo: %{path}"
 
 "header.open_left": "Abrir Izq"
 "header.open_left_tooltip": "Abrir archivo en panel izquierdo (Ctrl+O)"

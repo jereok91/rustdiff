@@ -14,8 +14,9 @@ const APP_ID: &str = "com.digitalgex.RustDiff";
 
 /// Construye y ejecuta la aplicación GTK.
 ///
-/// Si se pasan dos archivos por CLI (`rustdiff file1.json file2.json`),
-/// los carga automáticamente en los paneles izquierdo y derecho.
+/// La app declara `HANDLES_OPEN`, por lo que GTK enruta cualquier archivo
+/// recibido (CLI `rustdiff a.json b.json`, o "Abrir con RustDiff" desde el
+/// gestor de archivos) a la señal `open` en lugar de `activate`.
 pub fn run() -> gtk::glib::ExitCode {
     // Inicializar logging estructurado
     tracing_subscriber::fmt()
@@ -28,9 +29,13 @@ pub fn run() -> gtk::glib::ExitCode {
     // Seleccionar el idioma activo en funcion del locale del sistema.
     setup_locale();
 
-    let app = adw::Application::builder().application_id(APP_ID).build();
+    let app = adw::Application::builder()
+        .application_id(APP_ID)
+        .flags(gtk::gio::ApplicationFlags::HANDLES_OPEN)
+        .build();
 
     app.connect_activate(build_ui);
+    app.connect_open(open_files);
 
     // Ejecutar la aplicación pasando los argumentos del sistema
     app.run()
@@ -71,20 +76,40 @@ fn setup_locale() {
     rust_i18n::set_locale(&code);
 }
 
-/// Callback principal: se invoca cuando la aplicación se activa.
+/// Callback principal: se invoca cuando la aplicación se activa sin archivos.
 ///
-/// Construye la ventana principal y la presenta al usuario.
+/// Construye la ventana principal (pantalla de bienvenida) y la presenta.
 fn build_ui(app: &adw::Application) {
     let window = MainWindow::new(app);
+    window.present();
+}
 
-    // Si hay argumentos CLI (además del nombre del programa),
-    // intentar cargar archivos automáticamente
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() >= 3 {
-        let left_path = &args[1];
-        let right_path = &args[2];
-        tracing::info!("Cargando archivos desde CLI: {left_path} y {right_path}");
-        window.load_files_from_paths(left_path, right_path);
+/// Callback de la señal `open`: se invoca cuando la app recibe archivos,
+/// ya sea por CLI (`rustdiff a.json [b.json]`) o desde el gestor de
+/// archivos ("Abrir con RustDiff").
+///
+/// - Un archivo  → se carga en el editor izquierdo (modo documento único).
+/// - Dos o más   → los dos primeros se cargan en izquierdo/derecho con
+///   el modo comparación activado.
+fn open_files(app: &adw::Application, files: &[gtk::gio::File], _hint: &str) {
+    let window = MainWindow::new(app);
+
+    let paths: Vec<String> = files
+        .iter()
+        .filter_map(|f| f.path())
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect();
+
+    match paths.as_slice() {
+        [] => {}
+        [single] => {
+            tracing::info!("Abriendo archivo único: {single}");
+            window.load_single_file(single);
+        }
+        [left, right, ..] => {
+            tracing::info!("Cargando archivos: {left} y {right}");
+            window.load_files_from_paths(left, right);
+        }
     }
 
     window.present();

@@ -1,5 +1,7 @@
 "app.title": "RustDiff"
 "app.status_ready": "Ready — Ctrl+O open | Ctrl+Enter compare | Ctrl+S save session"
+"app.single_file_loaded": "Loaded %{name} — use \"Enable comparison\" to diff against another document"
+"app.file_open_error": "Could not read file: %{path}"
 
 "header.open_left": "Open Left"
 "header.open_left_tooltip": "Open a file in the left panel (Ctrl+O)"

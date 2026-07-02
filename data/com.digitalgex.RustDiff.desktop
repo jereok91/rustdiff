@@ -15,7 +15,7 @@ Type=Application
 Categories=Utility;Development;TextEditor;
 
 # ── Tipos MIME que puede abrir la app ──────────────────────────────
-MimeType=application/json;application/xml;text/xml;text/json;
+MimeType=application/json;application/xml;text/xml;text/json;application/sql;text/x-sql;
 
 # ── Palabras clave para búsqueda ───────────────────────────────────
 Keywords=json;xml;diff;compare;format;lint;validate;
