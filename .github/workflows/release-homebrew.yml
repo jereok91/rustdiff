@@ -1,0 +1,91 @@
+name: Update Homebrew tap for new tag
+
+# Se dispara cuando empujas un tag con formato v*.
+#
+# Requiere el secret HOMEBREW_TAP_PAT: un PAT con permiso de escritura
+# (contents) sobre jereok91/homebrew-rustdiff.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag a publicar (ej. v0.1.9)"
+        required: true
+
+env:
+  TAP_REPO: jereok91/homebrew-rustdiff
+  FORMULA: Formula/rustdiff.rb
+
+jobs:
+  update-tap:
+    name: Update Homebrew formula
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          TAG="${INPUT_TAG:-${{ github.ref_name }}}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute source tarball sha256
+        id: sha
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
+          SHA256=$(curl -fsSL "$URL" | sha256sum | cut -d' ' -f1)
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+          echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
+
+      - name: Clone tap repo
+        env:
+          HOMEBREW_TAP_PAT: ${{ secrets.HOMEBREW_TAP_PAT }}
+        run: |
+          if [ -z "$HOMEBREW_TAP_PAT" ]; then
+            echo "ERROR: HOMEBREW_TAP_PAT secret is not set."
+            echo "Create a PAT with write access to ${TAP_REPO} and add it as a repo secret."
+            exit 1
+          fi
+          git clone \
+            "https://x-access-token:${HOMEBREW_TAP_PAT}@github.com/${TAP_REPO}.git" \
+            tap-repo
+
+      - name: Update formula and push
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          VERSION: ${{ steps.tag.outputs.version }}
+          URL: ${{ steps.sha.outputs.url }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          cd tap-repo
+
+          sed -i -E \
+              -e "s|^(\s*url) \".*\"|\1 \"${URL}\"|" \
+              -e "s|^(\s*sha256) \".*\"|\1 \"${SHA256}\"|" \
+              "$FORMULA"
+
+          # Validación: la nueva versión y el hash quedaron escritos, y la
+          # fórmula sigue siendo Ruby válido.
+          grep -q "refs/tags/${TAG}.tar.gz" "$FORMULA"
+          grep -q "${SHA256}" "$FORMULA"
+          ruby -c "$FORMULA"
+
+          # Idempotente: re-runs del workflow sin cambios terminan en éxito.
+          if git diff --quiet; then
+            echo "La fórmula ya está en ${TAG}; nada que hacer."
+            exit 0
+          fi
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add "$FORMULA"
+          git commit -m "rustdiff ${VERSION}"
+          git push origin HEAD
