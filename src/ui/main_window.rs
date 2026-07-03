@@ -222,7 +222,12 @@ impl MainWindow {
         export_section.append(Some(&t!("menu.export_html")), Some("win.export-html"));
         primary_menu.append_section(None, &export_section);
 
-        // Seccion 3: Idioma (submenu con seleccion radio).
+        // Seccion 3: Atajos de teclado.
+        let shortcuts_section = gtk::gio::Menu::new();
+        shortcuts_section.append(Some(&t!("menu.shortcuts")), Some("win.show-shortcuts"));
+        primary_menu.append_section(None, &shortcuts_section);
+
+        // Seccion 4: Idioma (submenu con seleccion radio).
         let language_submenu = gtk::gio::Menu::new();
         language_submenu.append(Some(&t!("menu.language_auto")), Some("win.language::auto"));
         language_submenu.append(Some(&t!("menu.language_en")), Some("win.language::en"));
@@ -250,7 +255,8 @@ impl MainWindow {
         header.pack_end(&btn_history);
 
         // ── Pantalla de bienvenida (Welcome) ───
-        let (welcome_screen, welcome_btn_doc, welcome_btn_new, welcome_btn_history) = build_welcome_screen();
+        let (welcome_screen, welcome_btn_doc, welcome_btn_new, welcome_btn_history, welcome_btn_shortcuts) =
+            build_welcome_screen();
 
         // ── Barra de búsqueda (Ctrl+F) ──────────
         let search_entry = gtk::SearchEntry::new();
@@ -410,6 +416,9 @@ impl MainWindow {
         let toolbar_view = adw::ToolbarView::new();
         toolbar_view.add_top_bar(&header);
         toolbar_view.set_content(Some(&toast_overlay));
+        // Sin esto, en la vista de bienvenida (contenido de altura natural)
+        // la barra de estado sube y queda flotando a media pantalla.
+        toolbar_view.set_vexpand(true);
 
         let outer_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
         outer_box.append(&toolbar_view);
@@ -463,11 +472,13 @@ impl MainWindow {
         main_win.setup_export_actions();
         main_win.setup_format_action();
         main_win.setup_language_action();
+        main_win.setup_shortcuts_action();
         main_win.register_menu_accels(app);
         main_win.refresh_history_list();
 
         // ── Nuevas conexiones ─────────────────
         main_win.connect_welcome_screen(&welcome_btn_doc, &welcome_btn_new, &welcome_btn_history);
+        main_win.connect_shortcuts_button(&welcome_btn_shortcuts);
         main_win.connect_enable_comparison(&btn_enable_comparison, &btn_compare, &btn_open_right);
         main_win.connect_search_bar();
         main_win.connect_history_search();
@@ -770,11 +781,31 @@ impl MainWindow {
         self.window.add_action(&action);
     }
 
+    /// Accion `win.show-shortcuts`: abre el dialogo de atajos de teclado.
+    /// Accesible desde el menu principal, la bienvenida y Ctrl+?.
+    fn setup_shortcuts_action(&self) {
+        let action = gtk::gio::SimpleAction::new("show-shortcuts", None);
+        let win = self.window.clone();
+        action.connect_activate(move |_, _| {
+            show_shortcuts_dialog(&win);
+        });
+        self.window.add_action(&action);
+    }
+
+    /// Conecta el enlace "Atajos de teclado" de la pantalla de bienvenida.
+    fn connect_shortcuts_button(&self, btn: &gtk::Button) {
+        let win = self.window.clone();
+        btn.connect_clicked(move |_| {
+            show_shortcuts_dialog(&win);
+        });
+    }
+
     /// Registra en `gtk::Application` los atajos que deben mostrarse en
     /// el menu (Adwaita los renderiza automaticamente al lado del label).
     fn register_menu_accels(&self, app: &adw::Application) {
         app.set_accels_for_action("win.format-documents", &["<Control><Shift>F"]);
         app.set_accels_for_action("win.export-txt", &["<Control>E"]);
+        app.set_accels_for_action("win.show-shortcuts", &["<Control>question"]);
     }
 
     fn setup_export_actions(&self) {
@@ -1893,8 +1924,11 @@ fn setup_editor_zoom(left: &sv::View, right: &sv::View) {
 }
 
 /// Construye la pantalla de bienvenida que se muestra al iniciar.
-fn build_welcome_screen() -> (gtk::Box, gtk::Button, gtk::Button, gtk::Button) {
-    let container = gtk::Box::new(gtk::Orientation::Vertical, 16);
+///
+/// Diseño minimalista: título, el flujo de uso en tres pasos,
+/// dos acciones principales y enlaces discretos (historial y atajos).
+fn build_welcome_screen() -> (gtk::Box, gtk::Button, gtk::Button, gtk::Button, gtk::Button) {
+    let container = gtk::Box::new(gtk::Orientation::Vertical, 8);
     container.set_valign(gtk::Align::Center);
     container.set_halign(gtk::Align::Center);
     container.set_margin_top(40);
@@ -1902,32 +1936,180 @@ fn build_welcome_screen() -> (gtk::Box, gtk::Button, gtk::Button, gtk::Button) {
 
     let title = gtk::Label::new(Some("RustDiff"));
     title.add_css_class("title-1");
-    title.set_margin_bottom(4);
 
     let subtitle = gtk::Label::new(Some(&t!("welcome.subtitle")));
-    subtitle.add_css_class("body");
-    subtitle.set_margin_bottom(24);
+    subtitle.add_css_class("dim-label");
+    subtitle.set_margin_bottom(20);
+
+    // ── Flujo en 3 pasos: abrir → comparar → guardar ──
+    let flow = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    flow.set_halign(gtk::Align::Center);
+    flow.set_margin_bottom(24);
+    for (i, step) in [t!("welcome.step1"), t!("welcome.step2"), t!("welcome.step3")]
+        .iter()
+        .enumerate()
+    {
+        if i > 0 {
+            let arrow = gtk::Label::new(Some("→"));
+            arrow.add_css_class("dim-label");
+            flow.append(&arrow);
+        }
+        let label = gtk::Label::new(Some(step));
+        label.add_css_class("caption");
+        label.add_css_class("dim-label");
+        flow.append(&label);
+    }
+
+    // ── Acciones principales, lado a lado ──
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    actions.set_halign(gtk::Align::Center);
+    actions.set_margin_bottom(12);
 
     let btn_doc = gtk::Button::with_label(&t!("welcome.open_document"));
     btn_doc.add_css_class("suggested-action");
-    btn_doc.set_halign(gtk::Align::Center);
-    btn_doc.set_width_request(220);
+    btn_doc.add_css_class("pill");
+    btn_doc.set_width_request(200);
 
     let btn_new = gtk::Button::with_label(&t!("welcome.new_comparison"));
-    btn_new.set_halign(gtk::Align::Center);
-    btn_new.set_width_request(220);
+    btn_new.add_css_class("pill");
+    btn_new.set_width_request(200);
+
+    actions.append(&btn_doc);
+    actions.append(&btn_new);
+
+    // ── Enlaces secundarios ──
+    let links = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    links.set_halign(gtk::Align::Center);
 
     let btn_history = gtk::Button::with_label(&t!("welcome.view_history"));
     btn_history.add_css_class("flat");
-    btn_history.set_halign(gtk::Align::Center);
+
+    let btn_shortcuts = gtk::Button::with_label(&t!("welcome.shortcuts"));
+    btn_shortcuts.add_css_class("flat");
+
+    links.append(&btn_history);
+    links.append(&btn_shortcuts);
 
     container.append(&title);
     container.append(&subtitle);
-    container.append(&btn_doc);
-    container.append(&btn_new);
-    container.append(&btn_history);
+    container.append(&flow);
+    container.append(&actions);
+    container.append(&links);
 
-    (container, btn_doc, btn_new, btn_history)
+    (container, btn_doc, btn_new, btn_history, btn_shortcuts)
+}
+
+// ─────────────────────────────────────────────
+// Diálogo de atajos de teclado
+// ─────────────────────────────────────────────
+
+/// Un grupo del diálogo de atajos: título + filas (descripción, teclas).
+type ShortcutGroup = (String, Vec<(String, Vec<&'static str>)>);
+
+/// Muestra un diálogo modal con todos los atajos de teclado de la app,
+/// agrupados por área y con las teclas renderizadas como keycaps.
+fn show_shortcuts_dialog(parent: &adw::ApplicationWindow) {
+    let groups: [ShortcutGroup; 4] = [
+        (
+            t!("shortcuts.group_files").to_string(),
+            vec![
+                (t!("shortcuts.open_left").to_string(), vec!["Ctrl", "O"]),
+                (t!("shortcuts.open_right").to_string(), vec!["Ctrl", "Shift", "O"]),
+            ],
+        ),
+        (
+            t!("shortcuts.group_compare").to_string(),
+            vec![
+                (t!("shortcuts.compare").to_string(), vec!["Ctrl", "Enter"]),
+                (t!("shortcuts.format").to_string(), vec!["Ctrl", "Shift", "F"]),
+                (t!("shortcuts.search").to_string(), vec!["Ctrl", "F"]),
+            ],
+        ),
+        (
+            t!("shortcuts.group_history").to_string(),
+            vec![
+                (t!("shortcuts.save").to_string(), vec!["Ctrl", "S"]),
+                (t!("shortcuts.history").to_string(), vec!["Ctrl", "H"]),
+            ],
+        ),
+        (
+            t!("shortcuts.group_other").to_string(),
+            vec![
+                (t!("shortcuts.export_txt").to_string(), vec!["Ctrl", "E"]),
+                (t!("shortcuts.zoom").to_string(), vec!["Ctrl", "🖱 Scroll"]),
+                (t!("shortcuts.show").to_string(), vec!["Ctrl", "?"]),
+            ],
+        ),
+    ];
+
+    let content = gtk::Box::new(gtk::Orientation::Vertical, 18);
+    content.set_margin_top(12);
+    content.set_margin_bottom(24);
+    content.set_margin_start(24);
+    content.set_margin_end(24);
+
+    for (group_title, rows) in groups {
+        let group = adw::PreferencesGroup::new();
+        group.set_title(&group_title);
+        for (row_title, keys) in rows {
+            let row = adw::ActionRow::builder().title(row_title).build();
+            row.add_suffix(&keycaps(&keys));
+            group.add(&row);
+        }
+        content.append(&group);
+    }
+
+    let scrolled = gtk::ScrolledWindow::builder()
+        .hscrollbar_policy(gtk::PolicyType::Never)
+        .vexpand(true)
+        .child(&content)
+        .build();
+
+    let toolbar_view = adw::ToolbarView::new();
+    toolbar_view.add_top_bar(&adw::HeaderBar::new());
+    toolbar_view.set_content(Some(&scrolled));
+
+    let dialog = adw::Window::builder()
+        .transient_for(parent)
+        .modal(true)
+        .title(&*t!("shortcuts.title"))
+        .default_width(460)
+        .default_height(560)
+        .content(&toolbar_view)
+        .build();
+
+    // Cerrar con Escape
+    let key_controller = gtk::EventControllerKey::new();
+    {
+        let dialog = dialog.clone();
+        key_controller.connect_key_pressed(move |_, key, _, _| {
+            if key == gtk::gdk::Key::Escape {
+                dialog.close();
+                return gtk::glib::Propagation::Stop;
+            }
+            gtk::glib::Propagation::Proceed
+        });
+    }
+    dialog.add_controller(key_controller);
+
+    dialog.present();
+}
+
+/// Renderiza una combinación de teclas como keycaps (`Ctrl` `+` `O`).
+fn keycaps(keys: &[&str]) -> gtk::Box {
+    let container = gtk::Box::new(gtk::Orientation::Horizontal, 4);
+    container.set_valign(gtk::Align::Center);
+    for (i, key) in keys.iter().enumerate() {
+        if i > 0 {
+            let plus = gtk::Label::new(Some("+"));
+            plus.add_css_class("dim-label");
+            container.append(&plus);
+        }
+        let cap = gtk::Label::new(Some(key));
+        cap.add_css_class("keycap");
+        container.append(&cap);
+    }
+    container
 }
 
 fn zoom_css(pt: f64) -> String {
