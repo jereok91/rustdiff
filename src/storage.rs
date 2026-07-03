@@ -320,6 +320,7 @@ fn format_to_str(fmt: Format) -> &'static str {
         Format::Json => "json",
         Format::Xml => "xml",
         Format::Sql => "sql",
+        Format::Text => "text",
     }
 }
 
@@ -327,6 +328,7 @@ fn str_to_format(s: &str) -> Format {
     match s.to_lowercase().as_str() {
         "xml" => Format::Xml,
         "sql" => Format::Sql,
+        "text" => Format::Text,
         _ => Format::Json,
     }
 }

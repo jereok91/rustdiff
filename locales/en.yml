@@ -21,6 +21,7 @@
 "header.history_tooltip": "Show/hide session history (Ctrl+H)"
 "header.format_dropdown_tooltip": "Document format"
 "header.format_auto": "Auto-detect"
+"header.format_text": "Plain text"
 
 "editor.left_label": "Left Document"
 "editor.right_label": "Right Document"

@@ -14,13 +14,14 @@ use rust_i18n::t;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::diff_engine::{DiffItem, DiffKind, DiffResult};
+use crate::diff_engine::{DiffItem, DiffKind, DiffResult, inline_char_ranges};
 
 // ─────────────────────────────────────────────
 // Colores para las diferencias (RGBA)
 // ─────────────────────────────────────────────
 
-// Constantes de color para uso futuro en highlighting inline
+// Colores de fondo para el resaltado inline (caracteres que difieren
+// dentro de un valor MODIFICADO).
 pub const COLOR_ADDED: &str = "#2D7A2D";
 pub const COLOR_REMOVED: &str = "#7A2D2D";
 pub const COLOR_CHANGED: &str = "#7A7A2D";
@@ -148,24 +149,35 @@ impl DiffPanel {
         column_view.set_show_column_separators(true);
 
         // Columna: Tipo
-        let col_type = create_column(&t!("panel.col_type"), 80, |item: &DiffItem| match item.kind {
-            DiffKind::Added => t!("diff.added_label").to_string(),
-            DiffKind::Removed => t!("diff.removed_label").to_string(),
-            DiffKind::Changed => t!("diff.changed_label").to_string(),
-        });
+        let col_type = create_column(
+            &t!("panel.col_type"),
+            80,
+            |item: &DiffItem| match item.kind {
+                DiffKind::Added => t!("diff.added_label").to_string(),
+                DiffKind::Removed => t!("diff.removed_label").to_string(),
+                DiffKind::Changed => t!("diff.changed_label").to_string(),
+            },
+            None,
+        );
 
         // Columna: Ruta
-        let col_path = create_column(&t!("panel.col_path"), 300, |item: &DiffItem| item.path.clone());
+        let col_path = create_column(&t!("panel.col_path"), 300, |item: &DiffItem| item.path.clone(), None);
 
         // Columna: Valor Izquierdo
-        let col_left = create_column(&t!("panel.col_left"), 250, |item: &DiffItem| {
-            item.left.clone().unwrap_or_default()
-        });
+        let col_left = create_column(
+            &t!("panel.col_left"),
+            250,
+            |item: &DiffItem| item.left.clone().unwrap_or_default(),
+            Some(ValueSide::Left),
+        );
 
         // Columna: Valor Derecho
-        let col_right = create_column(&t!("panel.col_right"), 250, |item: &DiffItem| {
-            item.right.clone().unwrap_or_default()
-        });
+        let col_right = create_column(
+            &t!("panel.col_right"),
+            250,
+            |item: &DiffItem| item.right.clone().unwrap_or_default(),
+            Some(ValueSide::Right),
+        );
 
         column_view.append_column(&col_type);
         column_view.append_column(&col_path);
@@ -271,8 +283,23 @@ fn apply_filters(store: &gtk::gio::ListStore, items: &[DiffItem], filters: &(boo
     }
 }
 
+/// Lado del valor que muestra una columna (para el resaltado intra-valor).
+#[derive(Clone, Copy)]
+enum ValueSide {
+    Left,
+    Right,
+}
+
 /// Crea una columna para el `ColumnView` con un factory que extrae texto del `DiffItem`.
-fn create_column(title: &str, fixed_width: i32, extractor: fn(&DiffItem) -> String) -> gtk::ColumnViewColumn {
+///
+/// Si `value_side` es `Some`, la columna muestra un valor (izquierdo o derecho)
+/// y las filas MODIFICADO resaltan con markup los caracteres que difieren.
+fn create_column(
+    title: &str,
+    fixed_width: i32,
+    extractor: fn(&DiffItem) -> String,
+    value_side: Option<ValueSide>,
+) -> gtk::ColumnViewColumn {
     let factory = gtk::SignalListItemFactory::new();
 
     factory.connect_setup(|_, list_item| {
@@ -293,7 +320,15 @@ fn create_column(title: &str, fixed_width: i32, extractor: fn(&DiffItem) -> Stri
 
         let inner = obj.inner();
         if let Some(ref item) = *inner {
-            label.set_text(&extractor(item));
+            match value_side.and_then(|side| changed_value_markup(item, side)) {
+                Some(markup) => label.set_markup(&markup),
+                None => label.set_text(&extractor(item)),
+            }
+            // Tooltip con el valor completo (las celdas se truncan con "…")
+            if value_side.is_some() {
+                let full = extractor(item);
+                label.set_tooltip_text(if full.is_empty() { None } else { Some(&full) });
+            }
 
             // Aplicar color de fondo según el tipo de diferencia
             label.remove_css_class("diff-added");
@@ -311,6 +346,50 @@ fn create_column(title: &str, fixed_width: i32, extractor: fn(&DiffItem) -> Stri
     column.set_fixed_width(fixed_width);
     column.set_resizable(true);
     column
+}
+
+/// Construye Pango markup para el valor de una fila MODIFICADO,
+/// resaltando los caracteres que difieren respecto al otro lado.
+/// Devuelve `None` si no aplica (no es Changed, falta un lado, o no
+/// hay fragmentos que resaltar) — en ese caso se usa texto plano.
+fn changed_value_markup(item: &DiffItem, side: ValueSide) -> Option<String> {
+    if item.kind != DiffKind::Changed {
+        return None;
+    }
+    let left = item.left.as_deref()?;
+    let right = item.right.as_deref()?;
+    let (left_ranges, right_ranges) = inline_char_ranges(left, right);
+
+    let (text, ranges, color) = match side {
+        ValueSide::Left => (left, left_ranges, COLOR_REMOVED),
+        ValueSide::Right => (right, right_ranges, COLOR_ADDED),
+    };
+    if ranges.is_empty() {
+        return None;
+    }
+    Some(markup_with_ranges(text, &ranges, color))
+}
+
+/// Envuelve los rangos de caracteres dados en `<span>` con fondo de color.
+/// Los rangos son índices de caracteres (como los devuelve `inline_char_ranges`).
+fn markup_with_ranges(text: &str, ranges: &[std::ops::Range<usize>], color: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let escape = |slice: &[char]| glib::markup_escape_text(&slice.iter().collect::<String>());
+
+    let mut out = String::new();
+    let mut pos = 0;
+    for range in ranges {
+        let start = range.start.min(chars.len());
+        let end = range.end.min(chars.len());
+        out.push_str(&escape(&chars[pos..start]));
+        out.push_str(&format!(
+            "<span background=\"{color}\" foreground=\"#FFFFFF\" weight=\"bold\">{}</span>",
+            escape(&chars[start..end])
+        ));
+        pos = end;
+    }
+    out.push_str(&escape(&chars[pos..]));
+    out
 }
 
 /// Devuelve el CSS personalizado para los colores de diferencias.

@@ -21,6 +21,7 @@
 "header.history_tooltip": "Mostrar/ocultar historial de sesiones (Ctrl+H)"
 "header.format_dropdown_tooltip": "Formato del documento"
 "header.format_auto": "Auto-detectar"
+"header.format_text": "Texto plano"
 
 "editor.left_label": "Documento Izquierdo"
 "editor.right_label": "Documento Derecho"

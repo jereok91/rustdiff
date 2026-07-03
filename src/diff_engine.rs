@@ -4,6 +4,8 @@
 //! compara la **estructura** de los documentos:
 //! - JSON: compara clave por clave en objetos, índice por índice en arrays.
 //! - XML: compara nodos por tag, atributos y contenido de texto.
+//! - SQL: compara sentencia por sentencia (normalizadas).
+//! - Texto plano: compara línea por línea (fallback cuando no hay estructura).
 //!
 //! Cada diferencia incluye la ruta (path) al elemento afectado,
 //! permitiendo localización precisa en documentos profundamente anidados.
@@ -12,6 +14,7 @@ use crate::parser::{XmlChild, XmlNode};
 use serde_json::Value as JsonValue;
 use std::collections::BTreeSet;
 use std::fmt;
+use std::ops::Range;
 
 // ─────────────────────────────────────────────
 // Tipos públicos
@@ -600,6 +603,131 @@ fn normalize_sql(sql: &str) -> String {
 }
 
 // ─────────────────────────────────────────────
+// Diff para texto plano
+// ─────────────────────────────────────────────
+
+/// Compara dos textos planos línea por línea.
+///
+/// Se usa como fallback cuando el contenido no tiene estructura
+/// reconocible (JSON/XML/SQL). Usa el crate `similar` para calcular
+/// el diff y reporta Added / Removed / Changed a nivel de línea.
+/// Los paths usan la notación `line[N]` con N basado en 1
+/// (número de línea del documento izquierdo para Removed/Changed,
+/// del derecho para Added).
+pub fn diff_text(left: &str, right: &str) -> DiffResult {
+    use similar::{DiffTag, TextDiff};
+
+    let mut result = DiffResult::default();
+    let left_lines: Vec<&str> = left.lines().collect();
+    let right_lines: Vec<&str> = right.lines().collect();
+    // Diff sobre las líneas ya recortadas (sin '\n') para que una línea
+    // final sin salto no cuente como diferente de la misma línea con salto.
+    let diff = TextDiff::from_slices(&left_lines, &right_lines);
+
+    let line_at = |lines: &[&str], idx: usize| -> String { lines.get(idx).copied().unwrap_or_default().to_string() };
+
+    for op in diff.ops() {
+        match op.tag() {
+            DiffTag::Equal => {}
+            DiffTag::Delete => {
+                for i in op.old_range() {
+                    result.removed.push(DiffItem {
+                        path: format!("line[{}]", i + 1),
+                        kind: DiffKind::Removed,
+                        left: Some(line_at(&left_lines, i)),
+                        right: None,
+                    });
+                }
+            }
+            DiffTag::Insert => {
+                for j in op.new_range() {
+                    result.added.push(DiffItem {
+                        path: format!("line[{}]", j + 1),
+                        kind: DiffKind::Added,
+                        left: None,
+                        right: Some(line_at(&right_lines, j)),
+                    });
+                }
+            }
+            DiffTag::Replace => {
+                // Emparejar líneas viejas y nuevas en orden: las que coinciden
+                // en posición son Changed; el excedente es Removed o Added.
+                let old_range = op.old_range();
+                let new_range = op.new_range();
+                let common = old_range.len().min(new_range.len());
+
+                for k in 0..common {
+                    let i = old_range.start + k;
+                    let j = new_range.start + k;
+                    result.changed.push(DiffItem {
+                        path: format!("line[{}]", i + 1),
+                        kind: DiffKind::Changed,
+                        left: Some(line_at(&left_lines, i)),
+                        right: Some(line_at(&right_lines, j)),
+                    });
+                }
+                for i in old_range.start + common..old_range.end {
+                    result.removed.push(DiffItem {
+                        path: format!("line[{}]", i + 1),
+                        kind: DiffKind::Removed,
+                        left: Some(line_at(&left_lines, i)),
+                        right: None,
+                    });
+                }
+                for j in new_range.start + common..new_range.end {
+                    result.added.push(DiffItem {
+                        path: format!("line[{}]", j + 1),
+                        kind: DiffKind::Added,
+                        left: None,
+                        right: Some(line_at(&right_lines, j)),
+                    });
+                }
+            }
+        }
+    }
+
+    result
+}
+
+/// Umbral de similitud por debajo del cual dos líneas se consideran
+/// completamente distintas (se resalta la línea entera en vez de fragmentos).
+const INLINE_DIFF_MIN_RATIO: f32 = 0.4;
+
+/// Calcula los rangos de caracteres que difieren entre dos cadenas.
+///
+/// Devuelve `(rangos_izquierda, rangos_derecha)` en índices de *caracteres*
+/// (no bytes), listos para usarse con offsets de `GtkTextIter` o para
+/// construir Pango markup. Si las cadenas son demasiado distintas
+/// (similitud < `INLINE_DIFF_MIN_RATIO`), devuelve un único rango que
+/// cubre cada cadena completa: resaltar fragmentos sueltos sería ruido.
+pub fn inline_char_ranges(left: &str, right: &str) -> (Vec<Range<usize>>, Vec<Range<usize>>) {
+    use similar::{Algorithm, DiffTag, capture_diff_slices, get_diff_ratio};
+
+    let left_chars: Vec<char> = left.chars().collect();
+    let right_chars: Vec<char> = right.chars().collect();
+    let ops = capture_diff_slices(Algorithm::Myers, &left_chars, &right_chars);
+
+    if get_diff_ratio(&ops, left_chars.len(), right_chars.len()) < INLINE_DIFF_MIN_RATIO {
+        return (vec![0..left_chars.len(); 1], vec![0..right_chars.len(); 1]);
+    }
+
+    let mut left_ranges = Vec::new();
+    let mut right_ranges = Vec::new();
+    for op in &ops {
+        match op.tag() {
+            DiffTag::Equal => {}
+            DiffTag::Delete => left_ranges.push(op.old_range()),
+            DiffTag::Insert => right_ranges.push(op.new_range()),
+            DiffTag::Replace => {
+                left_ranges.push(op.old_range());
+                right_ranges.push(op.new_range());
+            }
+        }
+    }
+    (left_ranges, right_ranges)
+}
+
+// ─────────────────────────────────────────────
 // Tests unitarios
 // ─────────────────────────────────────────────
 
@@ -1054,6 +1182,107 @@ mod tests {
         assert_eq!(result.changed.len(), 1);
         // La ruta debe incluir índice porque hay varios <item>
         assert!(result.changed[0].path.contains("item[1]"));
+    }
+
+    // ── Texto plano ─────────────────────────────
+
+    #[test]
+    fn texto_identico_sin_diferencias() {
+        let text = "línea uno\nlínea dos\nlínea tres";
+        let result = diff_text(text, text);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn texto_linea_cambiada() {
+        let left = "hola\nmundo\nadiós";
+        let right = "hola\nplaneta\nadiós";
+        let result = diff_text(left, right);
+        assert_eq!(result.changed.len(), 1);
+        assert_eq!(result.changed[0].path, "line[2]");
+        assert_eq!(result.changed[0].left.as_deref(), Some("mundo"));
+        assert_eq!(result.changed[0].right.as_deref(), Some("planeta"));
+    }
+
+    #[test]
+    fn texto_linea_añadida() {
+        let left = "uno\ndos";
+        let right = "uno\ndos\ntres";
+        let result = diff_text(left, right);
+        assert_eq!(result.added.len(), 1);
+        assert_eq!(result.added[0].path, "line[3]");
+        assert_eq!(result.added[0].right.as_deref(), Some("tres"));
+        assert!(result.removed.is_empty());
+        assert!(result.changed.is_empty());
+    }
+
+    #[test]
+    fn texto_linea_eliminada() {
+        let left = "uno\ndos\ntres";
+        let right = "uno\ntres";
+        let result = diff_text(left, right);
+        assert_eq!(result.removed.len(), 1);
+        assert_eq!(result.removed[0].path, "line[2]");
+        assert_eq!(result.removed[0].left.as_deref(), Some("dos"));
+    }
+
+    #[test]
+    fn texto_reemplazo_desigual() {
+        // Dos líneas reemplazadas por una sola: 1 Changed + 1 Removed
+        let left = "a\nb\nc\nz";
+        let right = "a\nX\nz";
+        let result = diff_text(left, right);
+        assert_eq!(result.changed.len(), 1);
+        assert_eq!(result.removed.len(), 1);
+        assert!(result.added.is_empty());
+    }
+
+    #[test]
+    fn texto_completamente_distinto() {
+        let result = diff_text("rojo\nverde", "azul\namarillo\nnegro");
+        // 2 pares Changed + 1 Added (la línea extra del derecho)
+        assert_eq!(result.changed.len(), 2);
+        assert_eq!(result.added.len(), 1);
+        assert_eq!(result.total(), 3);
+    }
+
+    // ── inline_char_ranges ──────────────────────
+
+    #[test]
+    fn inline_ranges_sufijo_distinto() {
+        // Solo difiere el final: "58a" vs "582"
+        let (l, r) = inline_char_ranges("ghp_abc58a", "ghp_abc582");
+        assert_eq!(l, vec![9..10]);
+        assert_eq!(r, vec![9..10]);
+    }
+
+    #[test]
+    fn inline_ranges_identicas_sin_rangos() {
+        let (l, r) = inline_char_ranges("igual", "igual");
+        assert!(l.is_empty());
+        assert!(r.is_empty());
+    }
+
+    #[test]
+    fn inline_ranges_insercion_en_medio() {
+        let (l, r) = inline_char_ranges("hola mundo", "hola gran mundo");
+        assert!(l.is_empty());
+        assert_eq!(r, vec![5..10]); // "gran "
+    }
+
+    #[test]
+    fn inline_ranges_muy_distintas_cubren_todo() {
+        let (l, r) = inline_char_ranges("abcdef", "uvwxyz");
+        assert_eq!(l, vec![0..6]);
+        assert_eq!(r, vec![0..6]);
+    }
+
+    #[test]
+    fn inline_ranges_unicode_en_caracteres() {
+        // Índices en caracteres, no bytes: "año" tiene 3 chars
+        let (l, r) = inline_char_ranges("año", "aña");
+        assert_eq!(l, vec![2..3]);
+        assert_eq!(r, vec![2..3]);
     }
 
     // ── Resumen (summary) ───────────────────────
