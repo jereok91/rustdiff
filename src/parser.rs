@@ -20,6 +20,9 @@ pub enum Format {
     Json,
     Xml,
     Sql,
+    /// Texto plano: se usa como fallback cuando el contenido no tiene
+    /// estructura reconocible (JSON/XML/SQL). El diff es línea por línea.
+    Text,
 }
 
 /// Errores posibles durante el parseo de documentos.
@@ -78,13 +81,13 @@ const SQL_DETECT_KEYWORDS: &[&str] = &[
     "DECLARE", "SET", "EXEC", "EXECUTE", "USE", "IF", "WHILE", "PRINT", "GO", "GRANT", "REVOKE", "PRAGMA",
 ];
 
-/// Detecta automáticamente si el texto es JSON, XML o SQL.
+/// Detecta automáticamente si el texto es JSON, XML, SQL o texto plano.
 ///
 /// Examina el primer token significativo (ignorando espacios y comentarios SQL):
 /// - `{` o `[` → JSON
 /// - `<` → XML
 /// - Primera palabra SQL reconocida → SQL
-/// - Cualquier otro → `Err(UnknownFormat)`
+/// - Cualquier otro → texto plano (fallback, comparación línea por línea)
 pub fn auto_detect_format(input: &str) -> Result<Format, ParseError> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
@@ -109,7 +112,8 @@ pub fn auto_detect_format(input: &str) -> Result<Format, ParseError> {
         return Ok(Format::Sql);
     }
 
-    Err(ParseError::UnknownFormat)
+    // Sin estructura reconocible: comparar como texto plano.
+    Ok(Format::Text)
 }
 
 /// Returns true when the text contains several typical SQL clause keywords,
@@ -284,6 +288,17 @@ pub fn parse_sql(input: &str) -> Result<String, ParseError> {
     Ok(trimmed.to_string())
 }
 
+/// Valida un documento de texto plano (tamaño y no vacío) y devuelve el texto.
+///
+/// No aplica ninguna transformación: cualquier contenido es texto válido.
+pub fn parse_text(input: &str) -> Result<String, ParseError> {
+    validate_size(input)?;
+    if input.trim().is_empty() {
+        return Err(ParseError::EmptyInput);
+    }
+    Ok(input.to_string())
+}
+
 /// Formatea un documento en modo legible (pretty-print).
 ///
 /// Si el formato no coincide con el contenido real, devuelve un error.
@@ -298,6 +313,8 @@ pub fn format_pretty(input: &str, fmt: Format) -> Result<String, ParseError> {
         }
         Format::Xml => pretty_print_xml(input),
         Format::Sql => format_sql_pretty(input),
+        // El texto plano no tiene una forma "pretty": se devuelve tal cual.
+        Format::Text => Ok(input.to_string()),
     }
 }
 
@@ -458,6 +475,7 @@ impl std::fmt::Display for Format {
             Format::Json => write!(f, "JSON"),
             Format::Xml => write!(f, "XML"),
             Format::Sql => write!(f, "SQL"),
+            Format::Text => write!(f, "Text"),
         }
     }
 }
@@ -495,11 +513,12 @@ mod tests {
     }
 
     #[test]
-    fn error_formato_desconocido() {
-        assert!(matches!(
-            auto_detect_format("hola mundo"),
-            Err(ParseError::UnknownFormat)
-        ));
+    fn texto_sin_estructura_cae_a_texto_plano() {
+        assert_eq!(auto_detect_format("hola mundo").unwrap(), Format::Text);
+        assert_eq!(
+            auto_detect_format("línea uno\nlínea dos\nlínea tres").unwrap(),
+            Format::Text
+        );
     }
 
     #[test]
@@ -744,6 +763,26 @@ mod tests {
         assert_eq!(auto_detect_format(sql).unwrap(), Format::Sql);
     }
 
+    // ── parse_text ──────────────────────────────
+
+    #[test]
+    fn parsea_texto_plano() {
+        let text = "primera línea\nsegunda línea";
+        assert_eq!(parse_text(text).unwrap(), text);
+    }
+
+    #[test]
+    fn error_texto_vacio() {
+        assert!(parse_text("").is_err());
+        assert!(parse_text("   \n\t ").is_err());
+    }
+
+    #[test]
+    fn pretty_print_texto_sin_cambios() {
+        let text = "esto es\ntexto plano";
+        assert_eq!(format_pretty(text, Format::Text).unwrap(), text);
+    }
+
     // ── Display para Format ─────────────────────
 
     #[test]
@@ -751,5 +790,6 @@ mod tests {
         assert_eq!(format!("{}", Format::Json), "JSON");
         assert_eq!(format!("{}", Format::Xml), "XML");
         assert_eq!(format!("{}", Format::Sql), "SQL");
+        assert_eq!(format!("{}", Format::Text), "Text");
     }
 }

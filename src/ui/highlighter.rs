@@ -13,10 +13,10 @@
 
 use gtk::prelude::*;
 use gtk4 as gtk;
-use similar::{ChangeTag, TextDiff};
+use similar::{DiffTag, TextDiff};
 use sourceview5 as sv;
 
-use crate::diff_engine::{DiffItem, DiffKind, DiffResult};
+use crate::diff_engine::{DiffItem, DiffKind, DiffResult, inline_char_ranges};
 
 // ─────────────────────────────────────────────
 // Nombres de los TextTags
@@ -203,31 +203,57 @@ fn ensure_tags(buffer: &gtk::TextBuffer) {
 }
 
 /// Diff línea-por-línea entre los dos textos usando `similar`.
-/// Resalta líneas completas que fueron añadidas, eliminadas o cambiadas.
+/// Resalta líneas completas que fueron añadidas, eliminadas o cambiadas,
+/// y dentro de los bloques reemplazados marca los caracteres exactos
+/// que difieren (diff intra-línea).
 fn apply_line_diff(left_buf: &gtk::TextBuffer, right_buf: &gtk::TextBuffer, left_text: &str, right_text: &str) {
-    let diff = TextDiff::from_lines(left_text, right_text);
+    let left_lines: Vec<&str> = left_text.lines().collect();
+    let right_lines: Vec<&str> = right_text.lines().collect();
+    let diff = TextDiff::from_slices(&left_lines, &right_lines);
 
-    // Rastrear la línea actual en cada buffer
-    let mut left_line: i32 = 0;
-    let mut right_line: i32 = 0;
+    for op in diff.ops() {
+        match op.tag() {
+            DiffTag::Equal => {}
+            DiffTag::Delete => {
+                for i in op.old_range() {
+                    tag_line(left_buf, i as i32, TAG_LINE_REMOVED);
+                }
+            }
+            DiffTag::Insert => {
+                for j in op.new_range() {
+                    tag_line(right_buf, j as i32, TAG_LINE_ADDED);
+                }
+            }
+            DiffTag::Replace => {
+                // Fondo de línea completo como contexto...
+                for i in op.old_range() {
+                    tag_line(left_buf, i as i32, TAG_LINE_REMOVED);
+                }
+                for j in op.new_range() {
+                    tag_line(right_buf, j as i32, TAG_LINE_ADDED);
+                }
+                // ...y resaltado preciso de los caracteres que difieren
+                // en las líneas emparejadas por posición.
+                let common = op.old_range().len().min(op.new_range().len());
+                for k in 0..common {
+                    let li = op.old_range().start + k;
+                    let rj = op.new_range().start + k;
+                    let (l_ranges, r_ranges) = inline_char_ranges(left_lines[li], right_lines[rj]);
+                    tag_char_ranges_in_line(left_buf, li as i32, &l_ranges, TAG_REMOVED);
+                    tag_char_ranges_in_line(right_buf, rj as i32, &r_ranges, TAG_ADDED);
+                }
+            }
+        }
+    }
+}
 
-    for change in diff.iter_all_changes() {
-        match change.tag() {
-            ChangeTag::Equal => {
-                // Línea sin cambios: avanzar ambos contadores
-                left_line += 1;
-                right_line += 1;
-            }
-            ChangeTag::Delete => {
-                // Línea eliminada (solo en el izquierdo)
-                tag_line(left_buf, left_line, TAG_LINE_REMOVED);
-                left_line += 1;
-            }
-            ChangeTag::Insert => {
-                // Línea añadida (solo en el derecho)
-                tag_line(right_buf, right_line, TAG_LINE_ADDED);
-                right_line += 1;
-            }
+/// Aplica un tag a rangos de caracteres (índices dentro de la línea dada).
+fn tag_char_ranges_in_line(buffer: &gtk::TextBuffer, line: i32, ranges: &[std::ops::Range<usize>], tag_name: &str) {
+    for range in ranges {
+        let start = buffer.iter_at_line_offset(line, range.start as i32);
+        let end = buffer.iter_at_line_offset(line, range.end as i32);
+        if let (Some(s), Some(e)) = (start, end) {
+            buffer.apply_tag_by_name(tag_name, &s, &e);
         }
     }
 }
@@ -274,6 +300,13 @@ fn apply_semantic_highlights(buffer: &gtk::TextBuffer, _text: &str, diff_result:
     };
 
     for item in items {
+        // Los items de texto plano (path `line[N]`) ya se resaltan con
+        // precisión de carácter en `apply_line_diff`; la búsqueda genérica
+        // por valor solo añadiría un bloque encima que tapa ese detalle.
+        if item.path.starts_with("line[") {
+            continue;
+        }
+
         let (search_value, tag_name) = match side {
             Side::Left => {
                 let val = item.left.as_deref().unwrap_or_default();

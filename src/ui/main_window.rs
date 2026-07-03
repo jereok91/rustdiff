@@ -24,9 +24,9 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::diff_engine::{DiffResult, diff_json, diff_sql, diff_xml};
+use crate::diff_engine::{DiffResult, diff_json, diff_sql, diff_text, diff_xml};
 use crate::export;
-use crate::parser::{Format, auto_detect_format, format_pretty, parse_json, parse_sql, parse_xml};
+use crate::parser::{Format, auto_detect_format, format_pretty, parse_json, parse_sql, parse_text, parse_xml};
 use crate::storage::{DiffSummary, Storage};
 use crate::ui::diff_panel::{DiffItemObject, DiffPanel, diff_css};
 use crate::ui::highlighter;
@@ -171,7 +171,8 @@ impl MainWindow {
 
         // ── Dropdown de formato ─────────────────
         let auto_label = t!("header.format_auto");
-        let formats = gtk::StringList::new(&[&auto_label, "JSON", "XML", "SQL"]);
+        let text_label = t!("header.format_text");
+        let formats = gtk::StringList::new(&[&auto_label, "JSON", "XML", "SQL", &text_label]);
         let format_dropdown = gtk::DropDown::new(Some(formats), gtk::Expression::NONE);
         format_dropdown.set_selected(0);
         format_dropdown.set_tooltip_text(Some(&t!("header.format_dropdown_tooltip")));
@@ -1364,6 +1365,7 @@ fn execute_diff(
         1 => Some(Format::Json),
         2 => Some(Format::Xml),
         3 => Some(Format::Sql),
+        4 => Some(Format::Text),
         _ => auto_detect_format(&left_text).ok(),
     };
 
@@ -1380,6 +1382,11 @@ fn execute_diff(
         },
         Some(Format::Sql) => match (parse_sql(&left_text), parse_sql(&right_text)) {
             (Ok(_), Ok(_)) => Ok((diff_sql(&left_text, &right_text), Format::Sql)),
+            (Err(e), _) => Err(format!("Error en documento izquierdo: {e}")),
+            (_, Err(e)) => Err(format!("Error en documento derecho: {e}")),
+        },
+        Some(Format::Text) => match (parse_text(&left_text), parse_text(&right_text)) {
+            (Ok(_), Ok(_)) => Ok((diff_text(&left_text, &right_text), Format::Text)),
             (Err(e), _) => Err(format!("Error en documento izquierdo: {e}")),
             (_, Err(e)) => Err(format!("Error en documento derecho: {e}")),
         },
@@ -1416,6 +1423,7 @@ fn format_both_panels(left: &sv::View, right: &sv::View, status: &gtk::Label, dr
         1 => Some(Format::Json),
         2 => Some(Format::Xml),
         3 => Some(Format::Sql),
+        4 => Some(Format::Text),
         _ => auto_detect_format(&left_text).ok(),
     };
 
@@ -1812,10 +1820,12 @@ fn load_path_into_view(view: &sv::View, path: &std::path::Path) -> bool {
         Some("json") => Some("json"),
         Some("xml") => Some("xml"),
         Some("sql") => Some("sql"),
-        _ => auto_detect_format(&content).ok().map(|fmt| match fmt {
-            Format::Json => "json",
-            Format::Xml => "xml",
-            Format::Sql => "sql",
+        _ => auto_detect_format(&content).ok().and_then(|fmt| match fmt {
+            Format::Json => Some("json"),
+            Format::Xml => Some("xml"),
+            Format::Sql => Some("sql"),
+            // Texto plano: sin resaltado de sintaxis
+            Format::Text => None,
         }),
     };
 
