@@ -112,23 +112,15 @@ sudo apt update
 
 ### 5) Homebrew (macOS, experimental)
 
-Instala RustDiff desde el tap oficial:
+Instala RustDiff y agregalo al Launchpad con dos comandos:
 
 ```bash
 brew install jereok91/rustdiff/rustdiff
-```
-
-Compila desde el codigo fuente; el stack GTK4 (`gtk4`, `libadwaita`, `gtksourceview5`) se instala automaticamente como dependencia. La primera instalacion tarda unos minutos mientras todo compila.
-
-Tras este paso ya puedes ejecutar `rustdiff` desde la terminal.
-
-**Mostrar RustDiff en el Launchpad y Spotlight.** La formula tambien construye un bundle `RustDiff.app`. Copialo una unica vez a `/Applications`:
-
-```bash
 cp -R "$(brew --prefix)/opt/rustdiff/RustDiff.app" /Applications/
 ```
 
-Solo hace falta hacerlo una vez: el bundle lanza el binario gestionado por brew, asi que sigue funcionando despues de cada `brew upgrade rustdiff` sin volver a copiarlo.
+- El primer comando compila RustDiff desde el codigo fuente; el stack GTK4 (`gtk4`, `libadwaita`, `gtksourceview5`) se instala automaticamente como dependencia. La primera instalacion tarda unos minutos mientras todo compila. Al terminar, `rustdiff` queda disponible desde la terminal.
+- El segundo comando copia el bundle `RustDiff.app` para que la app aparezca en el **Launchpad y Spotlight**. Solo hace falta hacerlo una vez: el bundle lanza el binario gestionado por brew, asi que sigue funcionando despues de cada `brew upgrade rustdiff` sin volver a copiarlo.
 
 **Actualizar:**
 
