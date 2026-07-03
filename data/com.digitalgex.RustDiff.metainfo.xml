@@ -100,6 +100,17 @@
   </branding>
 
   <releases>
+    <release version="0.2.1" date="2026-07-02">
+      <description>
+        <p>Plain text comparison and interactive keyboard shortcuts.</p>
+        <ul>
+          <li>Plain text diffing: documents without JSON/XML/SQL structure are now compared line by line, with character-level highlighting of what changed.</li>
+          <li>Character-level inline highlighting of changed values in the results table and editors.</li>
+          <li>New keyboard shortcuts dialog (Ctrl+?), reachable from the menu, the welcome screen and the status bar hint.</li>
+          <li>Redesigned minimal welcome screen showing the app flow; the status bar now stays anchored to the bottom.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-07-02">
       <description>
         <p>RustDiff can now be installed on macOS via Homebrew.</p>
