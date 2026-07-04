@@ -1,0 +1,207 @@
+name: macOS DMG release
+
+# Compila RustDiff en runners macOS nativos (Intel y Apple Silicon),
+# empaqueta cada arquitectura como RustDiff.app dentro de un .dmg
+# autocontenido (sin dependencia de Homebrew para el usuario final),
+# adjunta ambos DMG al release del tag y actualiza el Cask
+# `rustdiff-app` en el tap jereok91/homebrew-rustdiff.
+#
+# Requiere el secret HOMEBREW_TAP_PAT (el mismo de release-homebrew.yml)
+# para el job de actualización del Cask.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag a publicar (ej. v0.2.1)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-dmg:
+    name: Build DMG (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macos-13 es el último runner con Intel; macos-14+ es Apple Silicon.
+          - runner: macos-13
+            arch: x86_64
+          - runner: macos-14
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - name: Resolve tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          TAG="${INPUT_TAG:-${{ github.ref_name }}}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - name: Install GTK4 stack via Homebrew
+        run: |
+          brew update
+          brew install pkgconf gtk4 libadwaita gtksourceview5 librsvg adwaita-icon-theme
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry & build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-cargo-release-
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Bundle RustDiff.app and create DMG
+        run: bash scripts/packaging/build-macos-app.sh --dmg
+
+      - name: Smoke-test bundle
+        run: |
+          set -euo pipefail
+          APP="dist/staging-${{ matrix.arch }}/RustDiff.app"
+          # El binario empaquetado no debe referenciar el prefijo de brew.
+          ! otool -L "$APP/Contents/MacOS/rustdiff-bin" | grep -E "$(brew --prefix)/"
+          # Estructura mínima del bundle.
+          test -f "$APP/Contents/Info.plist"
+          test -f "$APP/Contents/Resources/RustDiff.icns"
+          test -f "$APP/Contents/Resources/share/glib-2.0/schemas/gschemas.compiled"
+          test -f "$APP/Contents/Resources/share/rustdiff/language-specs/sql.lang"
+          codesign --verify --deep "$APP"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RustDiff-${{ steps.tag.outputs.version }}-macos-${{ matrix.arch }}
+          path: dist/*.dmg
+          if-no-files-found: error
+
+      - name: Attach DMG to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: dist/*.dmg
+
+  update-cask:
+    name: Update Homebrew cask
+    needs: build-dmg
+    runs-on: ubuntu-latest
+    env:
+      TAP_REPO: jereok91/homebrew-rustdiff
+      CASK: Casks/rustdiff-app.rb
+
+    steps:
+      - name: Resolve tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          TAG="${INPUT_TAG:-${{ github.ref_name }}}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute DMG sha256 (both arches)
+        id: sha
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+          for arch in arm64 x86_64; do
+            URL="${BASE}/RustDiff-${VERSION}-macos-${arch}.dmg"
+            SHA=$(curl -fsSL "$URL" | sha256sum | cut -d' ' -f1)
+            echo "${arch}=${SHA}" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Clone tap repo
+        env:
+          HOMEBREW_TAP_PAT: ${{ secrets.HOMEBREW_TAP_PAT }}
+        run: |
+          if [ -z "$HOMEBREW_TAP_PAT" ]; then
+            echo "ERROR: HOMEBREW_TAP_PAT secret is not set."
+            exit 1
+          fi
+          git clone \
+            "https://x-access-token:${HOMEBREW_TAP_PAT}@github.com/${TAP_REPO}.git" \
+            tap-repo
+
+      - name: Write cask and push
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+          SHA_ARM: ${{ steps.sha.outputs.arm64 }}
+          SHA_INTEL: ${{ steps.sha.outputs.x86_64 }}
+        run: |
+          set -euo pipefail
+          cd tap-repo
+          mkdir -p Casks
+
+          cat > "$CASK" <<EOF
+          cask "rustdiff-app" do
+            version "${VERSION}"
+
+            arch arm: "arm64", intel: "x86_64"
+            sha256 arm:   "${SHA_ARM}",
+                   intel: "${SHA_INTEL}"
+
+            url "https://github.com/${{ github.repository }}/releases/download/v#{version}/RustDiff-#{version}-macos-#{arch}.dmg"
+            name "RustDiff"
+            desc "Semantic JSON/XML/SQL diff tool with a native GTK4 desktop UI"
+            homepage "https://github.com/${{ github.repository }}"
+
+            app "RustDiff.app"
+            binary "#{appdir}/RustDiff.app/Contents/MacOS/rustdiff"
+
+            caveats <<~CAVEATS
+              RustDiff.app is ad-hoc signed (no Apple Developer certificate).
+              If macOS blocks the first launch, either right-click the app and
+              choose "Open", or install with:
+                brew install --cask --no-quarantine rustdiff-app
+            CAVEATS
+
+            zap trash: [
+              "~/.config/rustdiff",
+              "~/.local/share/rustdiff",
+              "~/Library/Caches/com.digitalgex.RustDiff",
+            ]
+          end
+          EOF
+
+          ruby -c "$CASK"
+          grep -q "version \"${VERSION}\"" "$CASK"
+          grep -q "${SHA_ARM}" "$CASK"
+          grep -q "${SHA_INTEL}" "$CASK"
+
+          # Idempotente: re-runs sin cambios terminan en éxito.
+          if git diff --quiet && [ -z "$(git status --porcelain "$CASK")" ]; then
+            echo "El cask ya está en ${VERSION}; nada que hacer."
+            exit 0
+          fi
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add "$CASK"
+          git commit -m "rustdiff-app ${VERSION} (macOS DMG)"
+          git push origin HEAD
