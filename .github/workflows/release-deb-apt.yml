@@ -14,8 +14,18 @@ env:
 
 jobs:
   build-deb:
-    name: Build Debian package
-    runs-on: ubuntu-latest
+    name: Build Debian package (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          # Runner ARM64 nativo (gratuito para repos publicos): compila el
+          # stack GTK sin cross-compilation.
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: Checkout code
@@ -39,9 +49,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-${{ matrix.arch }}-cargo-
 
       - name: Build .deb package
         run: bash scripts/packaging/build-deb.sh
@@ -59,13 +69,20 @@ jobs:
           DEB_PATH="${debs[0]}"
           DEB_NAME="$(basename "$DEB_PATH")"
 
+          # Verificación: la arquitectura del paquete coincide con la del runner.
+          DEB_ARCH="$(dpkg-deb -f "$DEB_PATH" Architecture)"
+          if [ "$DEB_ARCH" != "${{ matrix.arch }}" ]; then
+            echo "Expected ${{ matrix.arch }} package, got $DEB_ARCH ($DEB_NAME)."
+            exit 1
+          fi
+
           echo "deb_path=$DEB_PATH" >> "$GITHUB_OUTPUT"
           echo "deb_name=$DEB_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rustdiff-deb
+          name: rustdiff-deb-${{ matrix.arch }}
           path: ${{ steps.deb.outputs.deb_path }}
 
       - name: Attach .deb to GitHub release
@@ -85,10 +102,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download .deb artifact
+      - name: Download .deb artifacts (all arches)
         uses: actions/download-artifact@v4
         with:
-          name: rustdiff-deb
+          pattern: rustdiff-deb-*
+          merge-multiple: true
           path: dist
 
       - name: Install APT repository tooling
@@ -141,7 +159,7 @@ jobs:
             exit 1
           fi
 
-          bash scripts/packaging/build-apt-repo.sh "${debs[0]}" apt-repo
+          bash scripts/packaging/build-apt-repo.sh apt-repo "${debs[@]}"
 
       - name: Generate installation page
         run: |
@@ -161,7 +179,7 @@ jobs:
             echo '  <p>Install keyring:</p>'
             echo "  <pre><code>curl -fsSL ${REPO_URL}/KEY.gpg | sudo tee /usr/share/keyrings/rustdiff-archive-keyring.gpg >/dev/null</code></pre>"
             echo '  <p>Add repository:</p>'
-            echo "  <pre><code>echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] ${REPO_URL} stable main\" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null</code></pre>"
+            echo "  <pre><code>echo \"deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] ${REPO_URL} stable main\" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null</code></pre>"
             echo '  <p>Install package:</p>'
             echo '  <pre><code>sudo apt update && sudo apt install rustdiff</code></pre>'
             echo '</body>'

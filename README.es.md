@@ -95,12 +95,12 @@ Instalar desde el repositorio APT publicado en GitHub:
 
 ```bash
 curl -fsSL https://jereok91.github.io/rustdiff/KEY.gpg | sudo tee /usr/share/keyrings/rustdiff-archive-keyring.gpg >/dev/null
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] https://jereok91.github.io/rustdiff stable main" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null
+echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] https://jereok91.github.io/rustdiff stable main" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null
 sudo apt update
 sudo apt install rustdiff
 ```
 
-Actualmente el repositorio APT publica builds para `amd64`.
+El repositorio APT publica builds para `amd64` y `arm64` (p. ej. Raspberry Pi 5, servidores ARM).
 
 Eliminar paquete y repositorio:
 

@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <path-to-deb> <output-dir>"
+# Genera un repositorio APT firmado a partir de uno o mas .deb (una entrada
+# por arquitectura: amd64, arm64, ...). Cada arquitectura obtiene su propio
+# indice binary-<arch>/Packages y el Release las declara todas.
+
+if [ "$#" -lt 2 ]; then
+    echo "Usage: $0 <output-dir> <path-to-deb> [<path-to-deb>...]"
     exit 1
 fi
 
-DEB_PATH="$1"
-OUTPUT_DIR="$2"
+OUTPUT_DIR="$1"
+shift
+DEB_PATHS=("$@")
 
-if [ ! -f "$DEB_PATH" ]; then
-    echo "[ERROR] .deb file not found: $DEB_PATH"
-    exit 1
-fi
+for deb in "${DEB_PATHS[@]}"; do
+    if [ ! -f "$deb" ]; then
+        echo "[ERROR] .deb file not found: $deb"
+        exit 1
+    fi
+done
 
 : "${APT_GPG_KEY_FPR:?APT_GPG_KEY_FPR is required}"
 APT_GPG_PASSPHRASE="${APT_GPG_PASSPHRASE:-}"
@@ -30,34 +37,48 @@ for cmd in dpkg-deb dpkg-scanpackages apt-ftparchive gpg gzip; do
     fi
 done
 
-PACKAGE_NAME="$(dpkg-deb -f "$DEB_PATH" Package)"
-ARCH="$(dpkg-deb -f "$DEB_PATH" Architecture)"
-
-if [ -z "$PACKAGE_NAME" ] || [ -z "$ARCH" ]; then
-    echo "[ERROR] Could not detect package metadata from: $DEB_PATH"
-    exit 1
-fi
-
-PACKAGE_INITIAL="${PACKAGE_NAME:0:1}"
-POOL_DIR="$OUTPUT_DIR/pool/$APT_COMPONENT/$PACKAGE_INITIAL/$PACKAGE_NAME"
-BINARY_DIR="$OUTPUT_DIR/dists/$APT_SUITE/$APT_COMPONENT/binary-$ARCH"
-
 rm -rf "$OUTPUT_DIR"
-mkdir -p "$POOL_DIR" "$BINARY_DIR"
-cp "$DEB_PATH" "$POOL_DIR/"
 
+# ── Pool: copiar todos los .deb y recolectar las arquitecturas ──────────
+ARCHES=""
+for deb in "${DEB_PATHS[@]}"; do
+    PACKAGE_NAME="$(dpkg-deb -f "$deb" Package)"
+    ARCH="$(dpkg-deb -f "$deb" Architecture)"
+
+    if [ -z "$PACKAGE_NAME" ] || [ -z "$ARCH" ]; then
+        echo "[ERROR] Could not detect package metadata from: $deb"
+        exit 1
+    fi
+
+    PACKAGE_INITIAL="${PACKAGE_NAME:0:1}"
+    POOL_DIR="$OUTPUT_DIR/pool/$APT_COMPONENT/$PACKAGE_INITIAL/$PACKAGE_NAME"
+    mkdir -p "$POOL_DIR"
+    cp "$deb" "$POOL_DIR/"
+
+    case " $ARCHES " in
+        *" $ARCH "*) ;;
+        *) ARCHES="$ARCHES $ARCH" ;;
+    esac
+done
+ARCHES="${ARCHES# }"
+
+# ── Indices Packages por arquitectura ───────────────────────────────────
 (
     cd "$OUTPUT_DIR"
 
-    dpkg-scanpackages --multiversion pool > "dists/$APT_SUITE/$APT_COMPONENT/binary-$ARCH/Packages"
-    gzip -9c "dists/$APT_SUITE/$APT_COMPONENT/binary-$ARCH/Packages" > "dists/$APT_SUITE/$APT_COMPONENT/binary-$ARCH/Packages.gz"
+    for arch in $ARCHES; do
+        BINARY_DIR="dists/$APT_SUITE/$APT_COMPONENT/binary-$arch"
+        mkdir -p "$BINARY_DIR"
+        dpkg-scanpackages --multiversion --arch "$arch" pool > "$BINARY_DIR/Packages"
+        gzip -9c "$BINARY_DIR/Packages" > "$BINARY_DIR/Packages.gz"
+    done
 
     apt-ftparchive \
         -o "APT::FTPArchive::Release::Origin=$APT_ORIGIN" \
         -o "APT::FTPArchive::Release::Label=$APT_LABEL" \
         -o "APT::FTPArchive::Release::Suite=$APT_SUITE" \
         -o "APT::FTPArchive::Release::Codename=$APT_CODENAME" \
-        -o "APT::FTPArchive::Release::Architectures=$ARCH" \
+        -o "APT::FTPArchive::Release::Architectures=$ARCHES" \
         -o "APT::FTPArchive::Release::Components=$APT_COMPONENT" \
         release "dists/$APT_SUITE" > "dists/$APT_SUITE/Release"
 )
@@ -82,4 +103,4 @@ touch "$OUTPUT_DIR/.nojekyll"
 echo "[OK] APT repository generated in: $OUTPUT_DIR"
 echo "[OK] Distribution: $APT_SUITE"
 echo "[OK] Component: $APT_COMPONENT"
-echo "[OK] Architecture: $ARCH"
+echo "[OK] Architectures: $ARCHES"

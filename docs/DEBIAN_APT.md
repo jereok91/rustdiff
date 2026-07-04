@@ -71,13 +71,13 @@ Replace `<owner>` and `<repo>` with your GitHub values if you fork this project.
 
 ```bash
 curl -fsSL https://<owner>.github.io/<repo>/KEY.gpg | sudo tee /usr/share/keyrings/rustdiff-archive-keyring.gpg >/dev/null
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] https://<owner>.github.io/<repo> stable main" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null
+echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] https://<owner>.github.io/<repo> stable main" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null
 sudo apt update
 sudo apt install rustdiff
 ```
 
 ## Notes
 
-- Current repository metadata is generated for `amd64`.
+- Repository metadata is generated for `amd64` and `arm64`. The workflow builds each architecture natively (`ubuntu-latest` and `ubuntu-24.04-arm` runners) and `build-apt-repo.sh` merges all downloaded `.deb` files into per-architecture `Packages` indices: `bash scripts/packaging/build-apt-repo.sh <output-dir> <deb> [<deb>...]`.
 - This is not a Launchpad PPA; it is a signed APT repository hosted on GitHub Pages.
 - If you need Launchpad specifically, you can keep this pipeline for `.deb` artifacts and add a source-package upload pipeline separately.
