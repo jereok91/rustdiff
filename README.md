@@ -110,9 +110,36 @@ sudo rm -f /etc/apt/sources.list.d/rustdiff.list /usr/share/keyrings/rustdiff-ar
 sudo apt update
 ```
 
-### 5) Homebrew (macOS, experimental)
+### 5) macOS (experimental)
 
-Install RustDiff and add it to Launchpad with two commands:
+#### Option A — Prebuilt binary (recommended)
+
+Every release ships a self-contained `.dmg` per architecture (Apple Silicon
+`arm64` and Intel `x86_64`): no Homebrew required, nothing to compile.
+
+With Homebrew Cask (picks the right architecture automatically):
+
+```bash
+brew install --cask --no-quarantine jereok91/rustdiff/rustdiff-app
+```
+
+Or manually: download `RustDiff-<version>-macos-<arch>.dmg` from
+[Releases](https://github.com/jereok91/rustdiff/releases), open it and drag
+`RustDiff.app` into `Applications`.
+
+> The app is ad-hoc signed (no Apple Developer certificate). If macOS blocks
+> the first launch: right-click the app → **Open**, or run
+> `xattr -cr /Applications/RustDiff.app`. The cask's `--no-quarantine` flag
+> skips this step.
+
+**Upgrade / uninstall:**
+
+```bash
+brew upgrade --cask rustdiff-app
+brew uninstall --cask rustdiff-app   # add --zap to also remove settings and history
+```
+
+#### Option B — Homebrew building from source
 
 ```bash
 brew install jereok91/rustdiff/rustdiff
@@ -136,6 +163,8 @@ rm -rf /Applications/RustDiff.app
 ```
 
 > Note: GTK4 on macOS is functional but considered experimental upstream.
+> Both options can be installed side by side (the cask installs into
+> `/Applications`, the formula into the brew prefix).
 
 ## System requirements (source/Cargo builds)
 

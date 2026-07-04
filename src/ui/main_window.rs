@@ -51,17 +51,30 @@ fn build_language_manager() -> sv::LanguageManager {
     // por GtkSourceView internamente y rechaza cambios de search path).
     let manager = sv::LanguageManager::new();
 
-    let extra_paths: Vec<std::path::PathBuf> = [
+    let mut extra_paths: Vec<std::path::PathBuf> = vec![
         // Desarrollo local
         std::path::PathBuf::from("data/language-specs"),
         // Instalación típica (install.sh / .deb)
         std::path::PathBuf::from("/usr/share/rustdiff/language-specs"),
         // Flatpak
         std::path::PathBuf::from("/app/share/rustdiff/language-specs"),
-    ]
-    .into_iter()
-    .filter(|p| p.is_dir())
-    .collect();
+    ];
+
+    // Bundle macOS (.app) y otras instalaciones relocalizables: el lanzador
+    // exporta RUSTDIFF_DATA_DIR apuntando al share/ empaquetado.
+    if let Ok(data_dir) = std::env::var("RUSTDIFF_DATA_DIR") {
+        extra_paths.push(std::path::PathBuf::from(data_dir).join("language-specs"));
+    }
+
+    // Instalaciones relativas al binario (p. ej. Homebrew: <prefix>/bin +
+    // <prefix>/share/rustdiff).
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(prefix) = exe.parent().and_then(|d| d.parent()) {
+            extra_paths.push(prefix.join("share/rustdiff/language-specs"));
+        }
+    }
+
+    let extra_paths: Vec<std::path::PathBuf> = extra_paths.into_iter().filter(|p| p.is_dir()).collect();
 
     if !extra_paths.is_empty() {
         let mut paths = manager
