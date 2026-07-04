@@ -133,12 +133,12 @@ mod tests {
 
     #[test]
     fn ui_scale_se_acota() {
-        let mut s = Settings::default();
-        s.ui_scale = 10.0;
-        assert_eq!(s.clamped_ui_scale(), UI_SCALE_MAX);
-        s.ui_scale = 0.1;
-        assert_eq!(s.clamped_ui_scale(), UI_SCALE_MIN);
-        s.ui_scale = f64::NAN;
-        assert_eq!(s.clamped_ui_scale(), UI_SCALE_DEFAULT);
+        let with_scale = |ui_scale: f64| Settings {
+            ui_scale,
+            ..Default::default()
+        };
+        assert_eq!(with_scale(10.0).clamped_ui_scale(), UI_SCALE_MAX);
+        assert_eq!(with_scale(0.1).clamped_ui_scale(), UI_SCALE_MIN);
+        assert_eq!(with_scale(f64::NAN).clamped_ui_scale(), UI_SCALE_DEFAULT);
     }
 }
