@@ -150,6 +150,7 @@ pub struct MainWindow {
 impl MainWindow {
     pub fn new(app: &adw::Application) -> Self {
         load_css();
+        apply_ui_scale(crate::settings::Settings::load().clamped_ui_scale());
 
         // ── Inicializar storage ─────────────────
         let storage = match Storage::open_default() {
@@ -247,6 +248,13 @@ impl MainWindow {
         language_submenu.append(Some(&t!("menu.language_es")), Some("win.language::es"));
         let language_section = gtk::gio::Menu::new();
         language_section.append_submenu(Some(&t!("menu.language")), &language_submenu);
+
+        // Tamaño de texto (zoom general de la UI, persistido en settings).
+        let font_submenu = gtk::gio::Menu::new();
+        font_submenu.append(Some(&t!("menu.font_increase")), Some("win.font-increase"));
+        font_submenu.append(Some(&t!("menu.font_decrease")), Some("win.font-decrease"));
+        font_submenu.append(Some(&t!("menu.font_reset")), Some("win.font-reset"));
+        language_section.append_submenu(Some(&t!("menu.font_size")), &font_submenu);
         primary_menu.append_section(None, &language_section);
 
         let btn_menu = gtk::MenuButton::new();
@@ -485,6 +493,7 @@ impl MainWindow {
         main_win.setup_export_actions();
         main_win.setup_format_action();
         main_win.setup_language_action();
+        main_win.setup_font_scale_actions();
         main_win.setup_shortcuts_action();
         main_win.register_menu_accels(app);
         main_win.refresh_history_list();
@@ -794,6 +803,44 @@ impl MainWindow {
         self.window.add_action(&action);
     }
 
+    /// Acciones `win.font-increase` / `win.font-decrease` / `win.font-reset`:
+    /// zoom general de la UI. Cada activacion persiste la nueva escala en
+    /// settings.json, la aplica en caliente via `apply_ui_scale` y muestra
+    /// un toast con el porcentaje resultante.
+    fn setup_font_scale_actions(&self) {
+        use crate::settings::{Settings, UI_SCALE_DEFAULT, UI_SCALE_MAX, UI_SCALE_MIN};
+
+        let entries: [(&str, Option<f64>); 3] = [
+            ("font-increase", Some(UI_SCALE_STEP)),
+            ("font-decrease", Some(-UI_SCALE_STEP)),
+            ("font-reset", None),
+        ];
+
+        for (name, delta) in entries {
+            let action = gtk::gio::SimpleAction::new(name, None);
+            let toast_overlay = self.toast_overlay.clone();
+            action.connect_activate(move |_, _| {
+                let mut settings = Settings::load();
+                let new_scale = match delta {
+                    // Redondeo a 2 decimales para que los pasos de 0.1
+                    // no acumulen error flotante entre sesiones.
+                    Some(step) => ((settings.clamped_ui_scale() + step) * 100.0).round() / 100.0,
+                    None => UI_SCALE_DEFAULT,
+                };
+                let new_scale = new_scale.clamp(UI_SCALE_MIN, UI_SCALE_MAX);
+                settings.ui_scale = new_scale;
+                settings.save();
+                apply_ui_scale(new_scale);
+
+                let percent = (new_scale * 100.0).round() as i64;
+                let toast = adw::Toast::new(&t!("toast.font_scale", percent = percent));
+                toast.set_timeout(2);
+                toast_overlay.add_toast(toast);
+            });
+            self.window.add_action(&action);
+        }
+    }
+
     /// Accion `win.show-shortcuts`: abre el dialogo de atajos de teclado.
     /// Accesible desde el menu principal, la bienvenida y Ctrl+?.
     fn setup_shortcuts_action(&self) {
@@ -819,6 +866,13 @@ impl MainWindow {
         app.set_accels_for_action("win.format-documents", &["<Control><Shift>F"]);
         app.set_accels_for_action("win.export-txt", &["<Control>E"]);
         app.set_accels_for_action("win.show-shortcuts", &["<Control>question"]);
+        // `<Control>equal` cubre teclados donde `+` requiere Shift.
+        app.set_accels_for_action(
+            "win.font-increase",
+            &["<Control>plus", "<Control>equal", "<Control>KP_Add"],
+        );
+        app.set_accels_for_action("win.font-decrease", &["<Control>minus", "<Control>KP_Subtract"]);
+        app.set_accels_for_action("win.font-reset", &["<Control>0", "<Control>KP_0"]);
     }
 
     fn setup_export_actions(&self) {
@@ -1894,6 +1948,32 @@ const ZOOM_MIN_PT: f64 = 6.0;
 const ZOOM_MAX_PT: f64 = 40.0;
 const ZOOM_STEP_PT: f64 = 1.0;
 
+/// Incremento de la escala de fuente de la UI por activacion de
+/// `win.font-increase` / `win.font-decrease` (10%).
+const UI_SCALE_STEP: f64 = 0.1;
+
+/// Aplica la escala de fuente global de la UI ajustando `gtk-xft-dpi`.
+/// Escalar el DPI (en vez de CSS) cubre toda la tipografia: tamaños en
+/// `pt` del tema Adwaita, clases como `.title-1` y los propios editores.
+/// El DPI base del sistema se captura una sola vez para que las escalas
+/// sucesivas no se compongan entre si.
+fn apply_ui_scale(scale: f64) {
+    use std::sync::OnceLock;
+    static BASE_DPI: OnceLock<i32> = OnceLock::new();
+
+    let Some(gtk_settings) = gtk::Settings::default() else {
+        tracing::warn!("Sin display GTK; no se puede aplicar la escala de fuente");
+        return;
+    };
+    let base = *BASE_DPI.get_or_init(|| {
+        let dpi = gtk_settings.gtk_xft_dpi();
+        // -1 significa "default del sistema"; asumimos 96 dpi (x1024,
+        // la unidad de gtk-xft-dpi).
+        if dpi > 0 { dpi } else { 96 * 1024 }
+    });
+    gtk_settings.set_gtk_xft_dpi((base as f64 * scale).round() as i32);
+}
+
 /// Conecta un `EventControllerScroll` a ambos editores para ajustar el
 /// tamaño de fuente cuando el usuario mantiene `Ctrl` y mueve la rueda.
 /// El tamaño se aplica vía un `CssProvider` compartido — así ambos
@@ -2050,6 +2130,9 @@ fn show_shortcuts_dialog(parent: &adw::ApplicationWindow) {
             vec![
                 (t!("shortcuts.export_txt").to_string(), vec!["Ctrl", "E"]),
                 (t!("shortcuts.zoom").to_string(), vec!["Ctrl", "🖱 Scroll"]),
+                (t!("shortcuts.font_increase").to_string(), vec!["Ctrl", "+"]),
+                (t!("shortcuts.font_decrease").to_string(), vec!["Ctrl", "-"]),
+                (t!("shortcuts.font_reset").to_string(), vec!["Ctrl", "0"]),
                 (t!("shortcuts.show").to_string(), vec!["Ctrl", "?"]),
             ],
         ),

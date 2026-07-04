@@ -90,7 +90,12 @@
 "menu.language_auto": "Auto (system)"
 "menu.language_en": "English"
 "menu.language_es": "Español"
+"menu.font_size": "Text Size"
+"menu.font_increase": "Increase Text Size"
+"menu.font_decrease": "Decrease Text Size"
+"menu.font_reset": "Reset Text Size"
 "toast.language_changed": "Language changed. Restart RustDiff to apply."
+"toast.font_scale": "Text size: %{percent}%"
 
 "diff.identical": "Identical"
 "diff.summary_identical": "Documents are identical"
@@ -122,6 +127,9 @@
 "shortcuts.history": "Show/hide history panel"
 "shortcuts.export_txt": "Export diff as .txt"
 "shortcuts.zoom": "Zoom editors in/out"
+"shortcuts.font_increase": "Increase UI text size"
+"shortcuts.font_decrease": "Decrease UI text size"
+"shortcuts.font_reset": "Reset UI text size"
 "shortcuts.show": "Show this dialog"
 
 "exit.dialog_title": "What would you like to do?"

@@ -14,26 +14,51 @@ pub const LANGUAGE_AUTO: &str = "auto";
 /// (incluido `auto`) cae a la deteccion automatica via `LANG`.
 pub const SUPPORTED_LANGUAGES: &[&str] = &["en", "es"];
 
+/// Limites de la escala de fuente de la UI (1.0 = 100%). Acotan tanto
+/// los atajos de zoom como valores editados a mano en el JSON, para que
+/// un valor absurdo no deje la interfaz inusable.
+pub const UI_SCALE_MIN: f64 = 0.6;
+pub const UI_SCALE_MAX: f64 = 2.0;
+pub const UI_SCALE_DEFAULT: f64 = 1.0;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     /// `"auto"`, `"en"` o `"es"`.
     #[serde(default = "default_language")]
     pub language: String,
+    /// Escala de fuente global de la UI (1.0 = 100%).
+    #[serde(default = "default_ui_scale")]
+    pub ui_scale: f64,
 }
 
 fn default_language() -> String {
     LANGUAGE_AUTO.into()
 }
 
+fn default_ui_scale() -> f64 {
+    UI_SCALE_DEFAULT
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
             language: default_language(),
+            ui_scale: default_ui_scale(),
         }
     }
 }
 
 impl Settings {
+    /// Devuelve `ui_scale` acotada a `[UI_SCALE_MIN, UI_SCALE_MAX]`.
+    /// Un valor no finito (NaN/inf escrito a mano) cae al default.
+    pub fn clamped_ui_scale(&self) -> f64 {
+        if self.ui_scale.is_finite() {
+            self.ui_scale.clamp(UI_SCALE_MIN, UI_SCALE_MAX)
+        } else {
+            UI_SCALE_DEFAULT
+        }
+    }
+
     /// Lee el archivo de settings o devuelve defaults si no existe o esta mal.
     pub fn load() -> Self {
         let Some(path) = settings_path() else {
@@ -83,20 +108,37 @@ mod tests {
     fn default_es_auto() {
         let s = Settings::default();
         assert_eq!(s.language, LANGUAGE_AUTO);
+        assert_eq!(s.ui_scale, UI_SCALE_DEFAULT);
     }
 
     #[test]
     fn serializa_y_deserializa() {
-        let original = Settings { language: "es".into() };
+        let original = Settings {
+            language: "es".into(),
+            ui_scale: 1.3,
+        };
         let json = serde_json::to_string(&original).unwrap();
         let parsed: Settings = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.language, "es");
+        assert_eq!(parsed.ui_scale, 1.3);
     }
 
     #[test]
     fn json_incompleto_usa_defaults() {
-        // Falta el campo language
+        // Faltan los campos language y ui_scale
         let parsed: Settings = serde_json::from_str("{}").unwrap();
         assert_eq!(parsed.language, LANGUAGE_AUTO);
+        assert_eq!(parsed.ui_scale, UI_SCALE_DEFAULT);
+    }
+
+    #[test]
+    fn ui_scale_se_acota() {
+        let mut s = Settings::default();
+        s.ui_scale = 10.0;
+        assert_eq!(s.clamped_ui_scale(), UI_SCALE_MAX);
+        s.ui_scale = 0.1;
+        assert_eq!(s.clamped_ui_scale(), UI_SCALE_MIN);
+        s.ui_scale = f64::NAN;
+        assert_eq!(s.clamped_ui_scale(), UI_SCALE_DEFAULT);
     }
 }
