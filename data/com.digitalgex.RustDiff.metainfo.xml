@@ -100,6 +100,16 @@
   </branding>
 
   <releases>
+    <release version="0.2.2" date="2026-07-04">
+      <description>
+        <p>Adjustable UI text size and broader platform coverage.</p>
+        <ul>
+          <li>New "Text Size" option in the main menu: zoom the whole UI in/out with Ctrl+Plus / Ctrl+Minus and reset with Ctrl+0; the scale persists across sessions.</li>
+          <li>Debian/APT repository now ships arm64 packages alongside amd64.</li>
+          <li>macOS: self-contained DMG installers (Apple Silicon and Intel) via the new rustdiff-app Homebrew cask.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.1" date="2026-07-02">
       <description>
         <p>Plain text comparison and interactive keyboard shortcuts.</p>
