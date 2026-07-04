@@ -51,4 +51,6 @@ Existing inline comments and doc comments (`//!`, `///`) are predominantly in Sp
 
 ## Packaging
 
-This repo ships through multiple channels kept in sync manually — Flatpak (`com.digitalgex.RustDiff.yaml`, `flathub/`), Debian/APT (`docs/DEBIAN_APT.md`, `scripts/packaging/`), crates.io, and a one-command `install.sh`. When bumping the version in `Cargo.toml`, check whether `flathub/cargo-sources.json` or the metainfo release notes (`data/com.digitalgex.RustDiff.metainfo.xml`) also need updating.
+This repo ships through multiple channels kept in sync manually — Flatpak (`com.digitalgex.RustDiff.yaml`, `flathub/`), Debian/APT (`docs/DEBIAN_APT.md`, `scripts/packaging/`), crates.io, macOS DMG + Homebrew (see below), and a one-command `install.sh`. When bumping the version in `Cargo.toml`, check whether `flathub/cargo-sources.json` or the metainfo release notes (`data/com.digitalgex.RustDiff.metainfo.xml`) also need updating.
+
+macOS ships two ways from the same tap (`jereok91/homebrew-rustdiff`): a source-build formula (`rustdiff`, updated by `release-homebrew.yml`) and a prebuilt cask (`rustdiff-app`, updated by `release-macos.yml`). The cask points at per-arch self-contained DMGs (arm64 + x86_64) built on macOS runners by `scripts/packaging/build-macos-app.sh`, which bundles the whole brew GTK stack into `RustDiff.app` (dylibs relocated via `install_name_tool`, schemas, icons, gdk-pixbuf loaders, language specs). The launcher inside the bundle exports `RUSTDIFF_DATA_DIR`, which `main_window.rs` checks when building the GtkSourceView language search path.
