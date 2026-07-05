@@ -180,8 +180,8 @@ jobs:
             caveats <<~CAVEATS
               RustDiff.app is ad-hoc signed (no Apple Developer certificate).
               If macOS blocks the first launch, either right-click the app and
-              choose "Open", or install with:
-                brew install --cask --no-quarantine rustdiff-app
+              choose "Open", or clear the quarantine attribute with:
+                xattr -cr /Applications/RustDiff.app
             CAVEATS
 
             zap trash: [

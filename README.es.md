@@ -120,7 +120,7 @@ Cada release publica un `.dmg` autocontenido por arquitectura (Apple Silicon
 Con Homebrew Cask (elige la arquitectura correcta automaticamente):
 
 ```bash
-brew install --cask --no-quarantine jereok91/rustdiff/rustdiff-app
+brew install --cask jereok91/rustdiff/rustdiff-app
 ```
 
 O manualmente: descarga `RustDiff-<version>-macos-<arch>.dmg` desde
@@ -129,8 +129,9 @@ O manualmente: descarga `RustDiff-<version>-macos-<arch>.dmg` desde
 
 > La app lleva firma ad-hoc (sin certificado de Apple Developer). Si macOS
 > bloquea la primera apertura: clic derecho sobre la app → **Abrir**, o
-> ejecuta `xattr -cr /Applications/RustDiff.app`. El flag `--no-quarantine`
-> del cask evita este paso.
+> ejecuta `xattr -cr /Applications/RustDiff.app`. (En versiones antiguas de
+> Homebrew, `brew install --cask --no-quarantine` evitaba este paso; el flag
+> fue eliminado en versiones recientes.)
 
 **Actualizar / desinstalar:**
 
