@@ -51,7 +51,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.tag.outputs.tag }}
+          # En push de tag se compila exactamente el tag. En dispatch manual
+          # se compila la rama por defecto: permite re-lanzar el empaquetado
+          # de un release con fixes en scripts/ sin mover el tag publicado.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || steps.tag.outputs.tag }}
 
       - name: Install GTK4 stack via Homebrew
         run: |

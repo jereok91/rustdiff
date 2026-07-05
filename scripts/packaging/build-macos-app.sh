@@ -180,6 +180,12 @@ fix_macho() {
     chmod u+w "$file"
     if [[ "$file" == "$FRAMEWORKS"/* ]]; then
         install_name_tool -id "@executable_path/../Frameworks/$(basename "$file")" "$file" 2>/dev/null
+    elif [[ "$file" == "$RESOURCES/lib/"* ]]; then
+        # El loader SVG de librsvg es un MH_DYLIB cuyo LC_ID_DYLIB apunta al
+        # prefijo de brew; `-change` no reescribe el ID, así que se fija aquí.
+        # (El ID de un plugin cargado por dlopen es irrelevante en runtime.)
+        # `|| true`: sobre loaders MH_BUNDLE (.so) `-id` falla y no aplica.
+        install_name_tool -id "@loader_path/$(basename "$file")" "$file" 2>/dev/null || true
     fi
     while IFS= read -r dep; do
         [[ -z "$dep" ]] && continue
