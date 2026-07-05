@@ -31,8 +31,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-13 es el último runner con Intel; macos-14+ es Apple Silicon.
-          - runner: macos-13
+          # GitHub retiró los runners macos-13; macos-15-intel es la etiqueta
+          # Intel (x64) gratuita vigente. macos-14+ es Apple Silicon.
+          - runner: macos-15-intel
             arch: x86_64
           - runner: macos-14
             arch: arm64
