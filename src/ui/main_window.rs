@@ -1828,7 +1828,7 @@ fn build_history_row(
         session.id,
         session.format,
         session.diff_summary.short_text(),
-        &session.created_at,
+        session.created_at,
     );
     let label = gtk::Label::new(Some(&label_text));
     label.set_halign(gtk::Align::Start);
