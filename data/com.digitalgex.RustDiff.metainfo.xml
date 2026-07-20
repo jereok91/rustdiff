@@ -100,6 +100,16 @@
   </branding>
 
   <releases>
+    <release version="0.3.0" date="2026-07-20">
+      <description>
+        <p>New native graph view for exploring JSON and XML documents.</p>
+        <ul>
+          <li>Graph view (Ctrl+G): visualize the left document as an interactive node graph, side by side with the editor, in the style of JSON Crack — fully local, no network or webview involved.</li>
+          <li>Pan, zoom (Ctrl+scroll or toolbar buttons), zoom-to-fit, node search, and click-to-inspect a node's full contents.</li>
+          <li>Updates live as you type, alongside the existing diff comparison workflow.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.2" date="2026-07-04">
       <description>
         <p>Adjustable UI text size and broader platform coverage.</p>
