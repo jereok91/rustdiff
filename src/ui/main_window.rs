@@ -29,6 +29,7 @@ use crate::export;
 use crate::parser::{Format, auto_detect_format, format_pretty, parse_json, parse_sql, parse_text, parse_xml};
 use crate::storage::{DiffSummary, Storage};
 use crate::ui::diff_panel::{DiffItemObject, DiffPanel, diff_css};
+use crate::ui::graph_view::{GraphView, graph_css};
 use crate::ui::highlighter;
 
 /// Devuelve un `LanguageManager` configurado para incluir los language-specs
@@ -145,6 +146,13 @@ pub struct MainWindow {
     /// Botón "Habilitar comparación" (para activarlo programáticamente
     /// cuando llegan dos archivos por CLI o desde el gestor de archivos).
     btn_enable_comparison: gtk::Button,
+    /// Vista de grafo (estilo JSON Crack) del documento izquierdo.
+    graph_view: Rc<GraphView>,
+    /// Toggle de la vista de grafo en la header bar.
+    btn_graph: gtk::ToggleButton,
+    /// Si el último grafo mostrado estaba truncado (para avisar con un
+    /// toast solo en la transición, no en cada refresco).
+    graph_truncated: Rc<Cell<bool>>,
 }
 
 impl MainWindow {
@@ -173,6 +181,9 @@ impl MainWindow {
 
         // ── Panel de diferencias ────────────────
         let diff_panel = Rc::new(DiffPanel::new());
+
+        // ── Vista de grafo (JSON Crack) ─────────
+        let graph_view = Rc::new(GraphView::new());
 
         // ── Barra de estado ─────────────────────
         let status_label = gtk::Label::new(Some(&t!("app.status_ready")));
@@ -218,6 +229,12 @@ impl MainWindow {
         let btn_history = gtk::ToggleButton::with_label(&t!("header.history"));
         btn_history.set_tooltip_text(Some(&t!("header.history_tooltip")));
         btn_history.add_css_class("flat");
+
+        // ── Botón Vista de grafo toggle ─────────
+        let btn_graph = gtk::ToggleButton::new();
+        btn_graph.set_icon_name("network-workgroup-symbolic");
+        btn_graph.set_tooltip_text(Some(&t!("graph.toggle_tooltip")));
+        btn_graph.add_css_class("flat");
 
         // ── Menú principal (hamburger) ──────────
         // Agrupa acciones secundarias: Formatear, Exportar, Idioma.
@@ -274,6 +291,7 @@ impl MainWindow {
         header.pack_end(&btn_enable_comparison);
         header.pack_end(&btn_format);
         header.pack_end(&btn_history);
+        header.pack_end(&btn_graph);
 
         // ── Pantalla de bienvenida (Welcome) ───
         let (welcome_screen, welcome_btn_doc, welcome_btn_new, welcome_btn_history, welcome_btn_shortcuts) =
@@ -474,6 +492,9 @@ impl MainWindow {
             editors_paned,
             right_editor_box: right_box,
             btn_enable_comparison: btn_enable_comparison.clone(),
+            graph_view,
+            btn_graph: btn_graph.clone(),
+            graph_truncated: Rc::new(Cell::new(false)),
             history_search_entry,
             history_load_more_btn,
             history_visible_count: Cell::new(3),
@@ -502,6 +523,7 @@ impl MainWindow {
         main_win.connect_welcome_screen(&welcome_btn_doc, &welcome_btn_new, &welcome_btn_history);
         main_win.connect_shortcuts_button(&welcome_btn_shortcuts);
         main_win.connect_enable_comparison(&btn_enable_comparison, &btn_compare, &btn_open_right);
+        main_win.connect_graph_toggle(&btn_compare, &btn_open_right);
         main_win.connect_search_bar();
         main_win.connect_history_search();
         main_win.connect_history_load_more();
@@ -920,6 +942,10 @@ impl MainWindow {
         let status_label = self.status_label.clone();
         let format_dropdown = self.format_dropdown.clone();
         let last_diff = self.last_diff.clone();
+        let btn_graph = self.btn_graph.clone();
+        let graph_view = self.graph_view.clone();
+        let toast_overlay = self.toast_overlay.clone();
+        let graph_truncated = self.graph_truncated.clone();
 
         let schedule_diff = {
             let timeout_id = timeout_id.clone();
@@ -935,10 +961,18 @@ impl MainWindow {
                 let dd = format_dropdown.clone();
                 let ld = last_diff.clone();
                 let tid = timeout_id.clone();
+                let bg = btn_graph.clone();
+                let gv = graph_view.clone();
+                let to = toast_overlay.clone();
+                let gt = graph_truncated.clone();
 
                 let source_id = gtk::glib::timeout_add_local_once(Duration::from_millis(DEBOUNCE_MS), move || {
                     tid.borrow_mut().take();
                     execute_diff(&lv, &rv, &dp, &sl, &dd, &ld);
+                    // Refresco en vivo del grafo mientras esté visible.
+                    if bg.is_active() {
+                        refresh_graph(&lv, &dd, &gv, &to, &gt);
+                    }
                 });
 
                 *timeout_id.borrow_mut() = Some(source_id);
@@ -991,6 +1025,7 @@ impl MainWindow {
         let history_panel = self.history_panel.clone();
         let search_revealer = self.search_revealer.clone();
         let search_entry = self.search_entry.clone();
+        let btn_graph = self.btn_graph.clone();
 
         controller.connect_key_pressed(move |_, key, _, modifier| {
             let ctrl = modifier.contains(gtk::gdk::ModifierType::CONTROL_MASK);
@@ -1036,6 +1071,11 @@ impl MainWindow {
                 // Ctrl+H → toggle historial
                 (gtk::gdk::Key::h, false) => {
                     history_panel.set_visible(!history_panel.is_visible());
+                    gtk::glib::Propagation::Stop
+                }
+                // Ctrl+G → toggle vista de grafo
+                (gtk::gdk::Key::g, false) => {
+                    btn_graph.set_active(!btn_graph.is_active());
                     gtk::glib::Propagation::Stop
                 }
                 // Ctrl+F → mostrar barra de búsqueda
@@ -1124,6 +1164,67 @@ impl MainWindow {
             btn_compare.set_visible(true);
             btn_open_right.set_visible(true);
             status.set_text(&t!("compare.need_input"));
+        });
+    }
+
+    // ─────────────────────────────────────────
+    // Vista de grafo (lado a lado con el editor)
+    // ─────────────────────────────────────────
+
+    /// Conecta el toggle de la vista de grafo. El grafo ocupa el panel
+    /// derecho del `editors_paned`, el mismo hueco que usa el segundo
+    /// editor: por eso vista de grafo y modo comparación son excluyentes.
+    fn connect_graph_toggle(&self, btn_compare: &gtk::Button, btn_open_right: &gtk::Button) {
+        let editors_paned = self.editors_paned.clone();
+        let right_editor_box = self.right_editor_box.clone();
+        let graph_view = self.graph_view.clone();
+        let btn_enable_comparison = self.btn_enable_comparison.clone();
+        let btn_compare = btn_compare.clone();
+        let btn_open_right = btn_open_right.clone();
+        let welcome = self.welcome_screen.clone();
+        let editors_container = self.editors_container.clone();
+        let left_view = self.left_view.clone();
+        let dropdown = self.format_dropdown.clone();
+        let toast_overlay = self.toast_overlay.clone();
+        let truncated = self.graph_truncated.clone();
+
+        self.btn_graph.connect_toggled(move |btn| {
+            if btn.is_active() {
+                // Si la comparación estaba activa, desactivarla primero.
+                let right_widget: &gtk::Widget = right_editor_box.upcast_ref();
+                if editors_paned.end_child().as_ref() == Some(right_widget) {
+                    editors_paned.set_end_child(None::<&gtk::Widget>);
+                    btn_enable_comparison.set_visible(true);
+                    btn_compare.set_visible(false);
+                    btn_open_right.set_visible(false);
+                }
+                editors_paned.set_end_child(Some(&graph_view.widget));
+
+                // Asegurar que se ve el área de editores (por si estaba
+                // la pantalla de bienvenida).
+                welcome.set_visible(false);
+                editors_container.set_visible(true);
+                if let Some(parent) = welcome.parent() {
+                    if let Some(stack) = parent.downcast_ref::<gtk::Stack>() {
+                        stack.set_visible_child_name("editors");
+                    }
+                }
+
+                refresh_graph(&left_view, &dropdown, &graph_view, &toast_overlay, &truncated);
+            } else {
+                let graph_widget: &gtk::Widget = graph_view.widget.upcast_ref();
+                if editors_paned.end_child().as_ref() == Some(graph_widget) {
+                    editors_paned.set_end_child(None::<&gtk::Widget>);
+                }
+            }
+        });
+
+        // Activar la comparación cierra la vista de grafo. Este handler
+        // corre después del de `connect_enable_comparison` (que ya insertó
+        // el editor derecho), así que el toggle solo sincroniza su estado.
+        let btn_graph = self.btn_graph.clone();
+        self.btn_enable_comparison.connect_clicked(move |_| {
+            btn_graph.set_active(false);
         });
     }
 
@@ -1512,6 +1613,57 @@ fn execute_diff(
     }
 }
 
+/// Reconstruye la vista de grafo a partir del documento del editor izquierdo.
+///
+/// Con errores de parseo (típico mientras se escribe) conserva el último
+/// grafo bueno; solo el editor vacío o un formato no soportado reemplazan
+/// el canvas por un estado vacío.
+fn refresh_graph(
+    left_view: &sv::View,
+    dropdown: &gtk::DropDown,
+    graph_view: &GraphView,
+    toast_overlay: &adw::ToastOverlay,
+    was_truncated: &Rc<Cell<bool>>,
+) {
+    use crate::graph::{MAX_GRAPH_NODES, build_json_graph, build_xml_graph, layout};
+
+    let text = get_buffer_text(left_view);
+    if text.trim().is_empty() {
+        graph_view.show_empty(&t!("graph.empty_title"), &t!("graph.empty_desc"));
+        was_truncated.set(false);
+        return;
+    }
+
+    let format = match dropdown.selected() {
+        1 => Some(Format::Json),
+        2 => Some(Format::Xml),
+        3 => Some(Format::Sql),
+        4 => Some(Format::Text),
+        _ => auto_detect_format(&text).ok(),
+    };
+
+    let graph = match format {
+        Some(Format::Json) => parse_json(&text).map(|value| build_json_graph(&value)).ok(),
+        Some(Format::Xml) => parse_xml(&text).map(|root| build_xml_graph(&root)).ok(),
+        _ => {
+            graph_view.show_empty(&t!("graph.unsupported_title"), &t!("graph.unsupported_desc"));
+            was_truncated.set(false);
+            return;
+        }
+    };
+
+    // Error de parseo: no tocar el grafo mostrado.
+    let Some(mut graph) = graph else { return };
+
+    if graph.truncated && !was_truncated.get() {
+        toast_overlay.add_toast(adw::Toast::new(&t!("graph.truncated_toast", max = MAX_GRAPH_NODES)));
+    }
+    was_truncated.set(graph.truncated);
+
+    layout(&mut graph, &graph_view.layout_config());
+    graph_view.update(graph);
+}
+
 /// Formatea ambos paneles con pretty-print.
 fn format_both_panels(left: &sv::View, right: &sv::View, status: &gtk::Label, dropdown: &gtk::DropDown) {
     let left_text = get_buffer_text(left);
@@ -1853,7 +2005,7 @@ fn get_buffer_text(view: &sv::View) -> String {
 
 fn load_css() {
     let provider = gtk::CssProvider::new();
-    provider.load_from_string(diff_css());
+    provider.load_from_string(&format!("{}{}", diff_css(), graph_css()));
 
     gtk::style_context_add_provider_for_display(
         &gtk::gdk::Display::default().expect("No se pudo obtener el display"),
@@ -2116,6 +2268,7 @@ fn show_shortcuts_dialog(parent: &adw::ApplicationWindow) {
                 (t!("shortcuts.compare").to_string(), vec!["Ctrl", "Enter"]),
                 (t!("shortcuts.format").to_string(), vec!["Ctrl", "Shift", "F"]),
                 (t!("shortcuts.search").to_string(), vec!["Ctrl", "F"]),
+                (t!("shortcuts.graph").to_string(), vec!["Ctrl", "G"]),
             ],
         ),
         (

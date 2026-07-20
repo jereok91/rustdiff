@@ -139,3 +139,16 @@
 "exit.export_txt": "Exportar .txt"
 "exit.export_html": "Exportar .html"
 "exit.close_without_saving": "Salir sin guardar"
+
+# ── Vista de grafo (estilo JSON Crack) ──
+"graph.toggle_tooltip": "Vista de grafo (Ctrl+G)"
+"graph.search_placeholder": "Buscar nodo"
+"graph.zoom_in_tooltip": "Acercar"
+"graph.zoom_out_tooltip": "Alejar"
+"graph.zoom_fit_tooltip": "Ajustar el grafo a la vista"
+"graph.empty_title": "Nada que visualizar"
+"graph.empty_desc": "Escribe o abre un documento JSON o XML en el editor izquierdo"
+"graph.unsupported_title": "Formato no soportado"
+"graph.unsupported_desc": "La vista de grafo soporta documentos JSON y XML"
+"graph.truncated_toast": "Documento grande: grafo truncado a %{max} nodos"
+"shortcuts.graph": "Mostrar/ocultar vista de grafo"

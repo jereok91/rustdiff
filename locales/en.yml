@@ -139,3 +139,16 @@
 "exit.export_txt": "Export .txt"
 "exit.export_html": "Export .html"
 "exit.close_without_saving": "Close without saving"
+
+# ── Graph view (JSON Crack style) ──
+"graph.toggle_tooltip": "Graph view (Ctrl+G)"
+"graph.search_placeholder": "Search node"
+"graph.zoom_in_tooltip": "Zoom in"
+"graph.zoom_out_tooltip": "Zoom out"
+"graph.zoom_fit_tooltip": "Fit graph to view"
+"graph.empty_title": "Nothing to visualize"
+"graph.empty_desc": "Type or open a JSON or XML document in the left editor"
+"graph.unsupported_title": "Format not supported"
+"graph.unsupported_desc": "The graph view supports JSON and XML documents"
+"graph.truncated_toast": "Large document: graph truncated to %{max} nodes"
+"shortcuts.graph": "Toggle graph view"
