@@ -100,6 +100,14 @@
   </branding>
 
   <releases>
+    <release version="0.3.1" date="2026-07-20">
+      <description>
+        <p>Maintenance release.</p>
+        <ul>
+          <li>Fixed a clippy lint failure in the history sidebar that was blocking CI.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-07-20">
       <description>
         <p>New native graph view for exploring JSON and XML documents.</p>
