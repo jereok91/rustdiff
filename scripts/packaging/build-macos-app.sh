@@ -141,11 +141,18 @@ fi
 echo "==> Recolectando dylibs desde $BREW_PREFIX"
 
 list_brew_deps() {
-    otool -L "$1" | awk 'NR>1 {print $1}' | grep -E "^$BREW_PREFIX/" || true
+    otool -L "$1" | awk 'NR>1 {print $1}' | grep -E "^($BREW_PREFIX/|@rpath/)" || true
 }
 
 resolve_real() {
-    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"
+    # Las dependencias @rpath/ (p. ej. libwebp -> @rpath/libsharpyuv.0.dylib)
+    # no traen ruta absoluta; Homebrew enlaza (symlink) todas las libs de
+    # cada keg dentro de $BREW_PREFIX/lib, así que basta resolver ahí.
+    local dep="$1"
+    case "$dep" in
+        @rpath/*) dep="$BREW_PREFIX/lib/${dep#@rpath/}" ;;
+    esac
+    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$dep"
 }
 
 copy_deps() {
