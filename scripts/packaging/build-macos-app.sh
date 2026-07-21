@@ -228,7 +228,8 @@ done < <(all_machos)
 echo "==> Copiando recursos (schemas, iconos, gtksourceview, language-specs)"
 mkdir -p "$RESOURCES/share/glib-2.0/schemas" \
          "$RESOURCES/share/icons" \
-         "$RESOURCES/share/rustdiff/language-specs"
+         "$RESOURCES/share/rustdiff/language-specs" \
+         "$RESOURCES/share/rustdiff/icons/symbolic/hicolor/scalable/actions"
 
 # GSettings: schemas de gtk4/glib compilados dentro del bundle.
 cp "$BREW_PREFIX"/share/glib-2.0/schemas/*.xml "$RESOURCES/share/glib-2.0/schemas/" 2>/dev/null || true
@@ -251,6 +252,13 @@ fi
 
 # Language-specs propios de RustDiff (el lanzador exporta RUSTDIFF_DATA_DIR).
 cp data/language-specs/*.lang "$RESOURCES/share/rustdiff/language-specs/"
+
+# Iconos simbólicos propios: fallback para nombres que el Adwaita de Homebrew
+# no incluye (p. ej. network-workgroup-symbolic, zoom-fit-best-symbolic) y
+# que de lo contrario quedan rotos en el bundle (ver register_bundled_icons
+# en main_window.rs).
+cp data/icons/symbolic/hicolor/scalable/actions/*.svg \
+    "$RESOURCES/share/rustdiff/icons/symbolic/hicolor/scalable/actions/"
 
 # Traducciones de GTK/GLib solo para los idiomas de la app (en/es).
 for lang_dir in "$BREW_PREFIX"/share/locale/es*; do

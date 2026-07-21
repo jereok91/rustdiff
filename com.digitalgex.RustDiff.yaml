@@ -28,6 +28,8 @@ modules:
       - install -Dm644 ./data/icons/com.digitalgex.RustDiff.svg -t /app/share/icons/hicolor/scalable/apps
       - mkdir -p /app/share/rustdiff/language-specs
       - install -Dm644 ./data/language-specs/*.lang -t /app/share/rustdiff/language-specs
+      - mkdir -p /app/share/rustdiff/icons/symbolic/hicolor/scalable/actions
+      - install -Dm644 ./data/icons/symbolic/hicolor/scalable/actions/*.svg -t /app/share/rustdiff/icons/symbolic/hicolor/scalable/actions
     sources:
       - type: dir
         path: .

@@ -91,6 +91,43 @@ fn build_language_manager() -> sv::LanguageManager {
     manager
 }
 
+/// Registra como fallback los símbolos SVG propios que no todos los temas de
+/// iconos incluyen (p. ej. `network-workgroup-symbolic` y
+/// `zoom-fit-best-symbolic`: el Adwaita empaquetado vía Homebrew para el
+/// bundle de macOS los omite, y el icono termina roto). Mismo patrón
+/// multi-ruta que `build_language_manager` para los language-specs.
+fn register_bundled_icons() {
+    let Some(display) = gtk::gdk::Display::default() else {
+        return;
+    };
+
+    let mut extra_paths: Vec<std::path::PathBuf> = vec![
+        // Desarrollo local
+        std::path::PathBuf::from("data/icons/symbolic"),
+        // Instalación típica (install.sh / .deb)
+        std::path::PathBuf::from("/usr/share/rustdiff/icons/symbolic"),
+        // Flatpak
+        std::path::PathBuf::from("/app/share/rustdiff/icons/symbolic"),
+    ];
+
+    // Bundle macOS (.app) y otras instalaciones relocalizables.
+    if let Ok(data_dir) = std::env::var("RUSTDIFF_DATA_DIR") {
+        extra_paths.push(std::path::PathBuf::from(data_dir).join("icons/symbolic"));
+    }
+
+    // Instalaciones relativas al binario (p. ej. Homebrew).
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(prefix) = exe.parent().and_then(|d| d.parent()) {
+            extra_paths.push(prefix.join("share/rustdiff/icons/symbolic"));
+        }
+    }
+
+    let theme = gtk::IconTheme::for_display(&display);
+    for path in extra_paths.into_iter().filter(|p| p.is_dir()) {
+        theme.add_search_path(&path);
+    }
+}
+
 /// Indica qué editor tiene el foco actualmente.
 #[derive(Clone, Copy, PartialEq)]
 enum FocusedEditor {
@@ -158,6 +195,7 @@ pub struct MainWindow {
 impl MainWindow {
     pub fn new(app: &adw::Application) -> Self {
         load_css();
+        register_bundled_icons();
         apply_ui_scale(crate::settings::Settings::load().clamped_ui_scale());
 
         // ── Inicializar storage ─────────────────
