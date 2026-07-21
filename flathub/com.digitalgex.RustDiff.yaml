@@ -29,8 +29,8 @@ modules:
     sources:
       - type: git
         url: https://github.com/jereok91/rustdiff.git
-        tag: v0.3.1
-        commit: 1abc6b769f92987620029d2b4399b2a4d51a043f
+        tag: v0.3.2
+        commit: a04886d2a8c94199a039f321f3811da49c009bd8
         # flatpak-external-data-checker: si el workflow `release-flathub`
         # del repo upstream falla, este metadato deja que el bot oficial
         # de Flathub detecte nuevos tags y abra un PR por su cuenta.
