@@ -26,11 +26,15 @@ modules:
       - install -Dm644 ./data/com.digitalgex.RustDiff.desktop -t /app/share/applications
       - install -Dm644 ./data/com.digitalgex.RustDiff.metainfo.xml -t /app/share/metainfo
       - install -Dm644 ./data/icons/com.digitalgex.RustDiff.svg -t /app/share/icons/hicolor/scalable/apps
+      - mkdir -p /app/share/rustdiff/language-specs
+      - install -Dm644 ./data/language-specs/*.lang -t /app/share/rustdiff/language-specs
+      - mkdir -p /app/share/rustdiff/icons/symbolic/hicolor/scalable/actions
+      - install -Dm644 ./data/icons/symbolic/hicolor/scalable/actions/*.svg -t /app/share/rustdiff/icons/symbolic/hicolor/scalable/actions
     sources:
       - type: git
         url: https://github.com/jereok91/rustdiff.git
-        tag: v0.3.2
-        commit: a04886d2a8c94199a039f321f3811da49c009bd8
+        tag: v0.3.3
+        commit: f4588049edaa4d9a9add4da37f350c1dcb5a0750
         # flatpak-external-data-checker: si el workflow `release-flathub`
         # del repo upstream falla, este metadato deja que el bot oficial
         # de Flathub detecte nuevos tags y abra un PR por su cuenta.
