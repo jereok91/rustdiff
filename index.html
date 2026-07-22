@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>RustDiff APT repository</title>
+</head>
+<body>
+  <h1>RustDiff APT repository</h1>
+  <p>Install keyring:</p>
+  <pre><code>curl -fsSL https://jereok91.github.io/rustdiff/KEY.gpg | sudo tee /usr/share/keyrings/rustdiff-archive-keyring.gpg >/dev/null</code></pre>
+  <p>Add repository:</p>
+  <pre><code>echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/rustdiff-archive-keyring.gpg] https://jereok91.github.io/rustdiff stable main" | sudo tee /etc/apt/sources.list.d/rustdiff.list >/dev/null</code></pre>
+  <p>Install package:</p>
+  <pre><code>sudo apt update && sudo apt install rustdiff</code></pre>
+</body>
+</html>

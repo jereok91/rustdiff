@@ -1,0 +1,19 @@
+Package: rustdiff
+Version: 0.3.3-1
+Architecture: arm64
+Maintainer: jpajaro <jpajaro@digitalgex.com>
+Installed-Size: 3987
+Depends: libadwaita-1-0, libadwaita-1-0 (>= 1.5~beta), libc6 (>= 2.34), libcairo2 (>= 1.2.4), libglib2.0-0t64 (>= 2.54.0), libgtk-4-1, libgtk-4-1 (>= 4.12.0), libgtksourceview-5-0, libgtksourceview-5-0 (>= 2.91.4)
+Filename: pool/main/r/rustdiff/rustdiff_0.3.3-1_arm64.deb
+Size: 1363076
+MD5sum: 1058604082fcd36c04a20d035582ca2b
+SHA1: cdeb6dae552e634739246059b41fe031503dd689
+SHA256: 354c1532fd42305e4128ef58ed5e3093d9b118031c2123ac434d941fce088e77
+Section: utils
+Priority: optional
+Homepage: https://github.com/jereok91/rustdiff
+Description: Semantic JSON & XML diff tool with a native GTK4 desktop UI
+ RustDiff es un comparador semantico de JSON y XML.
+ Muestra las diferencias entre dos documentos de forma visual,
+ resaltando anadidos, eliminados y modificados con colores.
+
