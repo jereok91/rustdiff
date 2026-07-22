@@ -100,6 +100,15 @@
   </branding>
 
   <releases>
+    <release version="0.3.3" date="2026-07-22">
+      <description>
+        <p>Fixes broken icons in the graph view.</p>
+        <ul>
+          <li>The graph view toggle, its empty state and the "zoom to fit" button could show up as a generic broken-image icon on themes that don't ship network-workgroup-symbolic or zoom-fit-best-symbolic (notably the Homebrew Adwaita bundled into the macOS build). RustDiff now ships its own fallback icons for both names.</li>
+          <li>Documented that the .deb/APT packages require Ubuntu 24.04+ or an equivalent recent Debian (libadwaita &gt;= 1.5, GTK4 &gt;= 4.12); older systems should use the Flatpak package instead.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.2" date="2026-07-20">
       <description>
         <p>Fixes the macOS installer.</p>

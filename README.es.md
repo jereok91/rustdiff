@@ -102,6 +102,13 @@ sudo apt install rustdiff
 
 El repositorio APT publica builds para `amd64` y `arm64` (p. ej. Raspberry Pi 5, servidores ARM).
 
+> **Versión mínima de SO:** el `.deb` se compila contra el stack GTK4/libadwaita que trae el
+> runner de CI (actualmente Ubuntu 24.04), así que requiere **Ubuntu 24.04+ o una distro
+> basada en Debian con libadwaita ≥ 1.5 y GTK4 ≥ 4.12** (p. ej. Debian 13/trixie). En
+> versiones más viejas (Ubuntu 22.04, Debian 12, etc.) `apt install` fallará por dependencias
+> incumplidas — usa el [paquete Flatpak](#1-flatpak--flathub-recomendado-para-escritorio) en
+> su lugar, que empaqueta su propio runtime y funciona sin importar el GTK del sistema.
+
 Eliminar paquete y repositorio:
 
 ```bash

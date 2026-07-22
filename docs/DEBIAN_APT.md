@@ -81,3 +81,20 @@ sudo apt install rustdiff
 - Repository metadata is generated for `amd64` and `arm64`. The workflow builds each architecture natively (`ubuntu-latest` and `ubuntu-24.04-arm` runners) and `build-apt-repo.sh` merges all downloaded `.deb` files into per-architecture `Packages` indices: `bash scripts/packaging/build-apt-repo.sh <output-dir> <deb> [<deb>...]`.
 - This is not a Launchpad PPA; it is a signed APT repository hosted on GitHub Pages.
 - If you need Launchpad specifically, you can keep this pipeline for `.deb` artifacts and add a source-package upload pipeline separately.
+
+## Minimum OS version
+
+The `amd64`/`arm64` build jobs run `cargo-deb` on whatever Ubuntu version the CI runner
+provides (`ubuntu-latest`, currently 24.04/noble; `ubuntu-24.04-arm`). `cargo-deb`'s `$auto`
+dependency resolution (via `dpkg-shlibdeps`) bakes in the minimum library versions actually
+linked at build time — currently `libadwaita-1-0 (>= 1.5~beta)`, `libgtk-4-1 (>= 4.12.0)`, and
+`libglib2.0-0t64` (the 64-bit-time_t package name introduced in 24.04, which doesn't exist as
+an installable name on older releases at all).
+
+RustDiff's UI code itself already depends on libadwaita APIs (`adw::ToolbarView`, `adw::ToastOverlay`)
+that only exist from libadwaita 1.4+, so this isn't just an artifact of the CI runner choice —
+the app genuinely cannot build or run against the libadwaita/GTK4 shipped in Ubuntu 22.04 or
+Debian 12 without a newer stack from a PPA or backport. There is currently no older-runner
+build variant; end users on pre-24.04 Ubuntu or pre-13/trixie Debian should install the
+[Flatpak package](https://flathub.org/apps/com.digitalgex.RustDiff) instead, which bundles its
+own `org.gnome.Platform` runtime and is unaffected by the host's GTK version.
