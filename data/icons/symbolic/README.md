@@ -12,20 +12,36 @@ stays dark and becomes invisible on dark themes.
 
 ## Sources
 
-| File | Origin | License |
-| --- | --- | --- |
-| `document-open-recent-symbolic.svg` | [GNOME/adwaita-icon-theme](https://github.com/GNOME/adwaita-icon-theme) | CC-BY-SA 3.0 / LGPL-3.0 |
-| `format-justify-left-symbolic.svg` | [GNOME/adwaita-icon-theme](https://github.com/GNOME/adwaita-icon-theme) | CC-BY-SA 3.0 / LGPL-3.0 |
-| `view-list-symbolic.svg` | [GNOME/adwaita-icon-theme](https://github.com/GNOME/adwaita-icon-theme) | CC-BY-SA 3.0 / LGPL-3.0 |
-| `zoom-in-symbolic.svg` | [GNOME/adwaita-icon-theme](https://github.com/GNOME/adwaita-icon-theme) | CC-BY-SA 3.0 / LGPL-3.0 |
-| `zoom-out-symbolic.svg` | [GNOME/adwaita-icon-theme](https://github.com/GNOME/adwaita-icon-theme) | CC-BY-SA 3.0 / LGPL-3.0 |
-| `zoom-fit-best-symbolic.svg` | [GNOME/adwaita-icon-theme](https://github.com/GNOME/adwaita-icon-theme) | CC-BY-SA 3.0 / LGPL-3.0 |
-| `rustdiff-graph-symbolic.svg` | [twbs/icons](https://github.com/twbs/icons) (`diagram-3-fill`) | MIT |
+Every `-symbolic` name referenced from `src/` has a copy here, so no
+channel can end up showing GTK's broken-image placeholder. All files come
+from [GNOME/adwaita-icon-theme](https://github.com/GNOME/adwaita-icon-theme)
+(CC-BY-SA 3.0 / LGPL-3.0) except where noted.
+
+| File | Used by |
+| --- | --- |
+| `document-open-recent-symbolic.svg` | History toggle |
+| `edit-delete-symbolic.svg` | Delete a history entry |
+| `format-justify-left-symbolic.svg` | Format documents |
+| `go-down-symbolic.svg`, `go-up-symbolic.svg` | Search bar next/previous |
+| `open-menu-symbolic.svg` | Main menu |
+| `user-trash-symbolic.svg` | Clear history |
+| `view-list-symbolic.svg` | Differences panel toggle |
+| `zoom-in-symbolic.svg`, `zoom-out-symbolic.svg`, `zoom-fit-best-symbolic.svg` | Graph toolbar |
+| `rustdiff-graph-symbolic.svg` — [twbs/icons](https://github.com/twbs/icons) `diagram-3-fill`, MIT | Graph view toggle and empty state |
 
 `rustdiff-graph-symbolic` uses an app-private name on purpose: no
 freedesktop icon name describes a node graph, so a private name guarantees
 the same artwork on every desktop instead of whatever a theme happens to
 ship under a generic name.
+
+Keep this in sync: if you use a new icon name in `src/`, drop its SVG here
+too. This check catches drift:
+
+```bash
+grep -rho '"[a-z0-9-]*-symbolic"' src/ | tr -d '"' | sort -u > /tmp/used
+ls data/icons/symbolic/hicolor/scalable/actions/*.svg | xargs -n1 basename -s .svg | sort > /tmp/bundled
+diff /tmp/used /tmp/bundled
+```
 
 ## Packaging
 
