@@ -128,6 +128,40 @@ info "Compilando e instalando RustDiff (esto puede tardar unos minutos)..."
 cargo install rustdiff
 ok "rustdiff instalado en $(which rustdiff || echo '~/.cargo/bin/rustdiff')"
 
+# ── Iconos simbolicos de la interfaz ─────────
+# Copias de respaldo de los iconos de la barra superior. Van a hicolor
+# (tema de ultimo recurso), asi que el tema del usuario sigue teniendo
+# prioridad; solo cubren los nombres que su tema no traiga —entre ellos
+# `rustdiff-graph-symbolic`, que es propio de la app y no existe en
+# ningun tema. Las demas vias de instalacion (.deb, Flatpak, macOS) los
+# copian desde `data/icons/symbolic/`.
+install_symbolic_icons() {
+    local names=(
+        document-open-recent-symbolic
+        format-justify-left-symbolic
+        rustdiff-graph-symbolic
+        view-list-symbolic
+        zoom-fit-best-symbolic
+        zoom-in-symbolic
+        zoom-out-symbolic
+    )
+    local repo_dir="data/icons/symbolic/hicolor/scalable/actions"
+    local dest="$HOME/.local/share/icons/hicolor/scalable/actions"
+    local base_url="https://raw.githubusercontent.com/jereok91/rustdiff/main/${repo_dir}"
+    mkdir -p "$dest"
+
+    local name
+    for name in "${names[@]}"; do
+        if [ -f "${repo_dir}/${name}.svg" ]; then
+            install -Dm644 "${repo_dir}/${name}.svg" "${dest}/${name}.svg"
+        else
+            curl -fsSL "${base_url}/${name}.svg" -o "${dest}/${name}.svg" \
+                || warn "No se pudo descargar el icono ${name}.svg"
+        fi
+    done
+    ok "Iconos de la interfaz instalados en ${dest}/"
+}
+
 # ── Instalar icono y .desktop ────────────────
 # Se instala en ~/.local/share/... (per-user) para que coincida con el
 # binario que `cargo install` colocó en ~/.cargo/bin/. Ademas se parchea
@@ -162,6 +196,8 @@ install_desktop_files() {
     local home_icons="$HOME/.local/share/icons/hicolor/scalable/apps"
     local home_metainfo="$HOME/.local/share/metainfo"
     mkdir -p "$home_apps" "$home_icons" "$home_metainfo"
+
+    install_symbolic_icons
 
     # Ruta absoluta del binario (los launchers graficos no heredan ~/.cargo/bin)
     local rustdiff_bin

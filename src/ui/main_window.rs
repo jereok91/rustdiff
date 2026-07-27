@@ -128,6 +128,15 @@ fn register_bundled_icons() {
     }
 }
 
+/// Da nombre a un botón de solo icono: `text` como etiqueta accesible
+/// (lectores de pantalla, que no ven el icono) y `tooltip` al pasar el
+/// ratón. Sin esto un botón sin `label` se anuncia como "botón" a secas.
+fn set_icon_button_label(button: &impl IsA<gtk::Widget>, text: &str, tooltip: &str) {
+    let widget = button.as_ref();
+    widget.set_tooltip_text(Some(tooltip));
+    widget.update_property(&[gtk::accessible::Property::Label(text)]);
+}
+
 /// Indica qué editor tiene el foco actualmente.
 #[derive(Clone, Copy, PartialEq)]
 enum FocusedEditor {
@@ -264,24 +273,33 @@ impl MainWindow {
         btn_compare.add_css_class("suggested-action");
         btn_compare.set_visible(false);
 
-        let btn_format = gtk::Button::with_label(&t!("header.format"));
-        btn_format.set_tooltip_text(Some(&t!("header.format_tooltip")));
+        // Los botones secundarios son solo icono: el texto vive en el
+        // tooltip y en la etiqueta accesible, así la header bar no crece.
+        let btn_format = gtk::Button::new();
+        btn_format.set_icon_name("format-justify-left-symbolic");
+        set_icon_button_label(&btn_format, &t!("header.format"), &t!("header.format_tooltip"));
         btn_format.add_css_class("flat");
 
         // ── Botón Historial toggle ──────────────
-        let btn_history = gtk::ToggleButton::with_label(&t!("header.history"));
-        btn_history.set_tooltip_text(Some(&t!("header.history_tooltip")));
+        let btn_history = gtk::ToggleButton::new();
+        btn_history.set_icon_name("document-open-recent-symbolic");
+        set_icon_button_label(&btn_history, &t!("header.history"), &t!("header.history_tooltip"));
         btn_history.add_css_class("flat");
 
         // ── Botón Vista de grafo toggle ─────────
         let btn_graph = gtk::ToggleButton::new();
-        btn_graph.set_icon_name("network-workgroup-symbolic");
-        btn_graph.set_tooltip_text(Some(&t!("graph.toggle_tooltip")));
+        btn_graph.set_icon_name("rustdiff-graph-symbolic");
+        set_icon_button_label(&btn_graph, &t!("header.graph"), &t!("graph.toggle_tooltip"));
         btn_graph.add_css_class("flat");
 
         // ── Botón Panel de diferencias toggle ───
-        let btn_diff_panel = gtk::ToggleButton::with_label(&t!("header.diff_panel"));
-        btn_diff_panel.set_tooltip_text(Some(&t!("header.diff_panel_tooltip")));
+        let btn_diff_panel = gtk::ToggleButton::new();
+        btn_diff_panel.set_icon_name("view-list-symbolic");
+        set_icon_button_label(
+            &btn_diff_panel,
+            &t!("header.diff_panel"),
+            &t!("header.diff_panel_tooltip"),
+        );
         btn_diff_panel.add_css_class("flat");
         btn_diff_panel.set_active(true);
 

@@ -255,7 +255,7 @@ impl GraphView {
 
         // ── Estado vacío (formato no soportado, editor vacío) ─
         let empty_page = adw::StatusPage::new();
-        empty_page.set_icon_name(Some("network-workgroup-symbolic"));
+        empty_page.set_icon_name(Some("rustdiff-graph-symbolic"));
         empty_page.set_title(&t!("graph.empty_title"));
         empty_page.set_description(Some(&t!("graph.empty_desc")));
 

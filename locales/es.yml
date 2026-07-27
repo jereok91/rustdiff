@@ -21,6 +21,7 @@
 "header.history_tooltip": "Mostrar/ocultar historial de sesiones (Ctrl+H)"
 "header.diff_panel": "Diferencias"
 "header.diff_panel_tooltip": "Mostrar/ocultar el panel de diferencias (Ctrl+D)"
+"header.graph": "Grafo"
 "header.format_dropdown_tooltip": "Formato del documento"
 "header.format_auto": "Auto-detectar"
 "header.format_text": "Texto plano"
