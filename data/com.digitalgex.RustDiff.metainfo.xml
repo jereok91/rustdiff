@@ -100,6 +100,18 @@
   </branding>
 
   <releases>
+    <release version="0.4.0" date="2026-07-27">
+      <description>
+        <p>A tidier header bar and a collapsible differences panel.</p>
+        <ul>
+          <li>The differences panel can now be hidden and brought back with a header bar button or Ctrl+D, giving the editors the full window height. Opening the graph view hides it automatically and closing the graph restores it.</li>
+          <li>Secondary header bar actions (differences, graph, history, format) are now icon buttons with tooltips and accessible labels, so the header stays compact on narrow windows.</li>
+          <li>Fixed symbolic icons that rendered as outlines invisible on dark themes: the bundled fallbacks are now fill-based, which is what GTK recolors.</li>
+          <li>Every icon the app uses now ships a bundled fallback, so no packaging channel can show a broken-image placeholder when the desktop icon theme lacks a name.</li>
+          <li>The Debian/APT package now ships the bundled SQL language definition, restoring SQL syntax highlighting for .deb installs.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.3" date="2026-07-22">
       <description>
         <p>Fixes broken icons in the graph view.</p>

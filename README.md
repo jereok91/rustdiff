@@ -14,7 +14,8 @@ Language: **English** | [Espanol](README.es.md)
 - Side-by-side editors with syntax highlighting
 - **Busqueda en editores** (`Ctrl+F`) con navegacion siguiente/anterior y wrap-around
 - Auto compare while typing (debounced) + manual compare
-- Difference table with filters and click-to-jump navigation
+- Difference table with filters and click-to-jump navigation, collapsible with `Ctrl+D`
+- Graph view (`Ctrl+G`): the left document as an interactive node graph, JSON Crack style
 - Export to `.txt` and styled `.html`
 - Session history stored in SQLite (paginated, searchable)
 
@@ -263,6 +264,10 @@ rustdiff schema_v1.xml schema_v2.xml
 | `Ctrl+E`       | Export result as `.txt`  |
 | `Ctrl+Shift+F` | Pretty-print both panels |
 | `Ctrl+H`       | Toggle history panel     |
+| `Ctrl+F`       | Search inside the editors|
+| `Ctrl+G`       | Toggle graph view        |
+| `Ctrl+D`       | Toggle differences panel |
+| `Ctrl+?`       | Show all shortcuts       |
 
 ## Data, config, and outputs
 
@@ -288,6 +293,9 @@ cargo test --test diff_engine_tests
 - Flathub submission workflow: `flathub/README.md`
 - Screenshot requirements (AppStream/Flathub): `data/screenshots/README.md`
 - Debian/APT packaging and GitHub Actions setup: `docs/DEBIAN_APT.md`
+- Release checklist and what a `v*` tag publishes: `docs/RELEASING.md`
+- Release notes: `docs/RELEASE_NOTES_0.4.0.md`
+- Bundled symbolic icons (sources and licenses): `data/icons/symbolic/README.md`
 
 Useful external references:
 

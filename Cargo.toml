@@ -17,7 +17,7 @@
 
 [package]
 name        = "rustdiff"
-version     = "0.3.3"
+version     = "0.4.0"
 edition     = "2024"
 rust-version = "1.85"
 authors     = ["digitalgex <jpajaro@digitalgex.com>"]
@@ -160,4 +160,7 @@ assets = [
     ["data/com.digitalgex.RustDiff.metainfo.xml",   "usr/share/metainfo/",                                       "644"],
     ["data/icons/com.digitalgex.RustDiff.svg",      "usr/share/icons/hicolor/scalable/apps/",                    "644"],
     ["data/icons/symbolic/hicolor/scalable/actions/*.svg", "usr/share/rustdiff/icons/symbolic/hicolor/scalable/actions/", "644"],
+    # `build_language_manager` busca aqui los .lang propios (SQL); sin
+    # esto el paquete .deb pierde el resaltado de sintaxis de SQL.
+    ["data/language-specs/*.lang",                  "usr/share/rustdiff/language-specs/",                        "644"],
 ]

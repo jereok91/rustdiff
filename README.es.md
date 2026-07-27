@@ -14,7 +14,8 @@ Idioma: [English](README.md) | **Espanol**
 - Editores lado a lado con resaltado de sintaxis
 - **Busqueda en editores** (`Ctrl+F`) con navegacion siguiente/anterior y wrap-around
 - Comparacion automatica al escribir (con debounce) y comparacion manual
-- Tabla de diferencias con filtros y navegacion por click
+- Tabla de diferencias con filtros y navegacion por click, plegable con `Ctrl+D`
+- Vista de grafo (`Ctrl+G`): el documento izquierdo como grafo de nodos interactivo, estilo JSON Crack
 - Exportacion a `.txt` y `.html` con estilos
 - Historial de sesiones en SQLite (paginado, con busqueda)
 
@@ -263,6 +264,10 @@ rustdiff esquema_v1.xml esquema_v2.xml
 | `Ctrl+E`       | Exportar resultado a `.txt`      |
 | `Ctrl+Shift+F` | Formatear ambos paneles          |
 | `Ctrl+H`       | Mostrar/ocultar historial        |
+| `Ctrl+F`       | Buscar dentro de los editores    |
+| `Ctrl+G`       | Mostrar/ocultar vista de grafo   |
+| `Ctrl+D`       | Mostrar/ocultar panel de diferencias |
+| `Ctrl+?`       | Ver todos los atajos             |
 
 ## Datos, configuracion y salidas
 
@@ -288,6 +293,9 @@ cargo test --test diff_engine_tests
 - Flujo de envio a Flathub: `flathub/README.md`
 - Requisitos de screenshots (AppStream/Flathub): `data/screenshots/README.md`
 - Empaquetado Debian/APT y configuracion de GitHub Actions: `docs/DEBIAN_APT.md`
+- Checklist de release y que publica un tag `v*`: `docs/RELEASING.md`
+- Notas de la version: `docs/RELEASE_NOTES_0.4.0.md`
+- Iconos simbolicos incluidos (origen y licencias): `data/icons/symbolic/README.md`
 
 Referencias externas:
 
