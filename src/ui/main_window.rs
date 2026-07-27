@@ -187,6 +187,11 @@ pub struct MainWindow {
     graph_view: Rc<GraphView>,
     /// Toggle de la vista de grafo en la header bar.
     btn_graph: gtk::ToggleButton,
+    /// Toggle del panel de diferencias en la header bar.
+    btn_diff_panel: gtk::ToggleButton,
+    /// Estado del panel de diferencias elegido por el usuario, para poder
+    /// restaurarlo al cerrar la vista de grafo (que lo oculta).
+    diff_panel_pref: Rc<Cell<bool>>,
     /// Si el último grafo mostrado estaba truncado (para avisar con un
     /// toast solo en la transición, no en cada refresco).
     graph_truncated: Rc<Cell<bool>>,
@@ -274,6 +279,12 @@ impl MainWindow {
         btn_graph.set_tooltip_text(Some(&t!("graph.toggle_tooltip")));
         btn_graph.add_css_class("flat");
 
+        // ── Botón Panel de diferencias toggle ───
+        let btn_diff_panel = gtk::ToggleButton::with_label(&t!("header.diff_panel"));
+        btn_diff_panel.set_tooltip_text(Some(&t!("header.diff_panel_tooltip")));
+        btn_diff_panel.add_css_class("flat");
+        btn_diff_panel.set_active(true);
+
         // ── Menú principal (hamburger) ──────────
         // Agrupa acciones secundarias: Formatear, Exportar, Idioma.
         // Los atajos se muestran automaticamente porque se registran
@@ -319,7 +330,7 @@ impl MainWindow {
         btn_menu.add_css_class("flat");
 
         // ── HeaderBar ───────────────────────────
-        // Layout: [Open Izq] [Open Der] [Formato▼]  ...  [History] [Format] [Compare] [☰]
+        // Layout: [Open Izq] [Open Der] [Formato▼]  ...  [Diferencias] [Grafo] [History] [Format] [Compare] [☰]
         let header = adw::HeaderBar::new();
         header.pack_start(&btn_open_left);
         header.pack_start(&btn_open_right);
@@ -330,6 +341,7 @@ impl MainWindow {
         header.pack_end(&btn_format);
         header.pack_end(&btn_history);
         header.pack_end(&btn_graph);
+        header.pack_end(&btn_diff_panel);
 
         // ── Pantalla de bienvenida (Welcome) ───
         let (welcome_screen, welcome_btn_doc, welcome_btn_new, welcome_btn_history, welcome_btn_shortcuts) =
@@ -532,6 +544,8 @@ impl MainWindow {
             btn_enable_comparison: btn_enable_comparison.clone(),
             graph_view,
             btn_graph: btn_graph.clone(),
+            btn_diff_panel: btn_diff_panel.clone(),
+            diff_panel_pref: Rc::new(Cell::new(true)),
             graph_truncated: Rc::new(Cell::new(false)),
             history_search_entry,
             history_load_more_btn,
@@ -562,6 +576,7 @@ impl MainWindow {
         main_win.connect_shortcuts_button(&welcome_btn_shortcuts);
         main_win.connect_enable_comparison(&btn_enable_comparison, &btn_compare, &btn_open_right);
         main_win.connect_graph_toggle(&btn_compare, &btn_open_right);
+        main_win.connect_diff_panel_toggle();
         main_win.connect_search_bar();
         main_win.connect_history_search();
         main_win.connect_history_load_more();
@@ -1064,6 +1079,7 @@ impl MainWindow {
         let search_revealer = self.search_revealer.clone();
         let search_entry = self.search_entry.clone();
         let btn_graph = self.btn_graph.clone();
+        let btn_diff_panel = self.btn_diff_panel.clone();
 
         controller.connect_key_pressed(move |_, key, _, modifier| {
             let ctrl = modifier.contains(gtk::gdk::ModifierType::CONTROL_MASK);
@@ -1114,6 +1130,11 @@ impl MainWindow {
                 // Ctrl+G → toggle vista de grafo
                 (gtk::gdk::Key::g, false) => {
                     btn_graph.set_active(!btn_graph.is_active());
+                    gtk::glib::Propagation::Stop
+                }
+                // Ctrl+D → toggle panel de diferencias
+                (gtk::gdk::Key::d, false) => {
+                    btn_diff_panel.set_active(!btn_diff_panel.is_active());
                     gtk::glib::Propagation::Stop
                 }
                 // Ctrl+F → mostrar barra de búsqueda
@@ -1206,6 +1227,31 @@ impl MainWindow {
     }
 
     // ─────────────────────────────────────────
+    // Panel de diferencias (mostrar/ocultar)
+    // ─────────────────────────────────────────
+
+    /// Conecta el toggle que muestra u oculta el panel inferior de
+    /// diferencias. Ocultarlo deja todo el alto para los editores; el
+    /// `gtk::Paned` colapsa solo su manija cuando el hijo final no es
+    /// visible, así que al volver a mostrarlo se conserva la posición.
+    fn connect_diff_panel_toggle(&self) {
+        let diff_panel = self.diff_panel.clone();
+        let pref = self.diff_panel_pref.clone();
+        let btn_graph = self.btn_graph.clone();
+
+        self.btn_diff_panel.connect_toggled(move |btn| {
+            let active = btn.is_active();
+            diff_panel.widget.set_visible(active);
+            // Con el grafo abierto el panel está oculto de forma forzada:
+            // no se toca la preferencia salvo que el usuario la cambie
+            // explícitamente en ese momento.
+            if !btn_graph.is_active() || active {
+                pref.set(active);
+            }
+        });
+    }
+
+    // ─────────────────────────────────────────
     // Vista de grafo (lado a lado con el editor)
     // ─────────────────────────────────────────
 
@@ -1225,9 +1271,15 @@ impl MainWindow {
         let dropdown = self.format_dropdown.clone();
         let toast_overlay = self.toast_overlay.clone();
         let truncated = self.graph_truncated.clone();
+        let btn_diff_panel = self.btn_diff_panel.clone();
+        let diff_panel_pref = self.diff_panel_pref.clone();
 
         self.btn_graph.connect_toggled(move |btn| {
             if btn.is_active() {
+                // El grafo necesita todo el alto: se recuerda si el panel
+                // de diferencias estaba visible para restaurarlo al cerrar.
+                diff_panel_pref.set(btn_diff_panel.is_active());
+                btn_diff_panel.set_active(false);
                 // Si la comparación estaba activa, desactivarla primero.
                 let right_widget: &gtk::Widget = right_editor_box.upcast_ref();
                 if editors_paned.end_child().as_ref() == Some(right_widget) {
@@ -1253,6 +1305,9 @@ impl MainWindow {
                 let graph_widget: &gtk::Widget = graph_view.widget.upcast_ref();
                 if editors_paned.end_child().as_ref() == Some(graph_widget) {
                     editors_paned.set_end_child(None::<&gtk::Widget>);
+                }
+                if diff_panel_pref.get() {
+                    btn_diff_panel.set_active(true);
                 }
             }
         });
@@ -2307,6 +2362,7 @@ fn show_shortcuts_dialog(parent: &adw::ApplicationWindow) {
                 (t!("shortcuts.format").to_string(), vec!["Ctrl", "Shift", "F"]),
                 (t!("shortcuts.search").to_string(), vec!["Ctrl", "F"]),
                 (t!("shortcuts.graph").to_string(), vec!["Ctrl", "G"]),
+                (t!("shortcuts.diff_panel").to_string(), vec!["Ctrl", "D"]),
             ],
         ),
         (

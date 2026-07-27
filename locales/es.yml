@@ -19,6 +19,8 @@
 "header.export_html": "Exportar como .html"
 "header.history": "Historial"
 "header.history_tooltip": "Mostrar/ocultar historial de sesiones (Ctrl+H)"
+"header.diff_panel": "Diferencias"
+"header.diff_panel_tooltip": "Mostrar/ocultar el panel de diferencias (Ctrl+D)"
 "header.format_dropdown_tooltip": "Formato del documento"
 "header.format_auto": "Auto-detectar"
 "header.format_text": "Texto plano"
@@ -152,3 +154,4 @@
 "graph.unsupported_desc": "La vista de grafo soporta documentos JSON y XML"
 "graph.truncated_toast": "Documento grande: grafo truncado a %{max} nodos"
 "shortcuts.graph": "Mostrar/ocultar vista de grafo"
+"shortcuts.diff_panel": "Mostrar/ocultar panel de diferencias"
