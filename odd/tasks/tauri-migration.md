@@ -77,9 +77,34 @@ Fase F0 — congelar el núcleo (S1, S6, S7).
 | T4 | CI, CLAUDE.md y RELEASING.md a workspace | S6 | inline | `9b5c609` |
 | T5 | Verificación independiente (`gentle-ai-verify`) y sus fixes: comandos de test de los dos READMEs y piso de módulos del guard | S6, S7 | subagente | `8b8fcbb`, `0bc4345` |
 
-Fases posteriores (no autorizadas aún): F1 spike Tauri, F2 contrato IPC, F3 shell + editores,
-F4 tabla de diff, F5 historial + export con golden files, F6 grafo, F7 sistema de diseño,
-F8 empaquetado y retiro del front GTK.
+Fases posteriores (F1 autorizada y en curso; F2-F8 no autorizadas todavía): F1 spike Tauri,
+F2 contrato IPC, F3 shell + editores, F4 tabla de diff, F5 historial + export con golden files,
+F6 grafo, F7 sistema de diseño, F8 empaquetado y retiro del front GTK.
+
+### F1 — spike Tauri v2 + React (en curso)
+
+| ID | Tarea | Spec | Ruta | Commit |
+|----|-------|------|------|--------|
+| T6 | Núcleo serializable para el IPC: `Serialize` en `DiffKind`, `DiffItem`, `DiffResult` y `Format` | S2, S8 | inline | |
+| T7 | Andamiaje `desktop/` (Vite + React + TS) y `desktop/src-tauri/` (Tauri v2) con el comando real `diff_documents` | S2, S8 | inline | |
+| T8 | Smokes headless reutilizable (`desktop/scripts/smoke-headless.sh`): sway headless + grim, sin tocar el escritorio del usuario | S6 | inline | |
+| T9 | CI: libs de WebKit + pasos de pnpm/Node antes de los pasos de cargo | S6 | inline | |
+
+**Decisiones de andamiaje de F1**
+
+- **Layout transitorio**: el shell Tauri vive en `desktop/` (frontend) + `desktop/src-tauri/`,
+  y la app GTK se queda en la raíz. Mover 4.136 LOC de UI GTK ahora sería el retiro que
+  corresponde a F8; en F8 se borra `src/` y `desktop/*` puede pasar a la raíz. Así los dos
+  frontends conviven sin pisarse y `main` sigue teniendo una app que compila.
+- **El núcleo deriva `Serialize`** en los cuatro tipos que viajan por IPC. `ParseError`
+  todavía se mapea a texto: la taxonomía de errores con código llega en F2 con los tipos
+  generados por `tauri-specta` (D6).
+- **Hallazgo que cambia el workspace**: `tauri-build` valida que exista `frontendDist`
+  (`desktop/dist`) al compilar el shell, así que meter `desktop/src-tauri` en
+  `default-members` haría que **todo** comando de cargo en la raíz dependiera de que el
+  frontend esté compilado — un fallo confuso para quien solo trabaja en la app GTK. Queda en
+  `members` (lock y `target` compartidos) y el CI usa `--workspace` después de compilar el
+  frontend.
 
 ## Log
 
@@ -179,3 +204,61 @@ también están: `webkit2gtk-4.1` 2.54.1, `javascriptcoregtk-4.1` 2.54.1, `libso
 3.8.0, node v24.13.0, npm 11.6.2, pnpm 10.32.1, cargo 1.99.0 (CachyOS).
 Queda en F1 lo barato: `src-tauri` + front mínimo, medir bundle y arranque, y regenerar
 `cargo-sources.json` (punto diferido de L8).
+
+**L10** (F1, andamiaje): el spike quedó armado y el frontend compila.
+
+- Frontend: Vite 8.3.4 + React 19.3 + TypeScript 7.0.2; `pnpm install` resolvió 27 paquetes
+  y `pnpm build` (`tsc --noEmit` + `vite build`) da `dist/` de **228 KB**, con el JS en
+  221.84 kB (69.46 kB gzip).
+- Shell: `desktop/src-tauri` con Tauri 2.12 (CLI) y un único comando `diff_documents` que
+  reusa `rustdiff-core` tal cual (misma semántica que la app GTK: formato explícito manda,
+  si no se detecta del documento izquierdo; cada lado reporta su propio error).
+- Cinco tests dentro del binario: diff semántico real, formato explícito sobre detección,
+  formato desconocido sin fallback, error por lado, y **la forma serializada del payload**
+  que espejan los tipos de `desktop/src/App.tsx`.
+- Herramientas de verificación disponibles medidas: **sway headless + grim** funcionan
+  (weston, cage y Xvfb no están), así que el smoke puede correr sin abrir ventanas en el
+  escritorio del usuario; se agregó `desktop/scripts/smoke-headless.sh` para eso.
+- `patchelf` no está instalado: afecta solo al empaquetado AppImage, no al `.deb`.
+
+**L11** (F1 cerrada, gate del spike pasado **con prueba visual**):
+
+- **Prueba visual**: la captura del escritorio sintético muestra el diff semántico real
+  renderizado por el frontend (`$.activo` añadido, `$.tags[1]` y `$.usuario.edad`
+  cambiados), con el estado "Json · 3 difference(s): 1 added, 0 removed, 2 changed".
+  La cadena React → IPC → `rustdiff-core` → React funciona completa.
+- **Mediciones** (mismo harness para las dos apps, `desktop/scripts/smoke-headless.sh`):
+
+  | | Tauri 2.12.3 (release) | App GTK (debug) |
+  |---|---|---|
+  | arranque hasta ventana mapeada | **208 ms** | 1497 ms |
+  | RSS del árbol de procesos | **476 MB** (3 procesos) | 252 MB (1 proceso) |
+  | `.deb` / binario | 1.91 MiB / 4.82 MB | — |
+  | `dist/` del frontend | 228 KB (JS 221.84 kB, 69.46 kB gzip) | — |
+
+  El arranque de la GTK está inflado por ser binario de debug (no se compiló en release);
+  el dato comparable es la memoria: **WebKit cuesta ~1.9× el RSS de GTK**. Es el precio real
+  de la migración y conviene tenerlo a la vista.
+- **Cinco hallazgos que costaron tiempo y quedan documentados**:
+  1. **`custom-protocol` no es opcional**: en tauri 2.11+ `tauri/build.rs` decide
+     `dev = !custom_protocol`, así que un `cargo build --release` sin esa feature arranca
+     apuntando a `http://localhost:1420` y la ventana muestra "Could not connect to
+     localhost". El CLI la activa; quedó declarada en el manifiesto del miembro.
+  2. **Versiones alineadas**: el CLI aborta si `tauri` (crate) y `@tauri-apps/api` (npm) no
+     comparten major/minor; ambos en 2.12.3.
+  3. **Backend headless sin GPU**: sin `WEBKIT_DISABLE_DMABUF_RENDERER=1` (y compositing
+     off) la app muere con `Error 71 (Error de protocolo) dispatching to Wayland display`
+     justo después de mapear la ventana. Es del entorno sintético, no del código.
+  4. **`sway` headless necesita su propio `XDG_RUNTIME_DIR`**: con el del usuario choca con
+     su sesión (socket `wayland-1` y su `SWAYSOCK`) y el smoke termina consultando el
+     escritorio equivocado. El harness lo aísla y borra al salir.
+  5. **El `.deb` de Tauri no es el paquete de cargo-deb**: el nuevo se llama `rust-diff`
+     (el actual es `rustdiff`), instala `usr/bin/rustdiff-desktop` (no `rustdiff`),
+     trae su propio `RustDiff.desktop` y **ningún metainfo AppStream**, y depende de
+     `libwebkit2gtk-4.1-0, libgtk-3-0`: **Tauri en Linux se apoya en GTK3**, así que se va
+     Adwaita y GtkSourceView pero queda GTK3 vía WebKit.
+- **Anotado para F8** (no bloquea F1): unificar el nombre del paquete y del binario, decidir
+  cuál `.desktop` gana y empaquetar el metainfo, instalar `patchelf` si se quiere AppImage, y
+  regenerar `cargo-sources.json` (sigue diferido de L8: el manifest Flatpak no se tocó porque
+  WebKit ya está resuelto desde L9).
+- S4 se respeta: F1 no tocó ni una línea de diseño; Tailwind y shadcn/ui siguen siendo F3/F7.
