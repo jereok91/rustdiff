@@ -13,9 +13,10 @@ export type WelcomeScreenProps = {
     onOpenDocument: () => void;
     onNewComparison: () => void;
     onShowShortcuts: () => void;
+    onViewHistory: () => void;
 };
 
-export function WelcomeScreen({ onOpenDocument, onNewComparison, onShowShortcuts }: WelcomeScreenProps) {
+export function WelcomeScreen({ onOpenDocument, onNewComparison, onShowShortcuts, onViewHistory }: WelcomeScreenProps) {
     const { t } = useTranslation();
     const steps = [t("welcome.step1"), t("welcome.step2"), t("welcome.step3")];
 
@@ -45,8 +46,7 @@ export function WelcomeScreen({ onOpenDocument, onNewComparison, onShowShortcuts
             </div>
 
             <div className="flex gap-2">
-                {/* El historial llega en F5. */}
-                <Button variant="ghost" size="sm" disabled>
+                <Button variant="ghost" size="sm" onClick={onViewHistory}>
                     {t("welcome.view_history")}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={onShowShortcuts}>

@@ -40,14 +40,23 @@ const syncDocumentLanguage = (language: string) => {
 syncDocumentLanguage(i18n.language || FALLBACK_LANGUAGE);
 i18n.on("languageChanged", syncDocumentLanguage);
 
+/**
+ * Aplica en caliente una preferencia de idioma (`auto`/`en`/`es`). La GTK
+ * pedía reiniciar; acá i18next re-renderiza todo al cambiar.
+ */
+export async function applyLanguageSetting(setting: string | null | undefined): Promise<string> {
+    const language = resolveLanguage(setting ?? null, systemLanguages());
+    if (language !== i18n.language) {
+        await i18n.changeLanguage(language);
+    }
+    return language;
+}
+
 /** Aplica el idioma guardado en las preferencias (`settingsGet`). */
 export async function applySavedLanguage(): Promise<void> {
     try {
         const settings = await commands.settingsGet();
-        const language = resolveLanguage(settings.language ?? null, systemLanguages());
-        if (language !== i18n.language) {
-            await i18n.changeLanguage(language);
-        }
+        await applyLanguageSetting(settings.language);
     } catch {
         // Sin preferencias legibles se queda el idioma del sistema.
     }

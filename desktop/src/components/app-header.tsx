@@ -1,15 +1,23 @@
 /*
  * Barra de cabecera: mismas acciones y el mismo orden que la HeaderBar de la GTK.
  *
- * Export, History y Graph quedan como huecos deshabilitados que llenan F5/F6;
- * el toggle de Differences ya funciona porque la tabla simple existe desde F3.
+ * Export (txt/html), History y el menú principal llegan en F5; Graph queda
+ * como hueco deshabilitado hasta F6.
  */
 
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { TextAlignStart, Download, FolderOpen, GitCompare, History, List, Network, SquareSplitHorizontal } from "lucide-react";
 
+import { MainMenu, type MainMenuProps } from "@/components/main-menu";
 import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuShortcut,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -39,6 +47,10 @@ export type AppHeaderProps = {
     onFormat: () => void;
     diffPanelVisible: boolean;
     onToggleDiffPanel: () => void;
+    historyVisible: boolean;
+    onToggleHistory: () => void;
+    /** Menú principal (formatear, exportar, atajos, idioma, tamaño de texto). */
+    menu: Omit<MainMenuProps, "editorsVisible" | "onFormat">;
 };
 
 export function AppHeader(props: AppHeaderProps) {
@@ -116,21 +128,37 @@ export function AppHeader(props: AppHeaderProps) {
 
             <Separator orientation="vertical" className="mx-1 h-6" />
 
-            {/* Huecos de F5 (export, historial) y F6 (grafo). */}
-            <WithTooltip label={t("header.export_tooltip")}>
-                <span>
-                    <Button variant="ghost" size="icon-sm" aria-label={t("header.export")} disabled>
-                        <Download />
-                    </Button>
-                </span>
-            </WithTooltip>
+            <DropdownMenu>
+                <WithTooltip label={t("header.export_tooltip")}>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-sm" aria-label={t("header.export")}>
+                            <Download />
+                        </Button>
+                    </DropdownMenuTrigger>
+                </WithTooltip>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => props.menu.onExport("txt")}>
+                        {t("header.export_txt")}
+                        <DropdownMenuShortcut>Ctrl+E</DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => props.menu.onExport("html")}>
+                        {t("header.export_html")}
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
             <WithTooltip label={t("header.history_tooltip")}>
-                <span>
-                    <Button variant="ghost" size="icon-sm" aria-label={t("header.history")} disabled>
-                        <History />
-                    </Button>
-                </span>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("header.history")}
+                    aria-pressed={props.historyVisible}
+                    onClick={props.onToggleHistory}
+                    className={cn(props.historyVisible && "bg-accent text-accent-foreground")}
+                >
+                    <History />
+                </Button>
             </WithTooltip>
+            {/* Hueco de F6 (grafo). */}
             <WithTooltip label={t("graph.toggle_tooltip")}>
                 <span>
                     <Button variant="ghost" size="icon-sm" aria-label={t("header.graph")} disabled>
@@ -150,6 +178,7 @@ export function AppHeader(props: AppHeaderProps) {
                     <List />
                 </Button>
             </WithTooltip>
+            <MainMenu {...props.menu} editorsVisible={props.editorsVisible} onFormat={props.onFormat} />
         </header>
     );
 }

@@ -3,9 +3,9 @@
  * rust-i18n funciona con la configuración de i18next.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import i18n from "@/i18n";
+import i18n, { applyLanguageSetting } from "@/i18n";
 import en from "@/locales/en.json";
 import es from "@/locales/es.json";
 
@@ -27,5 +27,24 @@ describe("i18n", () => {
     it("una clave faltante en es cae al inglés", () => {
         i18n.addResource("en", "translation", "test.only_en", "solo en inglés");
         expect(i18n.getFixedT("es")("test.only_en")).toBe("solo en inglés");
+    });
+
+    describe("cambio de idioma en caliente", () => {
+        afterEach(async () => {
+            await i18n.changeLanguage("en");
+        });
+
+        it("en/es explícitos se aplican sin reiniciar", async () => {
+            expect(await applyLanguageSetting("es")).toBe("es");
+            expect(i18n.t("history.load_more")).toBe("Ver más");
+            expect(document.documentElement.lang).toBe("es");
+            expect(await applyLanguageSetting("en")).toBe("en");
+            expect(i18n.t("history.load_more")).toBe("Load more");
+        });
+
+        it("auto usa el idioma del sistema", async () => {
+            vi.spyOn(navigator, "languages", "get").mockReturnValue(["es-AR", "en"]);
+            expect(await applyLanguageSetting("auto")).toBe("es");
+        });
     });
 });

@@ -11,26 +11,36 @@
  *   - Click en una fila de la tabla: salto y destello en los dos editores
  *     (`highlight_and_scroll_to_item`, ver `lib/locate`).
  *   - Ctrl+F: búsqueda en el último editor enfocado (`connect_search_bar`).
+ *   - Historial (F5): barra lateral (Ctrl+H), guardar sesión (Ctrl+S),
+ *     restaurar en los dos editores, borrar y vaciar con confirmación.
+ *   - Export .txt/.html (Ctrl+E) por diálogo de guardado y el backend.
+ *   - Menú principal: idioma en caliente y escala del texto (Ctrl++/-/0).
+ *   - Diálogo de salida si hay contenido sin guardar (`connect_close_request`).
  *
  * Todo el parseo, la detección y el disco pasan por `commands.*` (S8).
  */
 
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 
 import { commands, type DiffItem, type DiffResponse, type FileContents, type Format } from "@/bindings";
 import { AppHeader } from "@/components/app-header";
 import { CodeEditor, type CodeEditorHandle } from "@/components/code-editor";
 import { DiffTable } from "@/components/diff-table";
+import { type ExitChoice, ExitDialog } from "@/components/exit-dialog";
+import { HistorySidebar } from "@/components/history-sidebar";
 import { SearchBar, type SearchBarHandle } from "@/components/search-bar";
 import { ShortcutsDialog } from "@/components/shortcuts-dialog";
 import { StatusBar } from "@/components/status-bar";
+import { Toaster } from "@/components/toaster";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WelcomeScreen } from "@/components/welcome-screen";
+import { closeWindowNow, useCloseGuard } from "@/hooks/use-close-guard";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
+import { usePreferences } from "@/hooks/use-preferences";
 import { type ShortcutAction, useShortcuts } from "@/hooks/use-shortcuts";
 import { DEFAULT_FILTERS, type KindFilters } from "@/lib/diff-rows";
 import {
@@ -41,9 +51,14 @@ import {
     summaryStatus,
     toCommandError,
 } from "@/lib/errors";
+import { defaultReportName, type ExportKind, exportReport, exportStatus } from "@/lib/export";
 import { editorLanguage, formatArg, formatDisplayName, type FormatChoice } from "@/lib/formats";
+import { historyErrorStatus, restoredStatus } from "@/lib/history";
 import { buildDiffDecorations, type DiffDecorations, EMPTY_DECORATIONS } from "@/lib/line-diff";
 import { itemJumpTargets } from "@/lib/locate";
+import { toast } from "@/lib/toast";
+import { uiScalePercent } from "@/lib/ui-scale";
+import { type EditorSnapshot, hasUnsavedContent } from "@/lib/unsaved";
 
 type Side = "left" | "right";
 
@@ -67,6 +82,10 @@ export default function App() {
     const [searchOpen, setSearchOpen] = useState(false);
     const [diffFilters, setDiffFilters] = useState<KindFilters>(DEFAULT_FILTERS);
     const [focusedSide, setFocusedSide] = useState<Side>("left");
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [historyRefresh, setHistoryRefresh] = useState(0);
+    const [exitOpen, setExitOpen] = useState(false);
+    const preferences = usePreferences();
 
     const leftEditor = useRef<CodeEditorHandle>(null);
     const rightEditor = useRef<CodeEditorHandle>(null);
@@ -77,6 +96,11 @@ export default function App() {
     latest.current = { left, right, comparing, formatChoice };
     // Cada comparación lleva un número; solo la última pinta resultados.
     const sequence = useRef(0);
+    // Última comparación exitosa: la que se guarda o se exporta.
+    const responseRef = useRef<DiffResponse | null>(null);
+    responseRef.current = response;
+    // Texto de los editores la última vez que se guardó o restauró del historial.
+    const savedSnapshot = useRef<EditorSnapshot | null>(null);
 
     const clearDiff = useCallback(() => {
         setResponse(null);
@@ -261,6 +285,141 @@ export default function App() {
         [scheduleCompare],
     );
 
+    /** Mensaje en la barra de estado y, además, como aviso efímero. */
+    const notify = useCallback((message: StatusMessage) => {
+        setStatus(message);
+        toast(message);
+    }, []);
+
+    /** `save_session_from_shortcut` de la GTK (Ctrl+S). `true` si se guardó. */
+    const saveSession = useCallback(async (): Promise<boolean> => {
+        const resp = responseRef.current;
+        if (!resp) {
+            notify({ key: "history.no_comparison" });
+            return false;
+        }
+        const { left: l, right: r } = latest.current;
+        try {
+            const id = await commands.historySave(l, r, resp.format);
+            savedSnapshot.current = { left: l, right: r };
+            notify({ key: "history.status_saved", params: { id } });
+            setHistoryRefresh((n) => n + 1);
+            // Igual que la GTK: al guardar se muestra el historial.
+            setHistoryOpen(true);
+            return true;
+        } catch (error) {
+            const err = toCommandError(error);
+            notify(
+                historyErrorStatus(err, {
+                    key: "history.status_save_error",
+                    params: { error: err.message },
+                    error: true,
+                }),
+            );
+            return false;
+        }
+    }, [notify]);
+
+    /** Restaura una sesión en los dos editores (`connect_history_selection`). */
+    const restoreSession = useCallback(
+        async (id: number) => {
+            try {
+                const session = await commands.historyGet(id);
+                setView("editors");
+                latest.current.comparing = true;
+                setComparing(true);
+                latest.current.left = session.left_content;
+                latest.current.right = session.right_content;
+                setLeft(session.left_content);
+                setRight(session.right_content);
+                savedSnapshot.current = { left: session.left_content, right: session.right_content };
+                scheduleCompare();
+                notify(restoredStatus(session));
+            } catch (error) {
+                const err = toCommandError(error);
+                notify(
+                    historyErrorStatus(err, {
+                        key: "history.status_load_error",
+                        params: { error: err.message },
+                        error: true,
+                    }),
+                );
+            }
+        },
+        [notify, scheduleCompare],
+    );
+
+    /** `export_to_file` de la GTK. `true` si el reporte quedó escrito. */
+    const exportTo = useCallback(
+        async (kind: ExportKind): Promise<boolean> => {
+            const { left: l, right: r } = latest.current;
+            const outcome = await exportReport(
+                kind,
+                { left: l, right: r, format: responseRef.current?.format ?? null },
+                {
+                    pickPath: async (k) =>
+                        saveDialog({
+                            title: t("export.dialog_title"),
+                            defaultPath: defaultReportName(k),
+                            filters: [{ name: t("export.filter_name", { ext: k }), extensions: [k] }],
+                        }),
+                    exportTxt: commands.exportTxt,
+                    exportHtml: commands.exportHtml,
+                    writeTextFile: commands.writeTextFile,
+                },
+            );
+            const message = exportStatus(outcome);
+            if (message) {
+                notify(message);
+            }
+            return outcome.kind === "written";
+        },
+        [notify, t],
+    );
+
+    // Diálogo de salida: solo con texto en los editores que no se guardó.
+    const shouldBlockClose = useCallback(
+        () => hasUnsavedContent({ left: latest.current.left, right: latest.current.right }, savedSnapshot.current),
+        [],
+    );
+    const onCloseBlocked = useCallback(() => setExitOpen(true), []);
+    useCloseGuard(shouldBlockClose, onCloseBlocked);
+
+    /**
+     * Respuesta del diálogo de salida. A diferencia de la GTK, si guardar o
+     * exportar falla (o se cancela el diálogo de archivo) la ventana sigue
+     * abierta: cerrar igual perdería justo lo que se quiso conservar.
+     */
+    const onExitChoice = useCallback(
+        async (choice: ExitChoice) => {
+            let close = false;
+            switch (choice) {
+                case "save_history":
+                    close = await saveSession();
+                    break;
+                case "export_txt":
+                    close = await exportTo("txt");
+                    break;
+                case "export_html":
+                    close = await exportTo("html");
+                    break;
+                case "close":
+                    close = true;
+                    break;
+            }
+            if (close) {
+                await closeWindowNow().catch(() => undefined);
+            }
+        },
+        [exportTo, saveSession],
+    );
+
+    const viewHistory = useCallback(() => {
+        setView("editors");
+        setStatus(READY);
+        setHistoryOpen(true);
+    }, []);
+
     /** Click en una fila: `highlight_and_scroll_to_item` de la GTK. */
     const onActivateItem = useCallback((item: DiffItem) => {
         const leftHandle = leftEditor.current;
@@ -328,9 +487,27 @@ export default function App() {
                         openSearch();
                     }
                     break;
+                case "saveSession":
+                    void saveSession();
+                    break;
+                case "toggleHistory":
+                    setHistoryOpen((open) => !open);
+                    break;
+                case "exportTxt":
+                    void exportTo("txt");
+                    break;
+                case "fontIncrease":
+                    void preferences.stepUiScale("increase");
+                    break;
+                case "fontDecrease":
+                    void preferences.stepUiScale("decrease");
+                    break;
+                case "fontReset":
+                    void preferences.stepUiScale("reset");
+                    break;
             }
         },
-        [compareNow, formatDocuments, openInto, openSearch, searchOpen, view],
+        [compareNow, exportTo, formatDocuments, openInto, openSearch, preferences, saveSession, searchOpen, view],
     );
     useShortcuts(onShortcut);
 
@@ -378,86 +555,114 @@ export default function App() {
                     onFormat={() => void formatDocuments()}
                     diffPanelVisible={diffPanelVisible}
                     onToggleDiffPanel={() => setDiffPanelVisible((visible) => !visible)}
+                    historyVisible={historyOpen}
+                    onToggleHistory={() => setHistoryOpen((open) => !open)}
+                    menu={{
+                        onExport: (kind) => void exportTo(kind),
+                        onShowShortcuts: () => setShortcutsOpen(true),
+                        language: preferences.language,
+                        onLanguage: (language) => void preferences.setLanguage(language),
+                        uiScalePercent: uiScalePercent(preferences.uiScale),
+                        onUiScale: (step) => void preferences.stepUiScale(step),
+                    }}
                 />
 
-                <main className="min-h-0 flex-1">
-                    {view === "welcome" ? (
-                        <WelcomeScreen
-                            onOpenDocument={() => void openInto("left")}
-                            onNewComparison={enableComparison}
-                            onShowShortcuts={() => setShortcutsOpen(true)}
-                        />
-                    ) : (
-                        <div className="flex h-full min-h-0 flex-col">
-                            {searchOpen && (
-                                <SearchBar
-                                    ref={searchBar}
-                                    text={searchSide === "right" ? right : left}
-                                    targetLabel={t(searchSide === "right" ? "editor.right_label" : "editor.left_label")}
-                                    getEditor={getSearchEditor}
-                                    onClose={() => setSearchOpen(false)}
-                                />
-                            )}
-                            <div className="min-h-0 flex-1">
-                                <ResizablePanelGroup orientation="vertical">
-                                    <ResizablePanel id="editors" defaultSize="70" minSize="20">
-                                        <ResizablePanelGroup orientation="horizontal">
-                                            <ResizablePanel id="left" defaultSize="50" minSize="15">
-                                                <EditorPane label={t("editor.left_label")}>
-                                                    <CodeEditor
-                                                        ref={leftEditor}
-                                                        onFocus={() => setFocusedSide("left")}
-                                                        value={left}
-                                                        onChange={onLeftChange}
-                                                        language={language}
-                                                        scheme={scheme}
-                                                        decorations={decorations.left}
-                                                        ariaLabel={t("editor.left_label")}
+                <div className="flex min-h-0 flex-1">
+                    <HistorySidebar
+                        open={historyOpen}
+                        refreshToken={historyRefresh}
+                        onRestore={(id) => void restoreSession(id)}
+                        onStatus={notify}
+                        onClose={() => setHistoryOpen(false)}
+                    />
+                    <main className="min-h-0 min-w-0 flex-1">
+                        {view === "welcome" ? (
+                            <WelcomeScreen
+                                onOpenDocument={() => void openInto("left")}
+                                onNewComparison={enableComparison}
+                                onShowShortcuts={() => setShortcutsOpen(true)}
+                                onViewHistory={viewHistory}
+                            />
+                        ) : (
+                            <div className="flex h-full min-h-0 flex-col">
+                                {searchOpen && (
+                                    <SearchBar
+                                        ref={searchBar}
+                                        text={searchSide === "right" ? right : left}
+                                        targetLabel={t(
+                                            searchSide === "right" ? "editor.right_label" : "editor.left_label",
+                                        )}
+                                        getEditor={getSearchEditor}
+                                        onClose={() => setSearchOpen(false)}
+                                    />
+                                )}
+                                <div className="min-h-0 flex-1">
+                                    <ResizablePanelGroup orientation="vertical">
+                                        <ResizablePanel id="editors" defaultSize="70" minSize="20">
+                                            <ResizablePanelGroup orientation="horizontal">
+                                                <ResizablePanel id="left" defaultSize="50" minSize="15">
+                                                    <EditorPane label={t("editor.left_label")}>
+                                                        <CodeEditor
+                                                            ref={leftEditor}
+                                                            onFocus={() => setFocusedSide("left")}
+                                                            value={left}
+                                                            onChange={onLeftChange}
+                                                            language={language}
+                                                            scheme={scheme}
+                                                            decorations={decorations.left}
+                                                            ariaLabel={t("editor.left_label")}
+                                                        />
+                                                    </EditorPane>
+                                                </ResizablePanel>
+                                                {comparing && (
+                                                    <>
+                                                        <ResizableHandle />
+                                                        <ResizablePanel id="right" defaultSize="50" minSize="15">
+                                                            <EditorPane label={t("editor.right_label")}>
+                                                                <CodeEditor
+                                                                    ref={rightEditor}
+                                                                    onFocus={() => setFocusedSide("right")}
+                                                                    value={right}
+                                                                    onChange={onRightChange}
+                                                                    language={language}
+                                                                    scheme={scheme}
+                                                                    decorations={decorations.right}
+                                                                    ariaLabel={t("editor.right_label")}
+                                                                />
+                                                            </EditorPane>
+                                                        </ResizablePanel>
+                                                    </>
+                                                )}
+                                            </ResizablePanelGroup>
+                                        </ResizablePanel>
+                                        {diffPanelVisible && (
+                                            <>
+                                                <ResizableHandle />
+                                                <ResizablePanel id="diff" defaultSize="30" minSize="10">
+                                                    <DiffTable
+                                                        result={response?.result ?? null}
+                                                        onActivate={onActivateItem}
+                                                        filters={diffFilters}
+                                                        onFiltersChange={setDiffFilters}
                                                     />
-                                                </EditorPane>
-                                            </ResizablePanel>
-                                            {comparing && (
-                                                <>
-                                                    <ResizableHandle />
-                                                    <ResizablePanel id="right" defaultSize="50" minSize="15">
-                                                        <EditorPane label={t("editor.right_label")}>
-                                                            <CodeEditor
-                                                                ref={rightEditor}
-                                                                onFocus={() => setFocusedSide("right")}
-                                                                value={right}
-                                                                onChange={onRightChange}
-                                                                language={language}
-                                                                scheme={scheme}
-                                                                decorations={decorations.right}
-                                                                ariaLabel={t("editor.right_label")}
-                                                            />
-                                                        </EditorPane>
-                                                    </ResizablePanel>
-                                                </>
-                                            )}
-                                        </ResizablePanelGroup>
-                                    </ResizablePanel>
-                                    {diffPanelVisible && (
-                                        <>
-                                            <ResizableHandle />
-                                            <ResizablePanel id="diff" defaultSize="30" minSize="10">
-                                                <DiffTable
-                                                    result={response?.result ?? null}
-                                                    onActivate={onActivateItem}
-                                                    filters={diffFilters}
-                                                    onFiltersChange={setDiffFilters}
-                                                />
-                                            </ResizablePanel>
-                                        </>
-                                    )}
-                                </ResizablePanelGroup>
+                                                </ResizablePanel>
+                                            </>
+                                        )}
+                                    </ResizablePanelGroup>
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </main>
+                        )}
+                    </main>
+                </div>
 
                 <StatusBar message={status} />
                 <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+                <ExitDialog
+                    open={exitOpen}
+                    onOpenChange={setExitOpen}
+                    onChoose={(choice) => void onExitChoice(choice)}
+                />
+                <Toaster />
             </div>
         </TooltipProvider>
     );

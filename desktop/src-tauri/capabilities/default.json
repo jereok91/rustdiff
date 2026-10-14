@@ -1,7 +1,7 @@
 {
     "$schema": "../gen/schemas/desktop-schema.json",
     "identifier": "default",
-    "description": "Permisos del shell de escritorio: IPC base y dialogo nativo de archivos. El frontend no lee ni escribe el disco por su cuenta (S8); el dialogo solo devuelve rutas.",
+    "description": "Permisos del shell de escritorio: IPC base y dialogo nativo de archivos. El frontend no lee ni escribe el disco por su cuenta (S8); el dialogo solo devuelve rutas. `core:window:allow-destroy` lo usa el dialogo de salida: `onCloseRequested` frena el cierre con contenido sin guardar y luego cierra de verdad con `destroy`.",
     "windows": ["main"],
-    "permissions": ["core:default", "dialog:default"]
+    "permissions": ["core:default", "dialog:default", "core:window:allow-destroy"]
 }

@@ -1,9 +1,10 @@
 /*
  * Cableado del shell con el backend simulado: bienvenida, arranque con dos
- * archivos, resumen en la barra de estado, click-to-jump y búsqueda Ctrl+F.
+ * archivos, resumen en la barra de estado, click-to-jump, búsqueda Ctrl+F y
+ * lo de F5 (historial, export, escala de texto, diálogo de salida).
  */
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -11,10 +12,37 @@ const mocks = vi.hoisted(() => ({
     diffDocuments: vi.fn(),
     inlineCharRanges: vi.fn(),
     detectFormat: vi.fn(),
+    settingsGet: vi.fn(),
+    settingsSave: vi.fn(),
+    historyList: vi.fn(),
+    historySearch: vi.fn(),
+    historyGet: vi.fn(),
+    historySave: vi.fn(),
+    historyDelete: vi.fn(),
+    historyClear: vi.fn(),
+    historyCount: vi.fn(),
+    exportTxt: vi.fn(),
+    exportHtml: vi.fn(),
+    writeTextFile: vi.fn(),
+}));
+const dialog = vi.hoisted(() => ({ open: vi.fn(), save: vi.fn() }));
+// La ventana de Tauri: se captura el handler de `onCloseRequested`.
+const tauriWindow = vi.hoisted(() => ({
+    closeHandler: null as null | ((event: { preventDefault: () => void }) => void),
+    destroy: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/bindings", () => ({ commands: mocks }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn() }));
+vi.mock("@tauri-apps/plugin-dialog", () => dialog);
+vi.mock("@tauri-apps/api/window", () => ({
+    getCurrentWindow: () => ({
+        onCloseRequested: async (handler: (event: { preventDefault: () => void }) => void) => {
+            tauriWindow.closeHandler = handler;
+            return () => undefined;
+        },
+        destroy: tauriWindow.destroy,
+    }),
+}));
 
 import App from "@/App";
 import "@/i18n";
@@ -37,6 +65,13 @@ afterEach(cleanup);
 beforeEach(() => {
     mocks.inlineCharRanges.mockResolvedValue({ left: [], right: [] });
     mocks.detectFormat.mockResolvedValue("Json");
+    mocks.settingsGet.mockResolvedValue({ language: "en", ui_scale: 1 });
+    mocks.settingsSave.mockImplementation(async (settings: unknown) => settings);
+    mocks.historyList.mockResolvedValue([]);
+    mocks.historySearch.mockResolvedValue([]);
+    mocks.historyCount.mockResolvedValue(0);
+    tauriWindow.closeHandler = null;
+    document.documentElement.style.fontSize = "";
 });
 
 describe("App", () => {
@@ -124,5 +159,110 @@ describe("App", () => {
         await waitFor(() => expect(counter.textContent).toBe("No results"));
         fireEvent.keyDown(input, { key: "Escape" });
         expect(screen.queryByTestId("search-bar")).toBeNull();
+    });
+
+    const SESSION = {
+        id: 7,
+        created_at: "2026-07-27 10:00:00",
+        format: "Json",
+        left_content: '{"x":1}',
+        right_content: '{"x":2}',
+        diff_summary: { added: 0, removed: 0, changed: 1, total: 1 },
+    };
+
+    it("Ctrl+S sin comparación avisa y no guarda", async () => {
+        mocks.startupFiles.mockResolvedValue([{ path: "/a.json", name: "a.json", content: "{}" }]);
+        render(<App />);
+        await screen.findByText("Enable comparison");
+        fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+        await waitFor(() =>
+            expect(screen.getByTestId("status").textContent).toBe("No comparison to save. Compare first."),
+        );
+        expect(mocks.historySave).not.toHaveBeenCalled();
+    });
+
+    it("Ctrl+S guarda, abre el historial y una sesión se restaura en los dos editores", async () => {
+        await startWithTwoDocs();
+        mocks.historySave.mockResolvedValue(7);
+        mocks.historyList.mockResolvedValue([SESSION]);
+        mocks.historyGet.mockResolvedValue(SESSION);
+        fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+        await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("Session #7 saved to history"));
+        expect(mocks.historySave).toHaveBeenCalledWith(
+            '{"usuario":{"nombre":"ana","edad":30},"tags":["a","b"]}',
+            '{"usuario":{"nombre":"ana","edad":31},"tags":["a","c"]}',
+            "Json",
+        );
+        const sidebar = await screen.findByTestId("history-sidebar");
+        await waitFor(() => expect(sidebar.textContent).toContain("#7 JSON +0 −0 ~1"));
+
+        fireEvent.click(screen.getByText("#7 JSON +0 −0 ~1"));
+        await waitFor(() =>
+            expect(screen.getByTestId("status").textContent).toBe("Session #7 restored — +0 −0 ~1"),
+        );
+        const editors = screen.getAllByTestId("code-editor");
+        expect(editors[0].textContent).toContain('{"x":1}');
+        expect(editors[1].textContent).toContain('{"x":2}');
+    });
+
+    it("Clear all pide confirmación y vacía el historial", async () => {
+        mocks.startupFiles.mockResolvedValue([]);
+        mocks.historyList.mockResolvedValue([SESSION]);
+        mocks.historyCount.mockResolvedValue(1);
+        mocks.historyClear.mockResolvedValue(1);
+        render(<App />);
+        fireEvent.click(await screen.findByText("View History"));
+        await screen.findByText("#7 JSON +0 −0 ~1");
+        fireEvent.click(screen.getByLabelText("Clear all history"));
+        fireEvent.click(await screen.findByText("Clear all"));
+        await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("History cleared (1 sessions)"));
+        expect(mocks.historyClear).toHaveBeenCalledTimes(1);
+    });
+
+    it("Ctrl+E exporta el .txt por el diálogo de guardado y el backend", async () => {
+        await startWithTwoDocs();
+        dialog.save.mockResolvedValue("/tmp/r.txt");
+        mocks.exportTxt.mockResolvedValue("REPORT");
+        mocks.writeTextFile.mockResolvedValue(null);
+        fireEvent.keyDown(window, { key: "e", ctrlKey: true });
+        await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("Exported to /tmp/r.txt"));
+        expect(mocks.writeTextFile).toHaveBeenCalledWith("/tmp/r.txt", "REPORT");
+        expect(dialog.save.mock.calls[0][0]).toMatchObject({
+            defaultPath: "rustdiff-report.txt",
+            filters: [{ extensions: ["txt"] }],
+        });
+    });
+
+    it("Ctrl++ escala la raíz y persiste ui_scale; Ctrl+0 vuelve al 100%", async () => {
+        mocks.startupFiles.mockResolvedValue([]);
+        render(<App />);
+        await screen.findByTestId("welcome");
+        await waitFor(() => expect(mocks.settingsGet).toHaveBeenCalled());
+        fireEvent.keyDown(window, { key: "+", ctrlKey: true, shiftKey: true });
+        expect(document.documentElement.style.fontSize).toBe("110%");
+        await waitFor(() => expect(mocks.settingsSave).toHaveBeenLastCalledWith({ language: "en", ui_scale: 1.1 }));
+        fireEvent.keyDown(window, { key: "0", ctrlKey: true });
+        expect(document.documentElement.style.fontSize).toBe("");
+    });
+
+    it("cerrar con contenido sin guardar muestra el diálogo y 'Close without saving' cierra", async () => {
+        await startWithTwoDocs();
+        expect(tauriWindow.closeHandler).not.toBeNull();
+        const preventDefault = vi.fn();
+        act(() => tauriWindow.closeHandler?.({ preventDefault }));
+        expect(preventDefault).toHaveBeenCalled();
+        fireEvent.click(await screen.findByText("Close without saving"));
+        await waitFor(() => expect(tauriWindow.destroy).toHaveBeenCalled());
+    });
+
+    it("sin contenido (o ya guardado) cierra sin preguntar", async () => {
+        mocks.startupFiles.mockResolvedValue([]);
+        render(<App />);
+        await screen.findByTestId("welcome");
+        await waitFor(() => expect(tauriWindow.closeHandler).not.toBeNull());
+        const preventDefault = vi.fn();
+        tauriWindow.closeHandler?.({ preventDefault });
+        expect(preventDefault).not.toHaveBeenCalled();
+        expect(screen.queryByTestId("exit-dialog")).toBeNull();
     });
 });

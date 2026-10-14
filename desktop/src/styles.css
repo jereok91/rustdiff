@@ -98,14 +98,15 @@
             -apple-system,
             "Segoe UI",
             sans-serif;
-        font-size: 14px;
+        /* En rem: la escala de texto (`ui_scale`) mueve el font-size de la raíz. */
+        font-size: 0.875rem;
     }
 }
 
 /* El editor ocupa todo su panel; el scroll lo maneja CodeMirror. */
 .cm-editor {
     height: 100%;
-    font-size: 13px;
+    font-size: 0.8125rem;
 }
 .cm-editor .cm-scroller {
     font-family: ui-monospace, "JetBrains Mono", "Cascadia Code", monospace;

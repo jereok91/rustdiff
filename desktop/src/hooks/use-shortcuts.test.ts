@@ -28,6 +28,21 @@ describe("matchShortcut", () => {
         expect(matchShortcut(key("F3", { ctrl: false, alt: true }))).toBeNull();
     });
 
+    it("mapea los atajos de historial, export y tamaño de texto (F5)", () => {
+        expect(matchShortcut(key("s"))).toBe("saveSession");
+        expect(matchShortcut(key("h"))).toBe("toggleHistory");
+        expect(matchShortcut(key("e"))).toBe("exportTxt");
+        expect(matchShortcut(key("+", { shift: true }))).toBe("fontIncrease");
+        expect(matchShortcut(key("="))).toBe("fontIncrease");
+        expect(matchShortcut(key("-"))).toBe("fontDecrease");
+        expect(matchShortcut(key("0"))).toBe("fontReset");
+        // Sin Ctrl son teclas normales del editor.
+        expect(matchShortcut(key("s", { ctrl: false }))).toBeNull();
+        expect(matchShortcut(key("+", { ctrl: false }))).toBeNull();
+        // El grafo (Ctrl+G) todavía no tiene acción: lo conecta F6.
+        expect(matchShortcut(key("g"))).toBeNull();
+    });
+
     it("acepta Cmd en macOS", () => {
         expect(matchShortcut(key("o", { ctrl: false, meta: true }))).toBe("openLeft");
     });

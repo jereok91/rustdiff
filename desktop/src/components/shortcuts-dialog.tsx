@@ -1,7 +1,7 @@
 /*
  * Diálogo de atajos (Ctrl+?), mismos grupos que `show_shortcuts_dialog` de la
- * GTK. Lista el set completo de la app: los que todavía no tienen acción en el
- * shell Tauri (historial, export, grafo) los conectan F4–F6.
+ * GTK. Lista el set completo de la app; el único que todavía no tiene acción en
+ * el shell Tauri es el grafo (Ctrl+G), que conecta F6.
  */
 
 import { useTranslation } from "react-i18next";

@@ -17,7 +17,13 @@ export type ShortcutAction =
     | "showShortcuts"
     | "search"
     | "findNext"
-    | "findPrevious";
+    | "findPrevious"
+    | "saveSession"
+    | "toggleHistory"
+    | "exportTxt"
+    | "fontIncrease"
+    | "fontDecrease"
+    | "fontReset";
 
 type KeyLike = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">;
 
@@ -44,6 +50,27 @@ export function matchShortcut(event: KeyLike): ShortcutAction | null {
     }
     if (key === "d" && !event.shiftKey) {
         return "toggleDiffPanel";
+    }
+    if (key === "s" && !event.shiftKey) {
+        return "saveSession";
+    }
+    if (key === "h" && !event.shiftKey) {
+        return "toggleHistory";
+    }
+    if (key === "e" && !event.shiftKey) {
+        return "exportTxt";
+    }
+    // Escala del texto. `=` cubre teclados donde `+` requiere Shift (igual que
+    // los accels `<Control>equal` de la GTK); el teclado numérico también
+    // reporta `+`, `-` y `0`.
+    if (key === "+" || key === "=") {
+        return "fontIncrease";
+    }
+    if (key === "-" || key === "_") {
+        return "fontDecrease";
+    }
+    if (key === "0" && !event.shiftKey) {
+        return "fontReset";
     }
     // Ctrl+? (Shift+/ en la mayoría de los teclados).
     if (key === "?" || (key === "/" && event.shiftKey)) {
