@@ -1,0 +1,26 @@
+{
+  "name": "rustdiff-desktop",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "comment": "Frontend del reemplazo de la UI GTK. F1 (spike) solo prueba el transporte: un comando real por IPC y una pantalla minima que lo invoca. Tailwind y shadcn/ui entran en F3/F7.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.3",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}

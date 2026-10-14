@@ -1,0 +1,71 @@
+# Copyright 2026 the rustdiff authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# ─────────────────────────────────────────────
+# APP DE ESCRITORIO (Tauri v2 + React)
+# ─────────────────────────────────────────────
+# F1 de la migracion (ver odd/tasks/tauri-migration.md): un solo comando real
+# sobre rustdiff-core, para probar el transporte antes de invertir en la UI.
+# Convive con la app GTK hasta F8; por eso vive en desktop/ y no en la raiz.
+[package]
+name    = "rustdiff-desktop"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+authors.workspace      = true
+license.workspace      = true
+repository.workspace   = true
+homepage.workspace     = true
+description = "RustDiff desktop app: Tauri v2 shell around the shared diff core"
+
+publish = false
+
+# ── BUILD ────────────────────────────────────
+# tauri-build lee tauri.conf.json y embebe el frontend ya compilado.
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+rustdiff-core = { path = "../../crates/rustdiff-core" }
+
+# ── SHELL ────────────────────────────────────
+# El CLI de Tauri exige mismo major/minor entre el crate Rust y
+# @tauri-apps/api: ambos en 2.12.
+tauri = { version = "2.12", features = [] }
+
+# ── SERIALIZACION DEL IPC ────────────────────
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ─────────────────────────────────────────────
+# FEATURES
+# ─────────────────────────────────────────────
+[features]
+# Produccion: el webview sirve los assets embebidos de `frontendDist` en vez de
+# apuntar al dev server. En tauri 2.11 la decision es `dev = !custom_protocol`
+# (tauri/build.rs), asi que SIN esta feature un `cargo build --release` arranca
+# apuntando a http://localhost:1420 y muestra "Connection refused" en la
+# ventana. El CLI de Tauri la activa al construir; declararla aca la hace
+# explicita y deja el camino abierto para `cargo build --features custom-protocol`.
+# NO BORRAR.
+custom-protocol = ["tauri/custom-protocol"]
+
+# ─────────────────────────────────────────────
+# PERFIL DE DESARROLLO
+# ─────────────────────────────────────────────
+# El default del workspace (opt-level = 1) deja el arranque del webview
+# lento al medir; el spike se mide en release.

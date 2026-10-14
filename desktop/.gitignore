@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Artefactos del bundler de Tauri (los binarios salen al target del workspace)
+gen/

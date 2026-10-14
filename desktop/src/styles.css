@@ -1,0 +1,151 @@
+/*
+ * Estilos del spike. Deliberadamente planos y con variables: son el borrador de
+ * los tokens que el sistema de diseño de F7 va a formalizar.
+ */
+
+:root {
+    --fondo: #1b1f24;
+    --superficie: #232830;
+    --borde: #333a45;
+    --texto: #e6e9ee;
+    --texto-suave: #9aa4b2;
+    --anadido: #2ea043;
+    --eliminado: #f85149;
+    --cambiado: #d29922;
+    color-scheme: dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body,
+html,
+#root {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    background: var(--fondo);
+    color: var(--texto);
+    font-family:
+        system-ui,
+        -apple-system,
+        "Segoe UI",
+        sans-serif;
+    font-size: 14px;
+}
+
+.app {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    padding: 16px;
+}
+
+header h1 {
+    font-size: 18px;
+    margin: 0;
+}
+
+.subtitulo {
+    color: var(--texto-suave);
+    margin: 4px 0 0;
+}
+
+.editores {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr 1fr;
+    min-height: 200px;
+}
+
+.editores label {
+    color: var(--texto-suave);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+textarea {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    color: var(--texto);
+    flex: 1;
+    font-family: ui-monospace, "JetBrains Mono", monospace;
+    padding: 8px;
+    resize: none;
+    tab-size: 2;
+}
+
+.acciones {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+}
+
+button {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    color: var(--texto);
+    cursor: pointer;
+    padding: 6px 14px;
+}
+
+button:disabled {
+    cursor: progress;
+    opacity: 0.6;
+}
+
+.estado {
+    color: var(--texto-suave);
+}
+
+.error {
+    color: var(--eliminado);
+}
+
+table {
+    background: var(--superficie);
+    border-collapse: collapse;
+    border-radius: 6px;
+    overflow: auto;
+    width: 100%;
+}
+
+th,
+td {
+    border-bottom: 1px solid var(--borde);
+    padding: 4px 8px;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    color: var(--texto-suave);
+    font-weight: 500;
+}
+
+.ruta {
+    font-family: ui-monospace, "JetBrains Mono", monospace;
+}
+
+.tipo {
+    font-variant: small-caps;
+}
+
+.tipo-added {
+    color: var(--anadido);
+}
+
+.tipo-removed {
+    color: var(--eliminado);
+}
+
+.tipo-changed {
+    color: var(--cambiado);
+}
