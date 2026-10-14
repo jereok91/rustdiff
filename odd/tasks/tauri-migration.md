@@ -75,6 +75,7 @@ Fase F0 — congelar el núcleo (S1, S6, S7).
 | T2 | Workspace Cargo + `rustdiff-core` (parser, diff_engine, graph, export), tests de integración movidos, test de invariante sin-UI | S6, S7 | inline | `c05f320` |
 | T3 | `rustdiff-persist` (storage, settings) y poda de dependencias muertas del paquete raíz | S6, S7 | inline | `c05f320` |
 | T4 | CI, CLAUDE.md y RELEASING.md a workspace | S6 | inline | `9b5c609` |
+| T5 | Verificación independiente (`gentle-ai-verify`) y sus fixes: comandos de test de los dos READMEs y piso de módulos del guard | S6, S7 | subagente | `8b8fcbb`, `0bc4345` |
 
 Fases posteriores (no autorizadas aún): F1 spike Tauri, F2 contrato IPC, F3 shell + editores,
 F4 tabla de diff, F5 historial + export con golden files, F6 grafo, F7 sistema de diseño,
@@ -137,3 +138,27 @@ escritorio del usuario porque no hay `xvfb` en esta máquina.
 - Nota de higiene: `cargo package` sin `--allow-dirty` se queja del `build-dir/` de
   Flatpak que vive en el árbol (git lo ignora bien; es cargo quien lo ve a través de un
   enlace simbólico). Es preexistente, no de F0.
+
+**L8** (verificación independiente de F0, veredicto `findings`, y cierre):
+
+- **S6 y S7 confirmados por un verificador independiente**: `git show main:<viejo> | diff -`
+  sobre los 9 archivos movidos da idénticos byte a byte para `parser`, `diff_engine`,
+  `graph`, `export` y `settings`; `storage.rs` solo cambia las dos rutas a
+  `rustdiff_core::…`; los tres tests de integración solo cambian el import. Sin
+  referencias colgadas en `src/`, manifiestos, workflows, Flatpak, `install.sh`,
+  `scripts/**`, `docs/**` ni READMEs.
+- Sin regresión de i18n: en rust-i18n 3.1.5 `set_locale` es global, así que `app.rs`
+  sigue manejando el idioma de los tres crates; lo único que duplica cada crate son sus
+  tablas.
+- **Fixes de la verificación**: los dos READMEs enseñaban `cargo test --test parser_tests`,
+  que ya no resuelve (`8b8fcbb`); el piso de módulos del guard era 4 con 5 archivos
+  (`0bc4345`).
+- **Diferido a F1**: `cargo-sources.json` y `flathub/cargo-sources.json` quedaron sin
+  regenerar. No rompe nada (el lock solo sumó los dos crates internos, así que el vendor
+  sigue siendo superconjunto y `cargo --offline` resuelve), pero se regeneran cuanto se
+  toque el manifest en F1.
+- **Límites aceptados del test de invariante** (documentados, no violados hoy): no mira
+  dependencias transitivas, no detecta crates fachada (relm4, wry) y la detección de
+  comentarios es por prefijo de línea.
+- **Estado final de F0**: 151 tests verdes, `cargo fmt --all --check` limpio y
+  `cargo clippy --workspace --all-targets -- -D warnings` sin warnings.
