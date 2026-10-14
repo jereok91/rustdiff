@@ -13,9 +13,12 @@ The automation lives in:
 
 ## What the workflow does
 
-When a tag like `v0.1.7` is pushed:
+When a tag like `v0.5.0` is pushed:
 
-1. Builds a `.deb` package with `cargo-deb`.
+1. Builds a `.deb` package per architecture with the Tauri bundler
+   (`scripts/packaging/build-deb.sh`, which runs `pnpm tauri build --bundles deb`
+   in `desktop/`) and checks its identity: package name `rustdiff`,
+   architecture, `/usr/bin/rustdiff` and the AppStream metainfo.
 2. Uploads it as a workflow artifact.
 3. Attaches it to the GitHub release.
 4. Creates a signed APT repository and publishes it to `gh-pages`.
@@ -56,8 +59,8 @@ Copy the full armored block into `APT_GPG_PRIVATE_KEY`.
 
 ```bash
 # Example release
-git tag v0.1.7
-git push origin v0.1.7
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
 After the workflow finishes:
@@ -82,19 +85,53 @@ sudo apt install rustdiff
 - This is not a Launchpad PPA; it is a signed APT repository hosted on GitHub Pages.
 - If you need Launchpad specifically, you can keep this pipeline for `.deb` artifacts and add a source-package upload pipeline separately.
 
+## What the package contains
+
+The bundler configuration lives in `desktop/src-tauri/tauri.conf.json`
+(`bundle.linux.deb`) plus `desktop/src-tauri/tauri.linux.conf.json`, which sets
+the product name to `rustdiff` on Linux so the package keeps the name it had
+before 0.5.0 (`apt upgrade` replaces the GTK package instead of installing a
+second one).
+
+| Path | Source |
+| --- | --- |
+| `/usr/bin/rustdiff` | the Tauri shell (`mainBinaryName`) |
+| `/usr/share/applications/rustdiff.desktop` | `data/com.digitalgex.RustDiff.desktop`, used as `desktopTemplate` |
+| `/usr/share/metainfo/com.digitalgex.RustDiff.metainfo.xml` | `data/`, via `bundle.linux.deb.files` |
+| `/usr/share/icons/hicolor/scalable/apps/com.digitalgex.RustDiff.svg` | `data/icons/`, via `bundle.linux.deb.files` |
+| `/usr/share/icons/hicolor/<size>/apps/rustdiff.png` | `desktop/src-tauri/icons/` (`bundle.icon`) |
+
+`Depends: libwebkit2gtk-4.1-0, libgtk-3-0` is written by the bundler. Tauri
+renders the window through WebKitGTK, which sits on GTK3; GTK4, libadwaita and
+GtkSourceView are no longer needed.
+
+The desktop entry inside the `.deb` is named after the product name
+(`rustdiff.desktop`), not after the app id: the bundler offers no option for
+the file name. The Flatpak and the per-user `install.sh` path keep
+`com.digitalgex.RustDiff.desktop`, which is what the metainfo's `launchable`
+points at.
+
+Build and inspect it locally:
+
+```bash
+bash scripts/packaging/build-deb.sh
+DEB=target/release/bundle/deb/rustdiff_0.5.0_amd64.deb
+ar p "$DEB" control.tar.gz | tar -xzO control
+ar p "$DEB" data.tar.gz | tar -tz
+```
+
 ## Minimum OS version
 
-The `amd64`/`arm64` build jobs run `cargo-deb` on whatever Ubuntu version the CI runner
-provides (`ubuntu-latest`, currently 24.04/noble; `ubuntu-24.04-arm`). `cargo-deb`'s `$auto`
-dependency resolution (via `dpkg-shlibdeps`) bakes in the minimum library versions actually
-linked at build time — currently `libadwaita-1-0 (>= 1.5~beta)`, `libgtk-4-1 (>= 4.12.0)`, and
-`libglib2.0-0t64` (the 64-bit-time_t package name introduced in 24.04, which doesn't exist as
-an installable name on older releases at all).
+The `amd64`/`arm64` jobs build on `ubuntu-latest` (24.04/noble) and
+`ubuntu-24.04-arm`. Unlike `cargo-deb` (used up to 0.4.x), the Tauri bundler
+does not run `dpkg-shlibdeps`, so the declared dependencies carry no minimum
+version; the real floor is the **glibc the binary was linked against** (2.39 on
+Ubuntu 24.04). In practice that means **Ubuntu 24.04+ or Debian 13 (trixie)+**:
+on older releases the package installs but the binary refuses to start with a
+`GLIBC_2.3x not found` error.
 
-RustDiff's UI code itself already depends on libadwaita APIs (`adw::ToolbarView`, `adw::ToastOverlay`)
-that only exist from libadwaita 1.4+, so this isn't just an artifact of the CI runner choice —
-the app genuinely cannot build or run against the libadwaita/GTK4 shipped in Ubuntu 22.04 or
-Debian 12 without a newer stack from a PPA or backport. There is currently no older-runner
-build variant; end users on pre-24.04 Ubuntu or pre-13/trixie Debian should install the
-[Flatpak package](https://flathub.org/apps/com.digitalgex.RustDiff) instead, which bundles its
-own `org.gnome.Platform` runtime and is unaffected by the host's GTK version.
+There is currently no older-runner build variant; users on pre-24.04 Ubuntu or
+pre-13 Debian should install the
+[Flatpak package](https://flathub.org/apps/com.digitalgex.RustDiff) instead,
+which bundles its own `org.gnome.Platform` runtime (WebKitGTK included).
+

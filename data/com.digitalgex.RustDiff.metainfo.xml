@@ -7,8 +7,8 @@
   <id>com.digitalgex.RustDiff</id>
 
   <name>RustDiff</name>
-  <summary>Semantic JSON and XML comparator</summary>
-  <summary xml:lang="es">Comparador semántico de JSON y XML</summary>
+  <summary>Semantic JSON, XML and SQL comparator</summary>
+  <summary xml:lang="es">Comparador semántico de JSON, XML y SQL</summary>
 
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
@@ -19,26 +19,29 @@
 
   <description>
     <p>
-      RustDiff is a desktop application that compares two JSON or XML documents
-      and highlights the differences in a clear, visual way. It is written in
-      Rust and built on top of GTK4 and Libadwaita, so it feels native on the
-      GNOME desktop.
+      RustDiff is a desktop application that compares two JSON, XML or SQL
+      documents by their structure — keys, array indices, XML nodes and
+      attributes, SQL statements — instead of by raw text lines, and
+      highlights the differences in a clear, visual way. The diff engine is
+      written in Rust; the interface is a Tauri app with a web-based UI.
     </p>
     <p xml:lang="es">
-      RustDiff es una aplicación de escritorio que compara dos documentos JSON
-      o XML y resalta sus diferencias de forma clara y visual. Está escrita en
-      Rust y usa GTK4 y Libadwaita, por lo que se integra nativamente con
-      GNOME.
+      RustDiff es una aplicación de escritorio que compara dos documentos JSON,
+      XML o SQL por su estructura — claves, índices de arreglos, nodos y
+      atributos XML, sentencias SQL — en lugar de línea por línea, y resalta
+      sus diferencias de forma clara y visual. El motor de diff está escrito en
+      Rust; la interfaz es una app Tauri con UI web.
     </p>
     <p>Main features:</p>
     <ul>
-      <li>Semantic diff for JSON (key by key) and XML (nodes, attributes and text).</li>
-      <li>Split editor with syntax highlighting and automatic pretty-print.</li>
+      <li>Semantic diff for JSON (key by key), XML (nodes, attributes and text) and SQL (statement by statement), with a line-by-line fallback for plain text.</li>
+      <li>Split editor with syntax highlighting, automatic pretty-print and in-editor search.</li>
       <li>Inline and full-line highlighting for added, removed and changed items.</li>
       <li>Filterable table of differences, clickable to jump to the exact location.</li>
+      <li>Graph view of JSON and XML documents with pan, zoom and node search.</li>
+      <li>Light and dark themes that follow the system, and adjustable text size.</li>
       <li>Export to plain text or styled HTML.</li>
-      <li>Session history backed by SQLite with per-entry and bulk deletion.</li>
-      <li>Ctrl + mouse wheel zoom on both editors, dark mode follows the system.</li>
+      <li>Session history backed by SQLite, searchable, with per-entry and bulk deletion.</li>
     </ul>
   </description>
 
@@ -57,6 +60,7 @@
   <keywords>
     <keyword>json</keyword>
     <keyword>xml</keyword>
+    <keyword>sql</keyword>
     <keyword>diff</keyword>
     <keyword>compare</keyword>
     <keyword>format</keyword>
@@ -100,6 +104,19 @@
   </branding>
 
   <releases>
+    <release version="0.5.0" date="2026-10-14">
+      <description>
+        <p>RustDiff moves from GTK4 to a new Tauri interface. The diff engine, the history database and the settings file are unchanged, so upgrading needs no migration.</p>
+        <ul>
+          <li>New interface built with Tauri and React: CodeMirror editors with diff highlighting, a resizable differences panel, and a redesigned welcome screen.</li>
+          <li>The graph view is redrawn on a 2D canvas on top of the same layout engine, with pan, zoom, zoom-to-fit and node search.</li>
+          <li>A design system with light and dark themes that follow the system, consistent diff colors and keyboard-accessible controls.</li>
+          <li>History, export to .txt/.html, the exit dialog, the language picker and the text size setting work as before.</li>
+          <li>RustDiff is no longer published on crates.io, and the Homebrew source formula is retired in favour of the prebuilt rustdiff-app cask.</li>
+          <li>The "Open History" desktop action was removed.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.4.0" date="2026-07-27">
       <description>
         <p>A tidier header bar and a collapsible differences panel.</p>

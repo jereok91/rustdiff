@@ -16,113 +16,38 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # ─────────────────────────────────────────────
-# WORKSPACE
+# WORKSPACE (virtual)
 # ─────────────────────────────────────────────
-# Este paquete es la app GTK. El nucleo sin UI vive en crates/rustdiff-core y la
-# persistencia en crates/rustdiff-persist, para que el proximo frontend (Tauri)
-# los reuse tal cual. La version y los metadatos compartidos viven aca: un solo
-# lugar donde bumpear en cada release.
+# Desde F8 la raiz no es un paquete: la app GTK se retiro (D4) y la app es el
+# shell Tauri de `desktop/src-tauri`. La logica vive en dos crates sin UI:
+#
+#   crates/rustdiff-core     formato, parseo, diff semantico, grafo, export
+#   crates/rustdiff-persist  historial SQLite y preferencias
+#   desktop/src-tauri        el shell Tauri v2 (binario `rustdiff`)
+#
+# La version y los metadatos compartidos viven aca: un solo lugar donde
+# bumpear en cada release (y en desktop/package.json + tauri.conf.json, que
+# no leen el workspace).
 [workspace]
 resolver = "3"
-# `desktop/src-tauri` es el shell Tauri (Tauri v2 + React). Convive con la app
-# GTK hasta F8; por eso vive en desktop/ y no en la raiz.
 members  = ["crates/*", "desktop/src-tauri"]
-# Un `cargo test` pelado en la raiz corre lo mismo que el CI. Sin esto Cargo
-# testea solo el paquete del directorio actual y los tests del nucleo
-# quedarian afuera sin que nadie lo note.
+# Un `cargo test` pelado en la raiz corre el nucleo y la persistencia, que
+# compilan sin ninguna lib de sistema de UI.
 #
 # `desktop/src-tauri` queda FUERA a proposito: compilarlo arrastra todo Tauri y
 # WebKitGTK (~200 crates) y exige las libs de desarrollo de WebKit, asi que
-# incluirlo dejaria a quien trabaja solo en la app GTK sin poder correr los
+# incluirlo dejaria a quien trabaja solo en el nucleo sin poder correr los
 # tests. El CI lo cubre con --workspace.
-default-members = [".", "crates/*"]
+default-members = ["crates/*"]
 
 [workspace.package]
-version      = "0.4.0"
+version      = "0.5.0"
 edition      = "2024"
 rust-version = "1.85"
 authors      = ["digitalgex <jpajaro@digitalgex.com>"]
 license      = "GPL-3.0-or-later"
 repository   = "https://github.com/jereok91/rustdiff"
 homepage     = "https://github.com/jereok91/rustdiff"
-
-[package]
-name        = "rustdiff"
-version.workspace     = true
-edition.workspace     = true
-rust-version.workspace = true
-authors.workspace     = true
-license.workspace     = true
-repository.workspace  = true
-homepage.workspace    = true
-description = "Semantic JSON & XML diff tool with a native GTK4 desktop UI"
-readme      = "README.md"
-
-# Maximo 5 keywords — las que la gente buscaria en crates.io
-keywords    = ["json", "xml", "diff", "gtk4", "compare"]
-
-# Solo slugs validos de https://crates.io/category_slugs
-categories  = ["command-line-utilities", "development-tools", "gui"]
-
-# ── Archivos a incluir en el .crate ─────────
-# Solo lo necesario para compilar + metadata.
-# Excluye tests, screenshots, CI, etc. para reducir tamano del paquete.
-include = [
-    "src/**/*.rs",
-    "build.rs",
-    "Cargo.toml",
-    "Cargo.lock",
-    "LICENSE",
-    "README.md",
-    "locales/*.yml",
-    "data/com.digitalgex.RustDiff.desktop",
-    "data/com.digitalgex.RustDiff.metainfo.xml",
-    "data/icons/com.digitalgex.RustDiff.svg",
-    "data/icons/symbolic/hicolor/scalable/actions/*.svg",
-    "data/language-specs/*.lang",
-]
-
-# ─────────────────────────────────────────────
-# BINARIO PRINCIPAL
-# ─────────────────────────────────────────────
-[[bin]]
-name = "rustdiff"
-path = "src/main.rs"
-
-# ─────────────────────────────────────────────
-# DEPENDENCIAS DE BUILD (verificacion de libs del sistema)
-# ─────────────────────────────────────────────
-[build-dependencies]
-pkg-config = "0.3"
-
-# ─────────────────────────────────────────────
-# DEPENDENCIAS DE PRODUCCION
-# ─────────────────────────────────────────────
-[dependencies]
-
-# ── NUCLEO Y PERSISTENCIA DEL WORKSPACE ──────
-# Aca NO van sus dependencias (quick-xml, serde_json, rusqlite, sqlformat...):
-# cada crate del workspace declara las suyas.
-rustdiff-core    = { path = "crates/rustdiff-core" }
-rustdiff-persist = { path = "crates/rustdiff-persist" }
-
-# ── UI / GTK ─────────────────────────────────
-gtk4        = { version = "0.9", features = ["v4_12"] }
-libadwaita  = { version = "0.7", features = ["v1_5"] }
-sourceview5 = "0.9"
-
-# ── DIFF LINEA POR LINEA EN LOS EDITORES ─────
-# El resaltado visual de los SourceView lo usa directamente (el diff semantico
-# vive en rustdiff-core).
-similar    = { version = "2", features = ["text", "unicode"] }
-
-# ── I18N ─────────────────────────────────────
-# Strings traducibles via locales/<lang>.yml embebidos en tiempo de compilacion.
-rust-i18n = "3"
-
-# ── UTILIDADES ───────────────────────────────
-tracing            = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # ─────────────────────────────────────────────
 # PERFIL RELEASE
@@ -141,29 +66,3 @@ panic         = "abort"
 opt-level   = 1
 debug       = true
 incremental = true
-
-# ─────────────────────────────────────────────
-# METADATA PARA EMPAQUETADO .deb
-# ─────────────────────────────────────────────
-[package.metadata.deb]
-maintainer   = "jpajaro <jpajaro@digitalgex.com>"
-copyright    = "2026, digitalgex"
-license-file = ["LICENSE", "4"]
-extended-description = """
-RustDiff es un comparador semantico de JSON y XML.
-Muestra las diferencias entre dos documentos de forma visual,
-resaltando anadidos, eliminados y modificados con colores.
-"""
-depends  = "$auto, libgtk-4-1, libadwaita-1-0, libgtksourceview-5-0"
-section  = "utils"
-priority = "optional"
-assets = [
-    ["target/release/rustdiff",                     "usr/bin/",                                                  "755"],
-    ["data/com.digitalgex.RustDiff.desktop",        "usr/share/applications/",                                   "644"],
-    ["data/com.digitalgex.RustDiff.metainfo.xml",   "usr/share/metainfo/",                                       "644"],
-    ["data/icons/com.digitalgex.RustDiff.svg",      "usr/share/icons/hicolor/scalable/apps/",                    "644"],
-    ["data/icons/symbolic/hicolor/scalable/actions/*.svg", "usr/share/rustdiff/icons/symbolic/hicolor/scalable/actions/", "644"],
-    # `build_language_manager` busca aqui los .lang propios (SQL); sin
-    # esto el paquete .deb pierde el resaltado de sintaxis de SQL.
-    ["data/language-specs/*.lang",                  "usr/share/rustdiff/language-specs/",                        "644"],
-]

@@ -1,7 +1,8 @@
 {
     "$schema": "https://schema.tauri.app/config/2",
     "productName": "RustDiff",
-    "version": "0.4.0",
+    "mainBinaryName": "rustdiff",
+    "version": "0.5.0",
     "identifier": "com.digitalgex.RustDiff",
     "build": {
         "beforeDevCommand": "pnpm dev",
@@ -25,10 +26,33 @@
     },
     "bundle": {
         "active": true,
-        "targets": ["deb"],
+        "targets": [
+            "deb"
+        ],
         "category": "Utility",
         "shortDescription": "Semantic JSON, XML and SQL comparator",
         "longDescription": "RustDiff compares the structure of JSON, XML and SQL documents: keys, array indices, XML nodes and attributes, and SQL statements.",
-        "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png"]
+        "icon": [
+            "icons/32x32.png",
+            "icons/128x128.png",
+            "icons/128x128@2x.png",
+            "icons/icon.png"
+        ],
+        "copyright": "2026 digitalgex",
+        "license": "GPL-3.0-or-later",
+        "linux": {
+            "deb": {
+                "section": "utils",
+                "priority": "optional",
+                "desktopTemplate": "../../data/com.digitalgex.RustDiff.desktop",
+                "files": {
+                    "/usr/share/metainfo/com.digitalgex.RustDiff.metainfo.xml": "../../data/com.digitalgex.RustDiff.metainfo.xml",
+                    "/usr/share/icons/hicolor/scalable/apps/com.digitalgex.RustDiff.svg": "../../data/icons/com.digitalgex.RustDiff.svg"
+                }
+            }
+        },
+        "macOS": {
+            "signingIdentity": "-"
+        }
     }
 }

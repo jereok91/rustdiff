@@ -15,7 +15,7 @@
 set -euo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-BIN="${1:-$RAIZ/target/release/rustdiff-desktop}"
+BIN="${1:-$RAIZ/target/release/rustdiff}"
 SALIDA="${2:-$RAIZ/target/smoke-tauri}"
 
 # ── Comprobaciones previas ───────────────────

@@ -21,8 +21,8 @@ jobs:
         include:
           - arch: amd64
             runner: ubuntu-latest
-          # Runner ARM64 nativo (gratuito para repos publicos): compila el
-          # stack GTK sin cross-compilation.
+          # Runner ARM64 nativo (gratuito para repos publicos): compila
+          # WebKitGTK/Tauri sin cross-compilation.
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
@@ -31,16 +31,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install GTK4 system dependencies
+      # Lo que pide Tauri v2 en Linux. El paquete resultante depende en
+      # runtime de libwebkit2gtk-4.1-0 y libgtk-3-0 (los declara el bundler).
+      - name: Install Tauri system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libgtk-4-dev \
-            libadwaita-1-dev \
-            libgtksourceview-5-dev
+            build-essential \
+            pkg-config \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev \
+            libgtk-3-dev \
+            librsvg2-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -49,10 +67,11 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch }}-cargo-
+            ${{ runner.os }}-${{ matrix.arch }}-cargo-release-
 
+      # `pnpm tauri build --bundles deb` (frontend + shell con custom-protocol).
       - name: Build .deb package
         run: bash scripts/packaging/build-deb.sh
 
@@ -60,9 +79,9 @@ jobs:
         id: deb
         run: |
           shopt -s nullglob
-          debs=(target/debian/*.deb)
-          if [ "${#debs[@]}" -eq 0 ]; then
-            echo "No .deb artifacts were generated."
+          debs=(target/release/bundle/deb/rustdiff_*.deb)
+          if [ "${#debs[@]}" -ne 1 ]; then
+            echo "Expected exactly one .deb, found ${#debs[@]}: ${debs[*]}"
             exit 1
           fi
 
@@ -75,6 +94,24 @@ jobs:
             echo "Expected ${{ matrix.arch }} package, got $DEB_ARCH ($DEB_NAME)."
             exit 1
           fi
+
+          # Identidad del paquete: mismo nombre y binario que la app GTK, asi
+          # `apt upgrade` desde 0.4.x reemplaza el paquete en vez de instalar
+          # uno paralelo.
+          DEB_PACKAGE="$(dpkg-deb -f "$DEB_PATH" Package)"
+          if [ "$DEB_PACKAGE" != "rustdiff" ]; then
+            echo "Expected package name rustdiff, got $DEB_PACKAGE."
+            exit 1
+          fi
+          # Se captura el listado antes de buscar: `grep -q` cortaria el pipe
+          # y, con pipefail, el SIGPIPE de dpkg-deb haria fallar el paso.
+          CONTENTS="$(dpkg-deb -c "$DEB_PATH")"
+          for f in usr/bin/rustdiff usr/share/metainfo/com.digitalgex.RustDiff.metainfo.xml; do
+            if ! grep -Eq "(^|[ /])${f}\$" <<<"$CONTENTS"; then
+              echo "Missing $f in $DEB_NAME."
+              exit 1
+            fi
+          done
 
           echo "deb_path=$DEB_PATH" >> "$GITHUB_OUTPUT"
           echo "deb_name=$DEB_NAME" >> "$GITHUB_OUTPUT"

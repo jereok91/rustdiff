@@ -1,23 +1,25 @@
 # RustDiff
 
-[![Crates.io](https://img.shields.io/crates/v/rustdiff)](https://crates.io/crates/rustdiff)
-[![License: GPL-3.0-or-later](https://img.shields.io/crates/l/rustdiff)](LICENSE)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
-Semantic JSON, XML & SQL diff tool with a native GTK4 + Libadwaita desktop UI.
+Semantic JSON, XML & SQL diff tool for the desktop. It compares document
+*structure* — keys, array indices, XML nodes and attributes, SQL statements —
+not raw text lines. The diff engine is written in Rust; the app is a
+[Tauri v2](https://v2.tauri.app/) shell with a React interface.
 
-Language: **English** | [Espanol](README.es.md)
+Language: **English** | [Español](README.es.md)
 
 ## Features
 
-- Semantic JSON, XML & SQL diff (objects, arrays, XML nodes, attributes, text, and SQL statements)
-- Welcome screen with guided comparison flow (single editor initially)
-- Side-by-side editors with syntax highlighting
-- **Busqueda en editores** (`Ctrl+F`) con navegacion siguiente/anterior y wrap-around
-- Auto compare while typing (debounced) + manual compare
-- Difference table with filters and click-to-jump navigation, collapsible with `Ctrl+D`
-- Graph view (`Ctrl+G`): the left document as an interactive node graph, JSON Crack style
+- Semantic diff for JSON, XML and SQL (objects, arrays, XML nodes, attributes, text and SQL statements), with a line-by-line fallback for plain text
+- Side-by-side CodeMirror editors with syntax highlighting, inline (character-level) diff highlighting and pretty-print (`Ctrl+Shift+F`)
+- Search inside the editors (`Ctrl+F`) with next/previous navigation and wrap-around
+- Auto compare while typing (debounced) and manual compare (`Ctrl+Enter`)
+- Difference table with type filters and click-to-jump navigation, collapsible with `Ctrl+D`
+- Graph view (`Ctrl+G`): the left document as an interactive node graph (pan, zoom, fit, node search), JSON Crack style
+- Light and dark themes (follow the system or pick one), adjustable UI text size, English and Spanish UI
 - Export to `.txt` and styled `.html`
-- Session history stored in SQLite (paginated, searchable)
+- Session history stored in SQLite (paginated, searchable, per-entry and bulk deletion)
 
 ## Screenshots
 
@@ -29,70 +31,56 @@ Language: **English** | [Espanol](README.es.md)
 
 ## Installation
 
-### 1) Flatpak + Flathub (recommended for desktop users)
+| Channel | Platforms | Updates |
+| --- | --- | --- |
+| [Flatpak (Flathub)](#1-flatpak--flathub-recommended-on-linux) | any Linux distro | `flatpak update` |
+| [Debian package / APT repository](#2-debian-package-deb-and-apt-repository) | Ubuntu 24.04+, Debian 13+ (amd64, arm64) | `apt upgrade` |
+| [One-command installer](#3-one-command-installer) | Debian/Ubuntu (installs the `.deb`), other distros (builds from source) | re-run it |
+| [macOS DMG / Homebrew cask](#4-macos) | macOS (Apple Silicon, Intel) | `brew upgrade --cask` |
+| [From source](#build-from-source) | Linux, macOS | `git pull` + rebuild |
 
-Install Flatpak:
+RustDiff is no longer published on crates.io (`cargo install rustdiff` installs
+the last GTK release, 0.4.x). See [the 0.5.0 release notes](docs/RELEASE_NOTES_0.5.0.md).
+
+### 1) Flatpak + Flathub (recommended on Linux)
+
+Install Flatpak and enable Flathub:
 
 ```bash
 # Arch / Manjaro
 sudo pacman -S flatpak
-
 # Fedora
 sudo dnf install flatpak
-
 # Ubuntu / Debian
 sudo apt update && sudo apt install -y flatpak
-
 # openSUSE
 sudo zypper install flatpak
-```
 
-Enable Flathub:
-
-```bash
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 ```
 
-Install and run RustDiff from Flathub:
+Install, run, update, remove:
 
 ```bash
 flatpak install flathub com.digitalgex.RustDiff
 flatpak run com.digitalgex.RustDiff
-```
-
-Update or remove:
-
-```bash
 flatpak update com.digitalgex.RustDiff
 flatpak uninstall com.digitalgex.RustDiff
 ```
 
-Notes:
+The Flatpak bundles its own GNOME runtime (with WebKitGTK), so it works
+regardless of the host's library versions. To build it locally from this
+checkout, see `com.digitalgex.RustDiff.yaml`.
 
-- If software centers do not show Flathub apps immediately, log out and back in.
-- If `com.digitalgex.RustDiff` is not available yet, build the Flatpak locally from this repo (see `com.digitalgex.RustDiff.yaml`).
+### 2) Debian package (`.deb`) and APT repository
 
-### 2) One-command installer (Cargo + system deps)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/jereok91/rustdiff/main/install.sh | bash
-```
-
-### 3) Cargo install (from crates.io)
-
-```bash
-cargo install rustdiff
-```
-
-### 4) Debian package (`.deb`) and APT repository (PPA-style)
-
-Install from a downloaded `.deb` (from GitHub Releases):
+From a downloaded `.deb` ([GitHub Releases](https://github.com/jereok91/rustdiff/releases)):
 
 ```bash
 sudo apt install ./rustdiff_*.deb
 ```
 
-Install from the GitHub-hosted APT repository:
+From the signed APT repository hosted on GitHub Pages:
 
 ```bash
 curl -fsSL https://jereok91.github.io/rustdiff/KEY.gpg | sudo tee /usr/share/keyrings/rustdiff-archive-keyring.gpg >/dev/null
@@ -101,16 +89,16 @@ sudo apt update
 sudo apt install rustdiff
 ```
 
-APT repository builds are published for `amd64` and `arm64` (e.g. Raspberry Pi 5, ARM servers).
+The package is named `rustdiff`, installs `/usr/bin/rustdiff` and depends on
+`libwebkit2gtk-4.1-0` and `libgtk-3-0`. Upgrading from 0.4.x is a normal
+`apt upgrade`.
 
-> **Minimum OS version:** the `.deb` is built against the GTK4/libadwaita stack shipped by
-> the CI runner (currently Ubuntu 24.04), so it requires **Ubuntu 24.04+ or a Debian-based
-> distro with libadwaita ≥ 1.5 and GTK4 ≥ 4.12** (e.g. Debian 13/trixie). On older releases
-> (Ubuntu 22.04, Debian 12, etc.) `apt install` will fail with unmet dependencies — use the
-> [Flatpak package](#1-flatpak--flathub-recommended-for-desktop-users) instead, which bundles
-> its own runtime and works regardless of the host's GTK version.
+> **Minimum OS version:** the `.deb` is built on the CI runner's Ubuntu 24.04,
+> so it needs the glibc of **Ubuntu 24.04+ or Debian 13 (trixie)+**. On older
+> releases use the [Flatpak](#1-flatpak--flathub-recommended-on-linux) or
+> [build from source](#build-from-source).
 
-Remove the package and repository:
+Remove the package and the repository:
 
 ```bash
 sudo apt remove rustdiff
@@ -118,189 +106,141 @@ sudo rm -f /etc/apt/sources.list.d/rustdiff.list /usr/share/keyrings/rustdiff-ar
 sudo apt update
 ```
 
-### 5) macOS (experimental)
+### 3) One-command installer
 
-#### Option A — Prebuilt binary (recommended)
+```bash
+curl -fsSL https://raw.githubusercontent.com/jereok91/rustdiff/main/install.sh | bash
+```
 
-Every release ships a self-contained `.dmg` per architecture (Apple Silicon
-`arm64` and Intel `x86_64`): no Homebrew required, nothing to compile.
+- On Debian/Ubuntu it downloads the latest release `.deb` and installs it with `apt`.
+- On other distros (or with `RUSTDIFF_FROM_SOURCE=1`) it installs the WebKitGTK
+  development packages, builds the app with pnpm + cargo and installs it per
+  user: `~/.local/bin/rustdiff` plus the desktop entry, AppStream metainfo and
+  icon under `~/.local/share`. It needs Rust, Node.js and pnpm (see below).
 
-With Homebrew Cask (picks the right architecture automatically):
+### 4) macOS
+
+Every release ships a `.dmg` per architecture (Apple Silicon `arm64` and Intel
+`x86_64`). The app uses the system WebKit, so there are no extra dependencies.
 
 ```bash
 brew install --cask jereok91/rustdiff/rustdiff-app
-```
-
-Or manually: download `RustDiff-<version>-macos-<arch>.dmg` from
-[Releases](https://github.com/jereok91/rustdiff/releases), open it and drag
-`RustDiff.app` into `Applications`.
-
-> The app is ad-hoc signed (no Apple Developer certificate). If macOS blocks
-> the first launch: right-click the app → **Open**, or run
-> `xattr -cr /Applications/RustDiff.app`. (On older Homebrew versions
-> `brew install --cask --no-quarantine` skips this step; the flag was
-> removed in recent Homebrew releases.)
-
-**Upgrade / uninstall:**
-
-```bash
 brew upgrade --cask rustdiff-app
 brew uninstall --cask rustdiff-app   # add --zap to also remove settings and history
 ```
 
-#### Option B — Homebrew building from source
+Or download `RustDiff-<version>-macos-<arch>.dmg` from
+[Releases](https://github.com/jereok91/rustdiff/releases) and drag
+`RustDiff.app` into `Applications`.
 
-```bash
-brew install jereok91/rustdiff/rustdiff
-cp -R "$(brew --prefix)/opt/rustdiff/RustDiff.app" /Applications/
-```
+> The app is ad-hoc signed (no Apple Developer certificate). If macOS blocks
+> the first launch: right-click the app → **Open**, or run
+> `xattr -cr /Applications/RustDiff.app`.
 
-- The first command builds RustDiff from source; the GTK4 stack (`gtk4`, `libadwaita`, `gtksourceview5`) is installed automatically as dependencies. The first install takes a few minutes while everything compiles. After it, `rustdiff` is available from the terminal.
-- The second command copies the `RustDiff.app` bundle so the app shows up in **Launchpad and Spotlight**. You only need to do it once: the bundle launches the brew-managed binary, so it keeps working after every `brew upgrade rustdiff` without copying it again.
+The Homebrew **source formula** (`brew install jereok91/rustdiff/rustdiff`) is
+retired: it built the GTK app with `cargo install`, which no longer exists.
+If you used it, switch with `brew uninstall rustdiff && brew install --cask jereok91/rustdiff/rustdiff-app`.
 
-**Upgrade:**
+## Build from source
 
-```bash
-brew update && brew upgrade rustdiff
-```
+### Requirements
 
-**Uninstall:**
-
-```bash
-brew uninstall rustdiff
-rm -rf /Applications/RustDiff.app
-```
-
-> Note: GTK4 on macOS is functional but considered experimental upstream.
-> Both options can be installed side by side (the cask installs into
-> `/Applications`, the formula into the brew prefix).
-
-## System requirements (source/Cargo builds)
-
-### Rust
-
-Rust 1.85+ (edition 2024):
-
-```bash
-rustup update stable
-rustc --version
-```
-
-### Native libraries
-
-RustDiff uses native GTK libraries. You need a C toolchain (`gcc/clang`, `make`, `pkg-config`) and GTK development packages.
+- Rust 1.85+ (edition 2024): `rustup update stable`
+- Node.js 20+ and pnpm 10 (`npm install -g pnpm` or `corepack enable pnpm`)
+- On Linux, WebKitGTK 4.1 and a C toolchain:
 
 ```bash
 # Arch / CachyOS / Manjaro
-sudo pacman -S base-devel gtk4 libadwaita gtksourceview5
+sudo pacman -S --needed base-devel webkit2gtk-4.1 librsvg
 
 # Fedora
-sudo dnf install gcc make pkgconf-pkg-config gtk4-devel libadwaita-devel gtksourceview5-devel
+sudo dnf install gcc gcc-c++ make pkgconf-pkg-config webkit2gtk4.1-devel libsoup3-devel librsvg2-devel
 
-# Ubuntu / Debian (24.04+)
-sudo apt install build-essential pkg-config libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev
+# Ubuntu / Debian (24.04+ / 13+)
+sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev
 
 # openSUSE
-sudo zypper install gcc make pkg-config gtk4-devel libadwaita-devel gtksourceview5-devel
-
-# macOS (experimental)
-brew install pkgconf gtk4 libadwaita gtksourceview5
+sudo zypper install gcc gcc-c++ make pkg-config webkit2gtk3-devel libsoup-devel librsvg-devel
 ```
 
-Verify required libs:
+On macOS only the Xcode Command Line Tools are needed (`xcode-select --install`).
+
+Check WebKitGTK on Linux:
 
 ```bash
-pkg-config --exists gtk4 && echo "gtk4: OK" || echo "gtk4: MISSING"
-pkg-config --exists libadwaita-1 && echo "libadwaita: OK" || echo "libadwaita: MISSING"
-pkg-config --exists gtksourceview-5 && echo "gtksourceview5: OK" || echo "gtksourceview5: MISSING"
+pkg-config --modversion webkit2gtk-4.1
 ```
 
-## Build and run
+### Build and run
 
 ```bash
-# Development
-cargo run
-
-# Open with two files
-cargo run -- left.json right.json
-
-# Optimized release binary
-cargo build --release
+cd desktop
+pnpm install
+pnpm tauri dev                 # the app with hot reload
+pnpm tauri build               # release binary + .deb (Linux) / .app + .dmg (macOS)
+pnpm tauri build --no-bundle   # release binary only
 ```
 
-Binary output:
-
-```text
-target/release/rustdiff
-```
-
-Install local checkout:
-
-```bash
-cargo install --path .
-```
+The binary lands in `target/release/rustdiff` (at the repository root: the
+Cargo workspace shares one `target/`), the bundles in `target/release/bundle/`.
 
 ## Usage
 
 ```bash
-# Open empty window
-rustdiff
-
-# Open two JSON files
-rustdiff old_config.json new_config.json
-
-# Open two XML files
+rustdiff                                  # empty window
+rustdiff old_config.json new_config.json  # compare two files
 rustdiff schema_v1.xml schema_v2.xml
 ```
 
 ## Keyboard shortcuts
 
-| Shortcut       | Action                   |
-| -------------- | ------------------------ |
-| `Ctrl+O`       | Open file in left panel  |
-| `Ctrl+Shift+O` | Open file in right panel |
-| `Ctrl+Enter`   | Force compare            |
-| `Ctrl+S`       | Save session to history  |
-| `Ctrl+E`       | Export result as `.txt`  |
-| `Ctrl+Shift+F` | Pretty-print both panels |
-| `Ctrl+H`       | Toggle history panel     |
-| `Ctrl+F`       | Search inside the editors|
-| `Ctrl+G`       | Toggle graph view        |
-| `Ctrl+D`       | Toggle differences panel |
-| `Ctrl+?`       | Show all shortcuts       |
+| Shortcut       | Action                       |
+| -------------- | ---------------------------- |
+| `Ctrl+O`       | Open file in left panel      |
+| `Ctrl+Shift+O` | Open file in right panel     |
+| `Ctrl+Enter`   | Compare now                  |
+| `Ctrl+Shift+F` | Pretty-print both panels     |
+| `Ctrl+F`       | Search inside the editors    |
+| `Ctrl+G`       | Toggle graph view            |
+| `Ctrl+D`       | Toggle differences panel     |
+| `Ctrl+S`       | Save session to history      |
+| `Ctrl+H`       | Toggle history panel         |
+| `Ctrl+E`       | Export result as `.txt`      |
+| `Ctrl++` / `Ctrl+-` / `Ctrl+0` | Increase / decrease / reset UI text size |
+| `Ctrl+?`       | Show all shortcuts           |
 
 ## Data, config, and outputs
 
-- History DB: `~/.local/share/rustdiff/history.db`
-- UI settings: `~/.config/rustdiff/settings.json`
+- History DB: `~/.local/share/rustdiff/history.db` (macOS: `~/Library/Application Support/rustdiff/`)
+- UI settings: `~/.config/rustdiff/settings.json` (macOS: `~/Library/Application Support/rustdiff/`)
+- Flatpak keeps both under `~/.var/app/com.digitalgex.RustDiff/`
 - Export formats: plain text (`.txt`) and HTML (`.html`)
 
 ## Tests
 
 ```bash
-# Full test suite (every crate in the workspace)
+# Core and persistence only (no WebKit needed)
 cargo test
 
-# Integration tests of the UI-free core crate
+# Everything, including the Tauri shell (needs WebKitGTK dev packages on Linux)
+cargo test --workspace --all-targets
+
+# A single integration suite of the core
 cargo test -p rustdiff-core --test parser_tests
-cargo test -p rustdiff-core --test diff_engine_tests
+
+# Frontend (Vitest)
+cd desktop && pnpm test
 ```
 
-## Flathub and packaging documentation
+## Packaging documentation
 
-- Flatpak manifest for local builds: `com.digitalgex.RustDiff.yaml`
-- Flathub submission files: `flathub/com.digitalgex.RustDiff.yaml`, `flathub/cargo-sources.json`
-- Flathub submission workflow: `flathub/README.md`
-- Screenshot requirements (AppStream/Flathub): `data/screenshots/README.md`
-- Debian/APT packaging and GitHub Actions setup: `docs/DEBIAN_APT.md`
 - Release checklist and what a `v*` tag publishes: `docs/RELEASING.md`
-- Release notes: `docs/RELEASE_NOTES_0.4.0.md`
-- Bundled symbolic icons (sources and licenses): `data/icons/symbolic/README.md`
-
-Useful external references:
-
-- Flathub setup guide: <https://flathub.org/setup>
-- Flatpak documentation: <https://docs.flatpak.org/>
+- Debian/APT packaging and GitHub Actions setup: `docs/DEBIAN_APT.md`
+- Flatpak manifest for local builds: `com.digitalgex.RustDiff.yaml`
+- Flathub submission files and workflow: `flathub/README.md`
+- Screenshot requirements (AppStream/Flathub): `data/screenshots/README.md`
+- Design system of the interface: `docs/design-system.md`
+- Release notes: `docs/RELEASE_NOTES_0.5.0.md`
 
 ## License
 

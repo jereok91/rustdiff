@@ -4,105 +4,88 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-RustDiff is a semantic JSON/XML/SQL diff tool with a native GTK4 + Libadwaita desktop UI, written in Rust (edition 2024). It compares document *structure* (keys, array indices, XML nodes/attributes, SQL statements), not raw text lines.
+RustDiff is a semantic JSON/XML/SQL diff tool for the desktop, written in Rust (edition 2024) with a Tauri v2 + React frontend. It compares document *structure* (keys, array indices, XML nodes/attributes, SQL statements), not raw text lines.
 
-## Build, run, test
+Until 0.4.x the app was GTK4 + Libadwaita; 0.5.0 retired it (the migration plan and its log live in `odd/tasks/tauri-migration.md`).
 
-Requires native GTK libs (gtk4, libadwaita-1, gtksourceview-5) — `build.rs` checks for them via `pkg-config` and fails with OS-specific install instructions if missing. Only the root package (the GTK app) needs them: the `rustdiff-core` and `rustdiff-persist` crates build and test without any GTK development files.
-
-```bash
-cargo run                                # dev build + run
-cargo run -- left.json right.json        # open two files on launch
-cargo build --release                    # optimized binary → target/release/rustdiff
-
-cargo test                               # full suite (unit + integration, whole workspace)
-cargo test -p rustdiff-core              # the UI-free core only, no GTK libs needed
-cargo test -p rustdiff-core --test parser_tests        # integration tests for parser.rs
-cargo test -p rustdiff-core --test diff_engine_tests   # integration tests for diff_engine.rs
-cargo test -p rustdiff-persist --lib     # storage + settings
-cargo test json_valor_cambiado           # run a single test by name (works across files)
-
-cargo fmt                                # uses rustfmt.toml (max_width=120, tab_spaces=4)
-cargo clippy --workspace --all-targets
-```
-
-The `vendor/` directory and `cargo-sources.json`/`flathub/cargo-sources.json` exist only to support offline Flatpak builds (consumed by `.flatpak-tools/flatpak-cargo-generator.py`) — normal `cargo build`/`cargo run` fetch from crates.io as usual, there's no local source-replacement config.
-
-## Architecture
-
-This is a Cargo workspace. The root package is the GTK app — a library (`src/lib.rs`) plus a thin binary (`src/main.rs` → `rustdiff::app::run()`) — and it is only the frontend: the logic lives in two member crates that know nothing about any toolkit.
+## Layout
 
 ```
+Cargo.toml                 virtual workspace: version, profiles, members
 crates/rustdiff-core/      format, parsing, semantic diff, graph layout, export
 crates/rustdiff-persist/   SQLite session history + user preferences
-desktop/                   the replacement frontend: React + Vite + TypeScript
-desktop/src-tauri/         the Tauri v2 shell around rustdiff-core (phase F1)
-src/                       the GTK4 app (app.rs, ui/)
+desktop/                   the frontend: React + Vite + TypeScript, Tailwind v4, shadcn/ui
+desktop/src-tauri/         the Tauri v2 shell (binary `rustdiff`), IPC commands
+locales/                   rust-i18n strings the crates still render (export report, session summary)
+data/                      desktop entry, AppStream metainfo, app icon, screenshots
 ```
 
-Both frontends coexist while the migration to Tauri runs (branch `feat/tauri-migration`, plan in `odd/tasks/tauri-migration.md`). In F8 the GTK app is deleted and `desktop/*` moves to the repository root.
+The app stays in `desktop/` + `desktop/src-tauri/` instead of moving to the repository root: the frontend has its own Node tree and mixing it with the Cargo workspace root buys nothing.
 
-**Build order matters for production builds only:** `tauri-codegen` validates that `desktop/dist` exists at the moment the production assets are embedded, and that only happens with the `custom-protocol` feature on (`pnpm tauri build`, or `cargo build --release --features custom-protocol`). Dev builds, `cargo test` and `cargo clippy` do not need `desktop/dist`. CI still builds the frontend before the cargo steps so the production path is exercised end to end:
-
-```bash
-cd desktop && pnpm install && pnpm build   # once, and after every frontend change
-cd .. && cargo test --workspace            # compiles the Tauri member too
-```
-
-`desktop/src-tauri` is a workspace member but **not** a default member: compiling it pulls the whole Tauri/WebKitGTK stack and needs the WebKit development libraries, so a bare `cargo test` stays usable for GTK-only work. CI uses `--workspace` to cover it.
-
-Module boundaries are strict and one-directional: `parser` → `diff_engine` → `graph`/`export` → the frontend, with `storage` and `settings` as independent, orthogonal services that depend on the core. `rustdiff-core` must stay free of `gtk4`, `libadwaita`, `sourceview5`, `cairo` and `tauri` — `crates/rustdiff-core/tests/no_ui_dependencies.rs` fails if it isn't, so the logic survives any future change of GUI toolkit.
-
-- **`rustdiff-core/src/parser.rs`** — detects format (JSON/XML/SQL) from raw text and parses into either `serde_json::Value` or the crate's own `XmlNode`/`XmlChild` tree (quick-xml is used only for tokenizing; the resulting tree is custom). Also does pretty-printing for the "Format" button. Enforces `MAX_INPUT_SIZE` (10 MB).
-- **`rustdiff-core/src/diff_engine.rs`** — the semantic diff core, pure and UI-agnostic. Four entry points: `diff_json`, `diff_xml`, `diff_sql`, `diff_text`, all returning a `DiffResult { added, removed, changed }` of `DiffItem { path, kind, left, right }`. Paths use JSONPath-ish notation (`$.a.b[0]`) for JSON, dot/index notation for XML, `stmt[N]` for SQL. SQL diffing is statement-level (split on `;`, quote/comment-aware) after whitespace/case normalization — it does not parse SQL grammar. `inline_char_ranges` powers the character-level highlighting in the editors and the diff table.
-- **`rustdiff-core/src/graph.rs`** — builds the JSON/XML node graph for the graph view and computes its layered `layout` and `bounds`. Truncates at `MAX_GRAPH_NODES` (3000). Pure geometry: the drawing itself lives in the frontend.
-- **`rustdiff-core/src/export.rs`** — renders a `DiffResult` to plain text or styled HTML for saving to disk.
-- **`rustdiff-persist/src/storage.rs`** — SQLite-backed session history (`rusqlite`, bundled) at `~/.local/share/rustdiff/history.db`. Stores both documents' full text plus a `DiffSummary`, paginated (`MAX_SESSIONS`), searchable.
-- **`rustdiff-persist/src/settings.rs`** — minimal JSON prefs file at `~/.config/rustdiff/settings.json` (UI language `auto`/`en`/`es` and the global `ui_scale`, clamped to `UI_SCALE_MIN`..`UI_SCALE_MAX`).
-- **`src/ui/`** — GTK4/Libadwaita widgets, GLib-idiomatic (`Rc<RefCell<...>>` for shared mutable state, no `Send`/`Sync` needed since it's single-threaded GLib main loop):
-  - `main_window.rs` — the whole application shell: header bar, dual `sourceview5::View` editors, history sidebar, search bar, graph view toggle, debounced auto-compare (500 ms via `DEBOUNCE_MS`), keyboard shortcuts. This is the largest file and owns most of the wiring between other modules.
-  - `diff_panel.rs` — the diff results table, a `gtk4::ColumnView` backed by a `gio::ListStore` of `DiffItemObject` (a GObject subclass wrapping `DiffItem` — see the `mod imp` pattern for adding new GObject-backed types).
-  - `graph_view.rs` — the Cairo drawing surface for the graph view (pan, zoom, fit, node search) on top of the geometry from `rustdiff_core::graph`.
-  - `highlighter.rs` — syntax highlighting glue for `sourceview5` plus the diff tags in the editors, including loading custom language specs from `data/language-specs/` (dev path, `.deb`/`/usr/share` path, and Flatpak `/app/share` path are all checked — replicate this three-path pattern if adding more bundled resources).
-- **`src/app.rs`** — GTK application bootstrap: locale detection (`Settings::language` → `LANG`/`LC_*` env → fallback `en`) and CLI arg handling (two positional args = auto-load into left/right panels).
-
-## Desktop shell (Tauri v2)
-
-The `desktop/` frontend is plain React + TypeScript today; Tailwind and shadcn/ui arrive in F3/F7.
+## Build, run, test
 
 ```bash
 cd desktop
 pnpm install
 pnpm dev                 # Vite dev server only (browser)
 pnpm tauri dev           # the app in a WebView, hot reload
-pnpm tauri build         # production bundle -> target/release/bundle/deb
+pnpm build               # tsc --noEmit + vite build -> desktop/dist
+pnpm test                # Vitest
+pnpm tauri build         # production bundle -> target/release/bundle/{deb,...}
+pnpm tauri build --no-bundle   # release binary only -> target/release/rustdiff
+pnpm bindings            # regenerate desktop/src/bindings.ts from the Rust commands
+
+cd ..
+cargo test                               # core + persist only (default-members), no system UI libs needed
+cargo test --workspace --all-targets     # everything, including the Tauri shell (CI runs this)
+cargo test -p rustdiff-core --test parser_tests        # one integration suite
+cargo test json_valor_cambiado           # a single test by name
+
+cargo fmt --all                          # rustfmt.toml: max_width=120, tab_spaces=4
+cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-The Rust side is one command in `desktop/src-tauri/src/main.rs`: `diff_documents(left, right, format)`, which reuses `rustdiff-core` exactly like the GTK app does (explicit format wins, otherwise it is detected from the left document; each side reports its own parse error). The frontend never touches the filesystem or parses anything (the core's limits and errors stay authoritative).
+`desktop/src-tauri` is a workspace member but **not** a default member: compiling it pulls the whole Tauri/WebKitGTK stack and needs the WebKit development libraries (`webkit2gtk-4.1`, `libsoup-3.0`), so a bare `cargo test` stays usable for core work. CI uses `--workspace`.
 
-Two things that bite:
+**Build order matters for production builds only:** `tauri-codegen` validates that `desktop/dist` exists when the production assets are embedded, which only happens with the `custom-protocol` feature on (`pnpm tauri build`, or `cargo build --release --features custom-protocol -p rustdiff-desktop`). Dev builds, `cargo test` and `cargo clippy` do not need `desktop/dist`.
 
-- **`custom-protocol` is not optional.** In tauri 2.11+, `let dev = !custom_protocol` decides whether the WebView loads `build.devUrl` or the embedded `frontendDist`. Build the shell with the CLI (`pnpm tauri build`, which enables it) or with `cargo build --release --features custom-protocol`; a plain `cargo build --release` produces a binary that shows "Could not connect to localhost" in the window.
-- **`tauri` (crate) and `@tauri-apps/api` (npm) must share major/minor**, or the CLI refuses to build with a version-mismatch error.
+`vendor/` (gitignored) and `cargo-sources.json`/`flathub/cargo-sources.json` exist only for offline Flatpak builds. Regenerate `cargo-sources.json` with `.flatpak-tools/flatpak-cargo-generator.py` whenever `Cargo.lock` changes (`docs/RELEASING.md`).
 
-`desktop/scripts/smoke-headless.sh` runs the app under a private headless `sway` compositor (its own `XDG_RUNTIME_DIR`, so it never touches the running desktop session), reports startup time, process-tree RSS and process count, and writes a screenshot. It needs `sway`, `swaymsg` and `grim`, and exports `WEBKIT_DISABLE_DMABUF_RENDERER=1` because the headless backend has no GPU/dmabuf.
+## Architecture
+
+Module boundaries are strict and one-directional: `parser` → `diff_engine` → `graph`/`export` → the Tauri commands → the frontend, with `storage` and `settings` as independent services that depend on the core. `rustdiff-core` must stay free of `gtk4`, `libadwaita`, `sourceview5`, `cairo` and `tauri` — `crates/rustdiff-core/tests/no_ui_dependencies.rs` fails if it isn't.
+
+- **`rustdiff-core/src/parser.rs`** — detects format (JSON/XML/SQL) from raw text and parses into either `serde_json::Value` or the crate's own `XmlNode`/`XmlChild` tree (quick-xml only tokenizes). Also pretty-printing. Enforces `MAX_INPUT_SIZE` (10 MB).
+- **`rustdiff-core/src/diff_engine.rs`** — the semantic diff core. Entry points `diff_json`, `diff_xml`, `diff_sql`, `diff_text`, all returning `DiffResult { added, removed, changed }` of `DiffItem { path, kind, left, right }`. Paths are JSONPath-ish (`$.a.b[0]`) for JSON, dot/index for XML, `stmt[N]` for SQL. SQL diffing is statement-level after whitespace/case normalization, not a grammar parse. `inline_char_ranges` powers the character-level highlighting.
+- **`rustdiff-core/src/graph.rs`** — builds the JSON/XML node graph and its layered `layout`/`bounds`. Truncates at `MAX_GRAPH_NODES` (3000). Pure geometry: the canvas drawing lives in the frontend (`desktop/src/lib/graph-render.ts`).
+- **`rustdiff-core/src/export.rs`** — renders a `DiffResult` to plain text or styled HTML.
+- **`rustdiff-persist/src/storage.rs`** — SQLite session history (`rusqlite`, bundled) at `dirs::data_dir()/rustdiff/history.db`, paginated (`MAX_SESSIONS`), searchable.
+- **`rustdiff-persist/src/settings.rs`** — JSON prefs at `dirs::config_dir()/rustdiff/settings.json` (language `auto`/`en`/`es`, `ui_scale` clamped to `UI_SCALE_MIN`..`UI_SCALE_MAX`).
+- **`desktop/src-tauri/src/`** — `lib.rs` defines the whole IPC contract once (`specta_builder()`), from which both the `invoke_handler` and the TypeScript bindings come; `commands/` holds one module per area (format, diff, graph, export, files, settings, history); `error.rs` maps every error to a `CommandError` with a translatable code; `state.rs` holds the history handle and the startup files (the first two CLI arguments that are files).
+- **`desktop/src/`** — the React app: `App.tsx` wires the shell; `components/` (editors, diff table, graph view, history sidebar, dialogs; `components/ui/` are the shadcn/ui primitives); `hooks/`; `lib/` holds the pure logic, each with its Vitest file. The frontend never touches the filesystem or parses documents (S8): everything goes through `bindings.ts`.
+
+## Desktop shell (Tauri v2)
+
+- **App identity**: identifier `com.digitalgex.RustDiff`, window title `RustDiff`, binary `rustdiff` (`[[bin]]` in `desktop/src-tauri/Cargo.toml` and `mainBinaryName` in `tauri.conf.json`). `tauri.linux.conf.json` sets `productName` to `rustdiff` on Linux only, which is what names the `.deb` package `rustdiff` (the bundler kebab-cases the product name and has no package-name option); macOS keeps `RustDiff.app`.
+- **`custom-protocol` is not optional.** In tauri 2.11+, `dev = !custom_protocol` decides whether the WebView loads `build.devUrl` or the embedded `frontendDist`. A plain `cargo build --release` without it shows "Could not connect to localhost" in the window.
+- **`tauri` (crate) and `@tauri-apps/api` (npm) must share major/minor**, and `tauri-plugin-dialog` (crate) / `@tauri-apps/plugin-dialog` (npm) the exact patch, or the CLI refuses to build.
+- `desktop/scripts/smoke-headless.sh` runs the app under a private headless `sway` (own `XDG_RUNTIME_DIR`), reports startup time, RSS and process count, and writes a screenshot. It needs `sway`, `swaymsg` and `grim`, and exports `WEBKIT_DISABLE_DMABUF_RENDERER=1`. Pass the binary path explicitly: `desktop/scripts/smoke-headless.sh target/release/rustdiff`.
+
+## Design system
+
+`docs/design-system.md` is the reference for tokens (OKLCH, `desktop/src/styles/tokens.css` is the single source of truth), themes, type scale, component inventory and accessibility rules. Components never contain raw color values.
 
 ## Internationalization
 
-All user-facing strings go through `rust_i18n`'s `t!()` macro (245+ call sites), backed by `locales/en.yml` and `locales/es.yml` (loaded at compile time via `rust_i18n::i18n!("locales", fallback = "en")` in `lib.rs`). When adding UI strings, add the key to **both** locale files — English is the fallback/reference set.
-
-The `t!()` macro resolves against the backend generated *inside the crate that invokes it*, so every crate that translates loads the locales itself: `src/lib.rs`, `crates/rustdiff-core/src/lib.rs` and `crates/rustdiff-persist/src/lib.rs` each call `rust_i18n::i18n!()` (relative paths to the same `locales/` directory). Adding a crate that renders user-facing text means adding that call too.
+- **UI**: i18next in the frontend, `desktop/src/locales/en.json` and `es.json`. Add every key to both; English is the fallback.
+- **Rust**: `rustdiff-core` (export report) and `rustdiff-persist` (session summary) still use `rust_i18n::t!()` against `locales/en.yml`/`es.yml`. `t!()` resolves against the backend generated *inside the crate that invokes it*, so each of those crates calls `rust_i18n::i18n!("../../locales", fallback = "en")` itself. Only the keys those crates use live there.
 
 ## Code comments
 
-Existing inline comments and doc comments (`//!`, `///`) are predominantly in Spanish (this is the primary maintainer's working language), while public-facing docs (README, error messages, `t!()` strings) are English-first with an `.es.md` translation. Match the surrounding file's existing comment language rather than mixing.
+Existing inline and doc comments are predominantly in Spanish (the primary maintainer's working language), while public-facing docs (README, error messages, UI strings) are English-first with an `.es.md` translation. Match the surrounding file's comment language.
 
 ## Packaging
 
-This repo ships through multiple channels kept in sync manually — Flatpak (`com.digitalgex.RustDiff.yaml`, `flathub/`), Debian/APT (`docs/DEBIAN_APT.md`, `scripts/packaging/`), crates.io, macOS DMG + Homebrew (see below), and a one-command `install.sh`. When bumping the version in `Cargo.toml`, check whether `flathub/cargo-sources.json` or the metainfo release notes (`data/com.digitalgex.RustDiff.metainfo.xml`) also need updating. **`docs/RELEASING.md` is the full checklist** — what a `v*` tag triggers, how to validate each channel locally, and the one manual step (the Homebrew tap's `install` block, which lives in another repo).
+Channels: Flatpak (`com.digitalgex.RustDiff.yaml` for local builds, `flathub/` for Flathub), Debian/APT (`scripts/packaging/build-deb.sh`, `docs/DEBIAN_APT.md`), macOS DMG + the `rustdiff-app` Homebrew cask, and `install.sh`. crates.io and the Homebrew source formula are retired. **`docs/RELEASING.md` is the full checklist** — the three files that carry the version (`Cargo.toml`, `desktop/package.json`, `tauri.conf.json`), what a `v*` tag triggers, local validation, and the manual steps in the tap repository.
 
-Adding a *runtime* asset (icon, language spec, locale) means editing six independent file lists: `include` and `[package.metadata.deb].assets` in `Cargo.toml`, `build-commands` in both Flatpak manifests, `scripts/packaging/build-macos-app.sh`, `install.sh`, and `Formula/rustdiff.rb` in the tap. Wildcards already cover `data/icons/symbolic/hicolor/scalable/actions/*.svg` and `data/language-specs/*.lang` in most of them, so prefer dropping files into those directories over inventing new ones.
-
-Bundled symbolic icons (`data/icons/symbolic/`) are fallbacks for themes missing a name, and every `-symbolic` name used in `src/` must have one — see that directory's `README.md` for the drift check. They must be **fill-based**: GTK only recolors `fill` on symbolic icons, so stroke artwork stays dark and vanishes on dark themes.
-
-macOS ships two ways from the same tap (`jereok91/homebrew-rustdiff`): a source-build formula (`rustdiff`, updated by `release-homebrew.yml`) and a prebuilt cask (`rustdiff-app`, updated by `release-macos.yml`). The cask points at per-arch self-contained DMGs (arm64 + x86_64) built on macOS runners by `scripts/packaging/build-macos-app.sh`, which bundles the whole brew GTK stack into `RustDiff.app` (dylibs relocated via `install_name_tool`, schemas, icons, gdk-pixbuf loaders, language specs). The launcher inside the bundle exports `RUSTDIFF_DATA_DIR`, which `main_window.rs` checks when building the GtkSourceView language search path.
+Installed files are listed in four independent places: `bundle.linux.deb` in `tauri.conf.json`, `build-commands` in both Flatpak manifests, and `install_user_files` in `install.sh`. The frontend is embedded in the binary, so only the desktop entry, metainfo and icon need installing.

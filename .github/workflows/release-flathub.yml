@@ -1,10 +1,21 @@
 name: Open PR on Flathub repo for new tag
 
 # Se dispara cuando empujas un tag con formato v*.
+#
+# El manifest de Flathub compila el shell Tauri desde el tag (Rust offline con
+# cargo-sources.json) y toma el frontend ya compilado de un tarball que este
+# workflow adjunta al release (`rustdiff-frontend-<version>.tar.gz`, el
+# `desktop/dist` de `pnpm build` en el mismo tag). Ver flathub/README.md.
+#
+# Requiere el secret FLATHUB_PAT: un PAT con permiso para pushear ramas y abrir
+# PRs en flathub/com.digitalgex.RustDiff.
 on:
   push:
     tags:
       - "v*"
+
+permissions:
+  contents: write
 
 env:
   FLATHUB_REPO: flathub/com.digitalgex.RustDiff
@@ -19,9 +30,55 @@ jobs:
       - name: Checkout rustdiff at the pushed tag
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Resolve version
+        id: tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
+      # ── Frontend: tarball para el manifest ──────────────────────────────
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+
+      - name: Build the frontend
+        working-directory: desktop
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Pack the frontend
+        id: frontend
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          NAME="rustdiff-frontend-${VERSION}.tar.gz"
+          # Un solo directorio de primer nivel (`dist/`): el manifest lo
+          # extrae en desktop/dist con el strip-components=1 por defecto.
+          # mtime/owner fijos para que re-runs produzcan el mismo hash.
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
+              -C desktop -cf - dist | gzip -n > "$NAME"
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$NAME" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "url=https://github.com/${{ github.repository }}/releases/download/${TAG}/${NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Attach the frontend tarball to the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.frontend.outputs.name }}
+
+      # ── Rust: fuentes offline ───────────────────────────────────────────
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -57,8 +114,10 @@ jobs:
       - name: Update manifest and open PR
         env:
           GH_TOKEN: ${{ secrets.FLATHUB_PAT }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.tag.outputs.tag }}
           COMMIT: ${{ github.sha }}
+          FRONTEND_URL: ${{ steps.frontend.outputs.url }}
+          FRONTEND_SHA256: ${{ steps.frontend.outputs.sha256 }}
         run: |
           set -euo pipefail
           cd flathub-repo
@@ -67,18 +126,31 @@ jobs:
           BRANCH="update-${TAG}"
           git checkout -b "$BRANCH"
 
-          # Actualizar tag y commit del source remoto en el manifest.
+          # La primera version Tauri (0.5.0) cambia la estructura del manifest
+          # (nueva fuente del frontend): si el upstream todavia no la tiene,
+          # se toma la del repo y despues se parchean tag/commit/url/sha256.
           MANIFEST="${APP_ID}.yaml"
+          if ! grep -q 'rustdiff-frontend-' "$MANIFEST"; then
+            cp "../flathub/${MANIFEST}" "$MANIFEST"
+          fi
+
+          # Fuente git (tag+commit) y tarball del frontend (url+sha256). El
+          # manifest tiene un solo `sha256:`, el del tarball.
           sed -i -E \
               -e "s|^(\s*tag:)\s+.*|\1 ${TAG}|" \
               -e "s|^(\s*commit:)\s+.*|\1 ${COMMIT}|" \
+              -e "s|^(\s*url:)\s+.*rustdiff-frontend-.*|\1 ${FRONTEND_URL}|" \
+              -e "s|^(\s*sha256:)\s+.*|\1 ${FRONTEND_SHA256}|" \
               "$MANIFEST"
 
           # Reemplazar cargo-sources.json con el recién generado.
           cp ../cargo-sources.json .
 
-          # Validación mínima: YAML bien formado, cargo-sources no vacío.
+          # Validación mínima: YAML bien formado, valores escritos,
+          # cargo-sources no vacío.
           python3 -c "import yaml; yaml.safe_load(open('$MANIFEST'))"
+          grep -q "${COMMIT}" "$MANIFEST"
+          grep -q "${FRONTEND_SHA256}" "$MANIFEST"
           python3 -c "import json; assert json.load(open('cargo-sources.json'))"
 
           # Commit y push (force-with-lease para tolerar re-runs del workflow).
@@ -92,7 +164,7 @@ jobs:
           if ! gh pr create \
               --repo "$FLATHUB_REPO" \
               --title "Update to ${TAG}" \
-              --body "Automated update from rustdiff ${TAG} (commit ${COMMIT}). Regenerated cargo-sources.json via flatpak-cargo-generator." \
+              --body "Automated update from rustdiff ${TAG} (commit ${COMMIT}). Regenerated cargo-sources.json via flatpak-cargo-generator; frontend bundle ${FRONTEND_URL}." \
               --head "$BRANCH" 2>&1 | tee /tmp/pr.out; then
               if grep -q "a pull request .* already exists" /tmp/pr.out; then
                   echo "PR ya existe, solo se actualizó la rama."

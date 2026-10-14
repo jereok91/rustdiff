@@ -18,9 +18,9 @@
 # ─────────────────────────────────────────────
 # APP DE ESCRITORIO (Tauri v2 + React)
 # ─────────────────────────────────────────────
-# F1 de la migracion (ver odd/tasks/tauri-migration.md): un solo comando real
-# sobre rustdiff-core, para probar el transporte antes de invertir en la UI.
-# Convive con la app GTK hasta F8; por eso vive en desktop/ y no en la raiz.
+# Desde F8 es LA app (la GTK se retiro, ver odd/tasks/tauri-migration.md).
+# Sigue en desktop/ + desktop/src-tauri/ y no en la raiz: el frontend tiene su
+# propio arbol de Node y mezclarlo con el workspace de Cargo no gana nada.
 [package]
 name    = "rustdiff-desktop"
 version.workspace      = true
@@ -46,6 +46,14 @@ tauri-build = { version = "2", features = [] }
 [lib]
 name = "rustdiff_desktop"
 path = "src/lib.rs"
+
+# El ejecutable se llama `rustdiff` en todos los canales (el mismo nombre que
+# tenia la app GTK: `.desktop`, metainfo, Flatpak y el cask lo esperan asi).
+# `mainBinaryName` en tauri.conf.json dice lo mismo para el bundler; declararlo
+# tambien aca hace que un `cargo build` pelado produzca `target/*/rustdiff`.
+[[bin]]
+name = "rustdiff"
+path = "src/main.rs"
 
 [dependencies]
 rustdiff-core    = { path = "../../crates/rustdiff-core" }

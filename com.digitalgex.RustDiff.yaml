@@ -1,3 +1,18 @@
+# Manifest Flatpak para builds LOCALES desde este checkout.
+#
+# La app es el shell Tauri v2 (desktop/src-tauri) sobre WebKitGTK 4.1, que ya
+# viene en org.gnome.Platform//50 (runtime) y org.gnome.Sdk//50 (headers y
+# .pc): no hace falta compilar WebKit ni ningun modulo extra.
+#
+# Rust se compila desde fuente y offline con cargo-sources.json (generado desde
+# Cargo.lock). El frontend NO se compila adentro del sandbox: se toma
+# `desktop/dist` del checkout, asi que hay que generarlo antes:
+#
+#   (cd desktop && pnpm install && pnpm build)
+#   flatpak-builder --force-clean --disable-rofiles-fuse build-dir com.digitalgex.RustDiff.yaml
+#
+# El manifest de Flathub (flathub/com.digitalgex.RustDiff.yaml) hace lo mismo
+# pero con el frontend que el workflow release-flathub.yml adjunta al release.
 app-id: com.digitalgex.RustDiff
 runtime: org.gnome.Platform
 runtime-version: '50'
@@ -8,9 +23,12 @@ command: rustdiff
 
 finish-args:
   - --share=ipc
-  - --socket=fallback-x11
   - --socket=wayland
+  - --socket=fallback-x11
   - --device=dri
+  # Sin --filesystem: el dialogo de archivos de tauri-plugin-dialog es
+  # GtkFileChooserNative, que adentro de Flatpak pasa por el portal de
+  # documentos; los archivos que llegan por la linea de comandos (%F) tambien.
 
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin
@@ -21,15 +39,14 @@ modules:
   - name: rustdiff
     buildsystem: simple
     build-commands:
-      - cargo --offline build --release --manifest-path Cargo.toml --verbose
+      - test -f desktop/dist/index.html || { echo "desktop/dist is missing; run 'pnpm build' in desktop/ first" >&2; exit 1; }
+      # `custom-protocol` hace que el webview sirva los assets embebidos en vez
+      # de apuntar al dev server (ver desktop/src-tauri/Cargo.toml).
+      - cargo --offline build --release --features custom-protocol -p rustdiff-desktop
       - install -Dm755 ./target/release/rustdiff /app/bin/rustdiff
       - install -Dm644 ./data/com.digitalgex.RustDiff.desktop -t /app/share/applications
       - install -Dm644 ./data/com.digitalgex.RustDiff.metainfo.xml -t /app/share/metainfo
       - install -Dm644 ./data/icons/com.digitalgex.RustDiff.svg -t /app/share/icons/hicolor/scalable/apps
-      - mkdir -p /app/share/rustdiff/language-specs
-      - install -Dm644 ./data/language-specs/*.lang -t /app/share/rustdiff/language-specs
-      - mkdir -p /app/share/rustdiff/icons/symbolic/hicolor/scalable/actions
-      - install -Dm644 ./data/icons/symbolic/hicolor/scalable/actions/*.svg -t /app/share/rustdiff/icons/symbolic/hicolor/scalable/actions
     sources:
       - type: dir
         path: .
@@ -41,4 +58,5 @@ modules:
           - .github
           - .cargo
           - vendor
+          - desktop/node_modules
       - cargo-sources.json

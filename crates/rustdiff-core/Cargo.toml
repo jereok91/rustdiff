@@ -58,7 +58,7 @@ thiserror  = "1"
 
 # ── I18N ─────────────────────────────────────
 # Las cadenas de usuario que el nucleo genera (export, sesiones guardadas)
-# salen de los mismos locales/*.yml que la app GTK.
+# salen de locales/*.yml en la raiz del repo (compartidos con rustdiff-persist).
 rust-i18n  = "3"
 
 # ─────────────────────────────────────────────

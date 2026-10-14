@@ -1,13 +1,15 @@
 name: macOS DMG release
 
-# Compila RustDiff en runners macOS nativos (Intel y Apple Silicon),
-# empaqueta cada arquitectura como RustDiff.app dentro de un .dmg
-# autocontenido (sin dependencia de Homebrew para el usuario final),
-# adjunta ambos DMG al release del tag y actualiza el Cask
-# `rustdiff-app` en el tap jereok91/homebrew-rustdiff.
+# Compila RustDiff (shell Tauri v2) en runners macOS nativos (Intel y Apple
+# Silicon) con `pnpm tauri build --bundles dmg`, adjunta ambos DMG al release
+# del tag y actualiza el Cask `rustdiff-app` en el tap
+# jereok91/homebrew-rustdiff.
 #
-# Requiere el secret HOMEBREW_TAP_PAT (el mismo de release-homebrew.yml)
-# para el job de actualización del Cask.
+# Desde 0.5.0 la app usa el WebKit del sistema (WKWebView): el .app ya no
+# empaqueta ninguna lib de Homebrew, asi que no hace falta reubicar dylibs.
+#
+# Requiere el secret HOMEBREW_TAP_PAT (PAT con permiso de escritura sobre el
+# tap) para el job de actualización del Cask.
 on:
   push:
     tags:
@@ -15,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag a publicar (ej. v0.2.1)"
+        description: "Tag a publicar (ej. v0.5.0)"
         required: true
 
 permissions:
@@ -54,16 +56,23 @@ jobs:
         with:
           # En push de tag se compila exactamente el tag. En dispatch manual
           # se compila la rama por defecto: permite re-lanzar el empaquetado
-          # de un release con fixes en scripts/ sin mover el tag publicado.
+          # de un release con fixes de CI sin mover el tag publicado.
           ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || steps.tag.outputs.tag }}
-
-      - name: Install GTK4 stack via Homebrew
-        run: |
-          brew update
-          brew install pkgconf gtk4 libadwaita gtksourceview5 librsvg adwaita-icon-theme
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
 
       - name: Cache cargo registry & build
         uses: actions/cache@v4
@@ -76,24 +85,41 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch }}-cargo-release-
 
-      - name: Build release binary
-        run: cargo build --release
+      - name: Install frontend dependencies
+        working-directory: desktop
+        run: pnpm install --frozen-lockfile
 
-      - name: Bundle RustDiff.app and create DMG
-        run: bash scripts/packaging/build-macos-app.sh --dmg
+      # Firma ad-hoc (`bundle.macOS.signingIdentity: "-"` en tauri.conf.json):
+      # no hay certificado de Apple Developer.
+      - name: Build RustDiff.app and DMG
+        working-directory: desktop
+        run: pnpm tauri build --bundles dmg
 
-      - name: Smoke-test bundle
+      - name: Smoke-test bundle and rename DMG
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+          ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
-          APP="dist/staging-${{ matrix.arch }}/RustDiff.app"
-          # El binario empaquetado no debe referenciar el prefijo de brew.
-          ! otool -L "$APP/Contents/MacOS/rustdiff-bin" | grep -E "$(brew --prefix)/"
-          # Estructura mínima del bundle.
+          APP="target/release/bundle/macos/RustDiff.app"
           test -f "$APP/Contents/Info.plist"
-          test -f "$APP/Contents/Resources/RustDiff.icns"
-          test -f "$APP/Contents/Resources/share/glib-2.0/schemas/gschemas.compiled"
-          test -f "$APP/Contents/Resources/share/rustdiff/language-specs/sql.lang"
+          test -x "$APP/Contents/MacOS/rustdiff"
           codesign --verify --deep "$APP"
+          # El binario solo puede enlazar frameworks del sistema.
+          if otool -L "$APP/Contents/MacOS/rustdiff" | tail -n +2 | grep -vE '^\s*(/System/|/usr/lib/)'; then
+            echo "The binary links libraries outside the system paths."
+            exit 1
+          fi
+
+          shopt -s nullglob
+          dmgs=(target/release/bundle/dmg/*.dmg)
+          if [ "${#dmgs[@]}" -ne 1 ]; then
+            echo "Expected exactly one DMG, found ${#dmgs[@]}."
+            exit 1
+          fi
+          # Mismo nombre que antes de 0.5.0: el cask arma la URL con él.
+          mkdir -p dist
+          cp "${dmgs[0]}" "dist/RustDiff-${VERSION}-macos-${ARCH}.dmg"
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
@@ -172,7 +198,7 @@ jobs:
 
             url "https://github.com/${{ github.repository }}/releases/download/v#{version}/RustDiff-#{version}-macos-#{arch}.dmg"
             name "RustDiff"
-            desc "Semantic JSON/XML/SQL diff tool with a native GTK4 desktop UI"
+            desc "Semantic JSON/XML/SQL diff tool"
             homepage "https://github.com/${{ github.repository }}"
 
             app "RustDiff.app"
@@ -186,9 +212,10 @@ jobs:
             CAVEATS
 
             zap trash: [
-              "~/.config/rustdiff",
-              "~/.local/share/rustdiff",
+              "~/Library/Application Support/rustdiff",
+              "~/Library/Application Support/com.digitalgex.RustDiff",
               "~/Library/Caches/com.digitalgex.RustDiff",
+              "~/Library/WebKit/com.digitalgex.RustDiff",
             ]
           end
           EOF

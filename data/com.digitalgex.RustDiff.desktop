@@ -2,10 +2,10 @@
 # ── Información básica ──────────────────────────────────────────────
 Name=RustDiff
 Name[es]=RustDiff
-GenericName=JSON & XML Comparator
-GenericName[es]=Comparador de JSON y XML
-Comment=Compare JSON and XML documents visually
-Comment[es]=Compara documentos JSON y XML de forma visual
+GenericName=JSON, XML & SQL Comparator
+GenericName[es]=Comparador de JSON, XML y SQL
+Comment=Compare JSON, XML and SQL documents by structure
+Comment[es]=Compara documentos JSON, XML y SQL por su estructura
 Icon=com.digitalgex.RustDiff
 Exec=rustdiff %F
 Terminal=false
@@ -24,19 +24,18 @@ Keywords[es]=json;xml;diff;comparar;formato;validar;
 # ── Integración con el escritorio ──────────────────────────────────
 # Aparece en la búsqueda de GNOME/KDE
 StartupNotify=true
-StartupWMClass=com.digitalgex.RustDiff
+# La app es Tauri (GTK3 + WebKitGTK): su WM_CLASS / app_id de Wayland es el
+# prgname de GTK, es decir el nombre del binario. Sin esto el shell no asocia
+# la ventana con este .desktop y muestra un icono genérico.
+StartupWMClass=rustdiff
 
 # ── Acciones rápidas (click derecho en el ícono) ───────────────────
-Actions=NewComparison;History;
+# (La acción "Abrir Historial" se retiró en 0.5.0: el shell Tauri solo
+# entiende rutas de archivo en la línea de comandos.)
+Actions=NewComparison;
 
 [Desktop Action NewComparison]
 Name=New Comparison
 Name[es]=Nueva Comparación
 Exec=rustdiff
-Icon=com.digitalgex.RustDiff
-
-[Desktop Action History]
-Name=Open History
-Name[es]=Abrir Historial
-Exec=rustdiff --history
 Icon=com.digitalgex.RustDiff

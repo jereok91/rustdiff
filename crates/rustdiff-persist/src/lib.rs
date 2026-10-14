@@ -1,7 +1,7 @@
 //! Persistencia de RustDiff: historial de sesiones y preferencias del usuario.
 //!
-//! No conoce ninguna UI: quien lo use (hoy la app GTK, manana el backend de
-//! Tauri) pide todo por su API publica y conserva asi las mismas validaciones,
+//! No conoce ninguna UI: quien lo use (el backend Tauri de
+//! `desktop/src-tauri`) pide todo por su API publica y conserva asi las mismas validaciones,
 //! limites y errores tipados.
 
 // Locales embebidos en tiempo de compilacion desde locales/*.yml.
