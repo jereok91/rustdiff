@@ -6,6 +6,7 @@
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::reader::Reader;
 use quick_xml::writer::Writer;
+use serde::Serialize;
 use serde_json::Value as JsonValue;
 use std::io::Cursor;
 use thiserror::Error;
@@ -15,7 +16,9 @@ use thiserror::Error;
 // ─────────────────────────────────────────────
 
 /// Formatos de documento soportados por RustDiff.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// `Serialize` para el IPC: el frontend muestra el formato detectado.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum Format {
     Json,
     Xml,
