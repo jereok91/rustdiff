@@ -7,6 +7,7 @@ import { XIcon } from "lucide-react";
 import { renderStatus } from "@/lib/errors";
 import { dismissToast, getToasts, subscribeToasts } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { IconButton } from "@/components/ui/icon-button";
 
 export function Toaster() {
     const { t } = useTranslation();
@@ -25,21 +26,20 @@ export function Toaster() {
                     key={item.id}
                     role={item.variant === "error" ? "alert" : "status"}
                     className={cn(
-                        "bg-popover text-popover-foreground pointer-events-auto flex items-start gap-2 rounded-md border px-3 py-2 text-sm shadow-lg",
-                        item.variant === "error" && "border-destructive/50 text-destructive",
+                        "bg-popover text-popover-foreground animate-in fade-in-0 slide-in-from-bottom-2 pointer-events-auto flex items-start gap-2 rounded-lg border py-2 pr-1.5 pl-3 text-body shadow-lg",
+                        item.variant === "error" && "border-destructive text-destructive",
                     )}
                 >
-                    <span className="min-w-0 flex-1 break-words">
+                    <span className="min-w-0 flex-1 py-1 break-words">
                         {renderStatus(item.message, (key, params) => t(key, params ?? {}))}
                     </span>
-                    <button
-                        type="button"
-                        aria-label={t("toast.dismiss")}
-                        className="opacity-60 hover:opacity-100"
+                    <IconButton
+                        label={t("toast.dismiss")}
+                        className="text-muted-foreground size-7"
                         onClick={() => dismissToast(item.id)}
                     >
-                        <XIcon className="size-4" />
-                    </button>
+                        <XIcon />
+                    </IconButton>
                 </li>
             ))}
         </ol>

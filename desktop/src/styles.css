@@ -1,8 +1,9 @@
 /*
- * Entrada de estilos: Tailwind v4 + tokens base de shadcn/ui (new-york, neutral).
+ * Entrada de estilos: Tailwind v4 + shadcn/ui (new-york).
  *
- * Los colores del diff viven aparte, en `styles/tokens.css`, para que F7 los
- * refine en un único lugar sin tocar componentes.
+ * Los valores viven todos en `styles/tokens.css` (fuente única, claro y
+ * oscuro). Este archivo solo los expone a Tailwind (`@theme inline`), define
+ * las utilidades de foco y la base. Referencia: `docs/design-system.md`.
  */
 
 @import "tailwindcss";
@@ -11,54 +12,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-    --radius: 0.5rem;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-}
-
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-}
-
 @theme inline {
+    --font-sans: var(--font-family-sans);
+    --font-mono: var(--font-family-mono);
+
+    /* Escala tipográfica: `text-caption`, `text-body`, `text-code`, `text-title`, `text-display`. */
+    --text-caption: var(--font-size-caption);
+    --text-caption--line-height: var(--line-height-caption);
+    --text-body: var(--font-size-body);
+    --text-body--line-height: var(--line-height-body);
+    --text-code: var(--font-size-code);
+    --text-code--line-height: var(--line-height-code);
+    --text-title: var(--font-size-title);
+    --text-title--line-height: var(--line-height-title);
+    --text-display: var(--font-size-display);
+    --text-display--line-height: var(--line-height-display);
+
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) + 4px);
+
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
@@ -74,6 +48,7 @@
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
     --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -82,9 +57,35 @@
     --color-diff-changed: var(--diff-changed);
 }
 
+/*
+ * Anillo de foco único de la app: contorno de 2px con el token `--ring`
+ * (>= 3:1 contra todas las superficies, ver `tokens.test.ts`). Solo con
+ * `:focus-visible`, así el click con ratón no lo enciende.
+ */
+@utility focus-ring {
+    outline: none;
+    &:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+}
+/* Variante hacia adentro, para superficies que llenan su panel (tabla, canvas, filas). */
+@utility focus-ring-inset {
+    outline: none;
+    &:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: -2px;
+    }
+}
+
 @layer base {
     * {
-        @apply border-border outline-ring/50;
+        @apply border-border;
+    }
+    /* Red de seguridad: cualquier control sin estilo propio también muestra el anillo. */
+    :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
     }
     html,
     body,
@@ -92,22 +93,23 @@
         @apply h-full;
     }
     body {
-        @apply bg-background text-foreground overflow-hidden;
-        font-family:
-            system-ui,
-            -apple-system,
-            "Segoe UI",
-            sans-serif;
+        @apply bg-background text-foreground overflow-hidden font-sans antialiased;
         /* En rem: la escala de texto (`ui_scale`) mueve el font-size de la raíz. */
-        font-size: 0.875rem;
+        font-size: var(--font-size-body);
+        line-height: var(--line-height-body);
+    }
+    kbd {
+        font-family: var(--font-family-mono);
     }
 }
 
-/* El editor ocupa todo su panel; el scroll lo maneja CodeMirror. */
+/* El editor ocupa todo su panel; el scroll lo maneja CodeMirror. El resto
+ * del tema del editor está en `lib/editor-theme.ts`. */
 .cm-editor {
     height: 100%;
-    font-size: 0.8125rem;
+    font-size: var(--font-size-code);
 }
 .cm-editor .cm-scroller {
-    font-family: ui-monospace, "JetBrains Mono", "Cascadia Code", monospace;
+    font-family: var(--font-family-mono);
+    line-height: var(--line-height-code);
 }

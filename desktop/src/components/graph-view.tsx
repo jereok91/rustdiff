@@ -6,7 +6,10 @@
  *   - Barra: búsqueda de nodos (resalta, centra en la primera, Enter cicla,
  *     Esc limpia) y botones de zoom (alejar, acercar, encuadrar).
  *   - Pan arrastrando; rueda = pan (Shift = horizontal), Ctrl+rueda = zoom
- *     anclado al puntero; click = selección con detalle del nodo.
+ *     anclado al puntero; click = selección con detalle del nodo (popover
+ *     de Radix anclado al punto del click; Escape lo cierra).
+ *   - Con el canvas enfocado: flechas = pan, `+`/`-` = zoom, `0` = encuadrar
+ *     (`graphKeyAction`).
  *   - Editor vacío → estado vacío; SQL/texto → "formato no soportado"; un
  *     error de parseo mientras se escribe conserva el último grafo bueno.
  *   - El primer grafo se encuadra; los siguientes (edición en vivo) conservan
@@ -19,10 +22,8 @@
  */
 
 import {
-    type CSSProperties,
     type KeyboardEvent as ReactKeyboardEvent,
     type PointerEvent as ReactPointerEvent,
-    type ReactNode,
     useCallback,
     useEffect,
     useMemo,
@@ -33,8 +34,9 @@ import { useTranslation } from "react-i18next";
 import { Network, Search, ZoomIn, ZoomOut, Maximize } from "lucide-react";
 
 import { commands, type Format, type GraphResponse } from "@/bindings";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { IconButton } from "@/components/ui/icon-button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import type { ColorScheme } from "@/hooks/use-color-scheme";
 import { DEBOUNCE_MS, useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { toCommandError } from "@/lib/errors";
@@ -46,6 +48,7 @@ import {
     fitToBounds,
     type FontMetrics,
     graphFontSize,
+    graphKeyAction,
     type GraphPalette,
     hitTest,
     IDENTITY_VIEW,
@@ -459,49 +462,84 @@ export function GraphView({ text, format, uiScale, scheme, onTruncatedChange }: 
         }
     };
 
+    const onCanvasKey = (event: ReactKeyboardEvent<HTMLCanvasElement>) => {
+        if (event.key === "Escape") {
+            setDetail(null);
+            return;
+        }
+        if (!graph.current) {
+            return;
+        }
+        const { width, height } = size.current;
+        const action = graphKeyAction(view.current, event, width, height);
+        if (!action) {
+            return;
+        }
+        event.preventDefault();
+        if (action.kind === "fit") {
+            fit();
+            return;
+        }
+        view.current = action.view;
+        setDetail(null);
+        requestDraw();
+    };
+
     const hasGraph = mode === "graph";
+    const hintId = "graph-keyboard-hint";
 
     return (
         <div className="bg-card flex h-full min-h-0 flex-col" data-testid="graph-view">
-            <div className="flex shrink-0 items-center gap-1 border-b px-2 py-1">
-                <Search className="text-muted-foreground size-4 shrink-0" aria-hidden />
-                <input
+            <div className="bg-card text-card-foreground flex h-(--toolbar-height) shrink-0 items-center gap-1 border-b px-2">
+                <Search className="text-muted-foreground mr-0.5 size-4 shrink-0" aria-hidden />
+                <Input
                     type="search"
                     value={query}
                     onChange={(event) => onQueryChange(event.target.value)}
                     onKeyDown={onSearchKey}
                     placeholder={t("graph.search_placeholder")}
                     aria-label={t("graph.search_placeholder")}
-                    className="border-input focus-visible:ring-ring/50 h-7 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-[3px]"
+                    className="flex-1"
                 />
-                <ToolButton
+                <IconButton
                     label={t("graph.zoom_out_tooltip")}
+                    tooltip={`${t("graph.zoom_out_tooltip")} (-)`}
                     onClick={() => zoomBy(1 / ZOOM_BTN_FACTOR)}
                     disabled={!hasGraph}
                 >
                     <ZoomOut />
-                </ToolButton>
-                <ToolButton
+                </IconButton>
+                <IconButton
                     label={t("graph.zoom_in_tooltip")}
+                    tooltip={`${t("graph.zoom_in_tooltip")} (+)`}
                     onClick={() => zoomBy(ZOOM_BTN_FACTOR)}
                     disabled={!hasGraph}
                 >
                     <ZoomIn />
-                </ToolButton>
-                <ToolButton label={t("graph.zoom_fit_tooltip")} onClick={fit} disabled={!hasGraph}>
+                </IconButton>
+                <IconButton
+                    label={t("graph.zoom_fit_tooltip")}
+                    tooltip={`${t("graph.zoom_fit_tooltip")} (0)`}
+                    onClick={fit}
+                    disabled={!hasGraph}
+                >
                     <Maximize />
-                </ToolButton>
+                </IconButton>
             </div>
 
-            <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden">
+            <div ref={containerRef} className="bg-background relative min-h-0 flex-1 overflow-hidden">
+                <span id={hintId} className="sr-only">
+                    {t("graph.keyboard_hint")}
+                </span>
                 <canvas
                     ref={canvasRef}
                     role="img"
-                    aria-label={t("header.graph")}
+                    aria-label={t("graph.canvas_label")}
+                    aria-describedby={hintId}
                     tabIndex={0}
                     className={
                         hasGraph
-                            ? "absolute inset-0 size-full cursor-grab touch-none outline-none active:cursor-grabbing"
+                            ? "focus-ring-inset absolute inset-0 size-full cursor-grab touch-none active:cursor-grabbing"
                             : "hidden"
                     }
                     onPointerDown={onPointerDown}
@@ -510,11 +548,7 @@ export function GraphView({ text, format, uiScale, scheme, onTruncatedChange }: 
                     onPointerCancel={() => {
                         drag.current = null;
                     }}
-                    onKeyDown={(event) => {
-                        if (event.key === "Escape") {
-                            setDetail(null);
-                        }
-                    }}
+                    onKeyDown={onCanvasKey}
                 />
                 {!hasGraph && (
                     <div
@@ -522,62 +556,54 @@ export function GraphView({ text, format, uiScale, scheme, onTruncatedChange }: 
                         data-testid="graph-placeholder"
                     >
                         <Network className="size-12 opacity-50" aria-hidden />
-                        <p className="text-foreground text-base font-semibold">
+                        <p className="text-foreground text-title font-semibold">
                             {t(mode === "unsupported" ? "graph.unsupported_title" : "graph.empty_title")}
                         </p>
-                        <p className="max-w-sm text-sm">
+                        <p className="max-w-sm text-body">
                             {t(mode === "unsupported" ? "graph.unsupported_desc" : "graph.empty_desc")}
                         </p>
                     </div>
                 )}
-                {hasGraph && detail && (
-                    <div
-                        data-testid="graph-detail"
-                        aria-live="polite"
-                        className="bg-popover text-popover-foreground absolute z-10 max-w-[min(32rem,90%)] rounded-md border px-3 py-2 font-mono text-xs whitespace-pre-wrap shadow-md select-text"
-                        style={detailPosition(detail, size.current)}
-                    >
-                        {detail.text}
-                    </div>
-                )}
+                {/* Detalle del nodo: popover de Radix anclado al punto del click.
+                    No roba el foco (el teclado sigue en el canvas); Escape o un
+                    click fuera lo cierran. */}
+                <Popover
+                    open={hasGraph && detail !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setDetail(null);
+                        }
+                    }}
+                >
+                    <PopoverAnchor asChild>
+                        <span
+                            aria-hidden
+                            className="pointer-events-none absolute size-0"
+                            style={{ left: detail?.x ?? 0, top: detail?.y ?? 0 }}
+                        />
+                    </PopoverAnchor>
+                    {detail && (
+                        <PopoverContent
+                            data-testid="graph-detail"
+                            aria-label={t("graph.node_detail")}
+                            aria-live="polite"
+                            collisionBoundary={containerRef.current}
+                            collisionPadding={8}
+                            onOpenAutoFocus={(event) => event.preventDefault()}
+                            onCloseAutoFocus={(event) => event.preventDefault()}
+                            // El click en el canvas ya decide la selección (pointerup).
+                            onPointerDownOutside={(event) => {
+                                if (event.target === canvasRef.current) {
+                                    event.preventDefault();
+                                }
+                            }}
+                            className="max-w-[min(32rem,90vw)] font-mono text-code whitespace-pre-wrap select-text"
+                        >
+                            {detail.text}
+                        </PopoverContent>
+                    )}
+                </Popover>
             </div>
         </div>
-    );
-}
-
-/** Coloca el detalle junto al click sin salirse del panel (el popover de la GTK). */
-function detailPosition(detail: Detail, panel: { width: number; height: number }): CSSProperties {
-    const right = detail.x > panel.width / 2;
-    const below = detail.y < panel.height / 2;
-    return {
-        left: right ? undefined : detail.x + 8,
-        right: right ? panel.width - detail.x + 8 : undefined,
-        top: below ? detail.y + 8 : undefined,
-        bottom: below ? undefined : panel.height - detail.y + 8,
-    };
-}
-
-function ToolButton({
-    label,
-    onClick,
-    disabled,
-    children,
-}: {
-    label: string;
-    onClick: () => void;
-    disabled?: boolean;
-    children: ReactNode;
-}) {
-    return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <span>
-                    <Button variant="ghost" size="icon-sm" aria-label={label} onClick={onClick} disabled={disabled}>
-                        {children}
-                    </Button>
-                </span>
-            </TooltipTrigger>
-            <TooltipContent>{label}</TooltipContent>
-        </Tooltip>
     );
 }

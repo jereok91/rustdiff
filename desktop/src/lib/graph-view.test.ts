@@ -13,7 +13,9 @@ import {
     fitToBounds,
     FONT_SIZE,
     graphFontSize,
+    graphKeyAction,
     hitTest,
+    KEY_PAN_FAST,
     IDENTITY_VIEW,
     LIGHT_PALETTE,
     measureFontMetrics,
@@ -30,6 +32,7 @@ import {
     visibleNodeIndices,
     ZOOM_MAX,
     ZOOM_MIN,
+    ZOOM_BTN_FACTOR,
     zoomAt,
 } from "@/lib/graph-view";
 
@@ -288,5 +291,62 @@ describe("métricas de fuente", () => {
         expect(charCount("abc")).toBe(3);
         expect(charCount("ñandú")).toBe(5);
         expect(charCount("a😀b")).toBe(3);
+    });
+});
+
+describe("navegación por teclado", () => {
+    const key = (k: string, mods: Partial<Record<"ctrlKey" | "metaKey" | "altKey" | "shiftKey", boolean>> = {}) => ({
+        key: k,
+        ctrlKey: false,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false,
+        ...mods,
+    });
+    const start = { zoom: 1, panX: 10, panY: 20 };
+
+    it("+ y = acercan, - y _ alejan, anclados al centro del canvas", () => {
+        for (const k of ["+", "="]) {
+            expect(graphKeyAction(start, key(k), 400, 300)).toEqual({
+                kind: "view",
+                view: zoomAt(start, ZOOM_BTN_FACTOR, 200, 150),
+            });
+        }
+        for (const k of ["-", "_"]) {
+            expect(graphKeyAction(start, key(k), 400, 300)).toEqual({
+                kind: "view",
+                view: zoomAt(start, 1 / ZOOM_BTN_FACTOR, 200, 150),
+            });
+        }
+    });
+
+    it("el zoom por teclado respeta los límites", () => {
+        const max = { zoom: ZOOM_MAX, panX: 0, panY: 0 };
+        const action = graphKeyAction(max, key("+"), 400, 300);
+        expect(action?.kind === "view" && action.view.zoom).toBe(ZOOM_MAX);
+    });
+
+    it("0 encuadra", () => {
+        expect(graphKeyAction(start, key("0"), 400, 300)).toEqual({ kind: "fit" });
+    });
+
+    it("las flechas mueven la cámara un paso, x4 con Shift, sin tocar el zoom", () => {
+        const pan = (k: string, shift = false) => {
+            const action = graphKeyAction(start, key(k, { shiftKey: shift }), 400, 300);
+            return action?.kind === "view" ? action.view : null;
+        };
+        expect(pan("ArrowRight")).toEqual({ zoom: 1, panX: 10 - SCROLL_PAN_STEP, panY: 20 });
+        expect(pan("ArrowLeft")).toEqual({ zoom: 1, panX: 10 + SCROLL_PAN_STEP, panY: 20 });
+        expect(pan("ArrowDown")).toEqual({ zoom: 1, panX: 10, panY: 20 - SCROLL_PAN_STEP });
+        expect(pan("ArrowUp")).toEqual({ zoom: 1, panX: 10, panY: 20 + SCROLL_PAN_STEP });
+        expect(pan("ArrowRight", true)).toEqual({ zoom: 1, panX: 10 - SCROLL_PAN_STEP * KEY_PAN_FAST, panY: 20 });
+    });
+
+    it("con Ctrl/Meta/Alt o con otras teclas no hace nada (Ctrl++ / Ctrl+0 son de la app)", () => {
+        expect(graphKeyAction(start, key("+", { ctrlKey: true }), 400, 300)).toBeNull();
+        expect(graphKeyAction(start, key("0", { metaKey: true }), 400, 300)).toBeNull();
+        expect(graphKeyAction(start, key("ArrowLeft", { altKey: true }), 400, 300)).toBeNull();
+        expect(graphKeyAction(start, key("a"), 400, 300)).toBeNull();
+        expect(graphKeyAction(start, key("Enter"), 400, 300)).toBeNull();
     });
 });

@@ -3,7 +3,11 @@ import { createRoot } from "react-dom/client";
 
 import App from "./App";
 import { applySavedLanguage } from "./i18n";
+import { applySavedTheme } from "./lib/theme";
 import "./styles.css";
+
+// El tema guardado (o el del sistema) se aplica antes de pintar nada.
+applySavedTheme();
 
 const raiz = document.getElementById("root");
 if (!raiz) {

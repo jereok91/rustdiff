@@ -184,6 +184,42 @@ describe("GraphView", () => {
         expect(screen.queryByTestId("graph-detail")).toBeNull();
     });
 
+    it("con el canvas enfocado el teclado hace zoom, pan y encuadre; Ctrl+tecla queda para la app", async () => {
+        mocks.buildGraph.mockResolvedValue(response([node(0, 0, "usuario", "edad")]));
+        renderView();
+        await waitFor(() => expect(screen.queryByTestId("graph-placeholder")).toBeNull());
+        const canvas = screen.getByRole("img");
+        canvas.focus();
+        expect(document.activeElement).toBe(canvas);
+        expect(canvas.getAttribute("aria-describedby")).toBeTruthy();
+
+        // `fireEvent` devuelve `false` cuando el handler hizo `preventDefault`.
+        for (const key of ["+", "-", "0", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]) {
+            expect(fireEvent.keyDown(canvas, { key }), key).toBe(false);
+        }
+        expect(fireEvent.keyDown(canvas, { key: "0", ctrlKey: true })).toBe(true);
+        expect(fireEvent.keyDown(canvas, { key: "x" })).toBe(true);
+    });
+
+    it("el teclado cierra el detalle del nodo (popover)", async () => {
+        mocks.buildGraph.mockResolvedValue(response([node(0, 0, "usuario", "edad")]));
+        renderView();
+        await waitFor(() => expect(screen.queryByTestId("graph-placeholder")).toBeNull());
+        const canvas = screen.getByRole("img");
+        fireEvent.pointerDown(canvas, { pointerId: 1, button: 0, clientX: 10, clientY: 10 });
+        fireEvent.pointerUp(canvas, { pointerId: 1, button: 0, clientX: 10, clientY: 10 });
+        expect(screen.getByTestId("graph-detail")).toBeTruthy();
+        // El detalle no roba el foco: el teclado sigue en el canvas.
+        expect(document.activeElement).toBe(canvas);
+        fireEvent.keyDown(canvas, { key: "ArrowRight" });
+        expect(screen.queryByTestId("graph-detail")).toBeNull();
+
+        fireEvent.pointerDown(canvas, { pointerId: 1, button: 0, clientX: 10, clientY: 10 });
+        fireEvent.pointerUp(canvas, { pointerId: 1, button: 0, clientX: 10, clientY: 10 });
+        fireEvent.keyDown(canvas, { key: "Escape" });
+        await waitFor(() => expect(screen.queryByTestId("graph-detail")).toBeNull());
+    });
+
     it("la búsqueda resalta las coincidencias", async () => {
         mocks.buildGraph.mockResolvedValue(response([node(0, 0, "usuario", "edad"), node(1, 100, "", "b")]));
         renderView();

@@ -14,7 +14,8 @@
  *   - Historial (F5): barra lateral (Ctrl+H), guardar sesión (Ctrl+S),
  *     restaurar en los dos editores, borrar y vaciar con confirmación.
  *   - Export .txt/.html (Ctrl+E) por diálogo de guardado y el backend.
- *   - Menú principal: idioma en caliente y escala del texto (Ctrl++/-/0).
+ *   - Menú principal: tema (sistema / claro / oscuro, F7), idioma en caliente
+ *     y escala del texto (Ctrl++/-/0).
  *   - Diálogo de salida si hay contenido sin guardar (`connect_close_request`).
  *   - Vista de grafo del documento izquierdo (F6, Ctrl+G): ocupa el hueco del
  *     editor derecho, así que grafo y comparación se excluyen
@@ -43,7 +44,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WelcomeScreen } from "@/components/welcome-screen";
 import { closeWindowNow, useCloseGuard } from "@/hooks/use-close-guard";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useTheme } from "@/hooks/use-color-scheme";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { usePreferences } from "@/hooks/use-preferences";
 import { type ShortcutAction, useShortcuts } from "@/hooks/use-shortcuts";
@@ -72,7 +73,8 @@ const READY: StatusMessage = { key: "app.status_ready" };
 
 export default function App() {
     const { t } = useTranslation();
-    const scheme = useColorScheme();
+    const theme = useTheme();
+    const scheme = theme.scheme;
 
     const [view, setView] = useState<"welcome" | "editors">("welcome");
     const [comparing, setComparing] = useState(false);
@@ -635,7 +637,7 @@ export default function App() {
 
     return (
         <TooltipProvider>
-            <div className="flex h-full flex-col">
+            <div className="bg-background text-foreground flex h-full flex-col">
                 <AppHeader
                     comparing={comparing}
                     editorsVisible={view === "editors"}
@@ -655,6 +657,8 @@ export default function App() {
                     menu={{
                         onExport: (kind) => void exportTo(kind),
                         onShowShortcuts: () => setShortcutsOpen(true),
+                        theme: theme.setting,
+                        onTheme: theme.setSetting,
                         language: preferences.language,
                         onLanguage: (language) => void preferences.setLanguage(language),
                         uiScalePercent: uiScalePercent(preferences.uiScale),
@@ -779,9 +783,11 @@ export default function App() {
 
 function EditorPane({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <div className="flex h-full min-h-0 flex-col">
-            <div className="text-muted-foreground shrink-0 py-1 text-center text-xs font-semibold">{label}</div>
+        <section className="flex h-full min-h-0 flex-col" aria-label={label}>
+            <div className="bg-card text-muted-foreground shrink-0 border-b px-3 py-1 text-caption font-semibold tracking-wide uppercase">
+                {label}
+            </div>
             <div className="min-h-0 flex-1">{children}</div>
-        </div>
+        </section>
     );
 }

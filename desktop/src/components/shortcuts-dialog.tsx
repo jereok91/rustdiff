@@ -7,6 +7,7 @@
 import { useTranslation } from "react-i18next";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Kbd } from "@/components/ui/kbd";
 
 const GROUPS: { title: string; items: [string, string[]][] }[] = [
     {
@@ -49,28 +50,23 @@ export function ShortcutsDialog({ open, onOpenChange }: { open: boolean; onOpenC
     const { t } = useTranslation();
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent aria-describedby={undefined}>
+            <DialogContent aria-describedby={undefined} closeLabel={t("dialog.close")}>
                 <DialogHeader>
                     <DialogTitle>{t("shortcuts.title")}</DialogTitle>
                 </DialogHeader>
-                <div className="grid gap-4">
+                <div className="grid gap-5">
                     {GROUPS.map((group) => (
                         <section key={group.title}>
-                            <h3 className="text-muted-foreground mb-1 text-xs font-semibold uppercase">
+                            <h3 className="text-muted-foreground mb-2 text-caption font-semibold tracking-wide uppercase">
                                 {t(group.title)}
                             </h3>
-                            <ul className="grid gap-1 text-sm">
+                            <ul className="grid gap-1.5 text-body">
                                 {group.items.map(([label, keys]) => (
                                     <li key={label} className="flex items-center justify-between gap-4">
                                         <span>{t(label)}</span>
                                         <span className="flex gap-1">
                                             {keys.map((key) => (
-                                                <kbd
-                                                    key={key}
-                                                    className="bg-muted rounded border px-1.5 py-0.5 font-mono text-xs"
-                                                >
-                                                    {key}
-                                                </kbd>
+                                                <Kbd key={key}>{key}</Kbd>
                                             ))}
                                         </span>
                                     </li>

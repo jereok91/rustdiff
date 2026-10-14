@@ -155,5 +155,13 @@
     "compare.error_right": "Error in right document: %{error}",
     "errors.too_large": "Document too large: %{error}",
     "errors.generic": "Error: %{error}",
-    "dialog.all_files": "All files"
+    "dialog.all_files": "All files",
+    "menu.theme": "Theme",
+    "menu.theme_system": "System",
+    "menu.theme_light": "Light",
+    "menu.theme_dark": "Dark",
+    "dialog.close": "Close",
+    "graph.canvas_label": "Graph of the left document",
+    "graph.keyboard_hint": "Arrow keys pan, + and - zoom, 0 fits the graph, Escape closes the node detail",
+    "graph.node_detail": "Node detail"
 }

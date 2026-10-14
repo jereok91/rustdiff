@@ -1,10 +1,11 @@
 /*
  * Menú principal (el `MenuButton` "open-menu" de la GTK): formatear, exportar,
- * atajos, idioma (aplicado en caliente) y tamaño del texto.
+ * atajos, tema (sistema / claro / oscuro), idioma (aplicado en caliente) y
+ * tamaño del texto.
  */
 
 import { useTranslation } from "react-i18next";
-import { Menu } from "lucide-react";
+import { Menu, Monitor, Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +21,10 @@ import {
     DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LanguageSetting } from "@/hooks/use-preferences";
 import type { ExportKind } from "@/lib/export";
+import type { ThemeSetting } from "@/lib/theme";
 import type { ScaleStep } from "@/lib/ui-scale";
 
 export type MainMenuProps = {
@@ -29,6 +32,8 @@ export type MainMenuProps = {
     onFormat: () => void;
     onExport: (kind: ExportKind) => void;
     onShowShortcuts: () => void;
+    theme: ThemeSetting;
+    onTheme: (theme: ThemeSetting) => void;
     language: LanguageSetting;
     onLanguage: (language: LanguageSetting) => void;
     uiScalePercent: number;
@@ -39,11 +44,16 @@ export function MainMenu(props: MainMenuProps) {
     const { t } = useTranslation();
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label={t("menu.tooltip")} title={t("menu.tooltip")}>
-                    <Menu />
-                </Button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-sm" aria-label={t("menu.tooltip")}>
+                            <Menu />
+                        </Button>
+                    </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>{t("menu.tooltip")}</TooltipContent>
+            </Tooltip>
             <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuItem disabled={!props.editorsVisible} onSelect={props.onFormat}>
                     {t("menu.format_documents")}
@@ -61,6 +71,28 @@ export function MainMenu(props: MainMenuProps) {
                     <DropdownMenuShortcut>Ctrl+?</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                    <DropdownMenuSubTrigger data-testid="menu-theme">{t("menu.theme")}</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                        <DropdownMenuRadioGroup
+                            value={props.theme}
+                            onValueChange={(value) => props.onTheme(value as ThemeSetting)}
+                        >
+                            <DropdownMenuRadioItem value="system">
+                                <Monitor aria-hidden />
+                                {t("menu.theme_system")}
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="light">
+                                <Sun aria-hidden />
+                                {t("menu.theme_light")}
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="dark">
+                                <Moon aria-hidden />
+                                {t("menu.theme_dark")}
+                            </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger>{t("menu.language")}</DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>

@@ -2,6 +2,10 @@
  * Diálogo de salida con contenido sin guardar (el `AlertDialog` de
  * `connect_close_request` en la GTK): las mismas cinco respuestas, "Close
  * without saving" destructivo y Cancel como respuesta por defecto y de cierre.
+ *
+ * Orden de foco: Cancel recibe el foco al abrir y es el primero del Tab; la
+ * respuesta destructiva queda última, así un Enter apresurado nunca descarta
+ * el trabajo. Escape equivale a Cancel.
  */
 
 import { useTranslation } from "react-i18next";
@@ -38,7 +42,7 @@ export function ExitDialog({ open, onOpenChange, onChoose }: ExitDialogProps) {
                     <AlertDialogTitle>{t("exit.dialog_title")}</AlertDialogTitle>
                     <AlertDialogDescription>{t("exit.dialog_body")}</AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter className="flex-wrap">
+                <AlertDialogFooter className="flex-wrap gap-2">
                     <AlertDialogCancel autoFocus>{t("exit.cancel")}</AlertDialogCancel>
                     <Button variant="outline" onClick={() => choose("export_html")}>
                         {t("exit.export_html")}

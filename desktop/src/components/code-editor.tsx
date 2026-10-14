@@ -17,9 +17,9 @@ import { EditorView } from "@codemirror/view";
 import { json } from "@codemirror/lang-json";
 import { xml } from "@codemirror/lang-xml";
 import { sql } from "@codemirror/lang-sql";
-import { oneDark } from "@codemirror/theme-one-dark";
 
 import type { ColorScheme } from "@/hooks/use-color-scheme";
+import { editorTheme } from "@/lib/editor-theme";
 import type { EditorLanguage } from "@/lib/formats";
 import { diffDecorations, setDiffDecorations, setFlashRange } from "@/lib/editor-decorations";
 import type { TextRange } from "@/lib/locate";
@@ -39,7 +39,7 @@ function languageExtension(language: EditorLanguage): Extension {
 }
 
 function themeExtension(scheme: ColorScheme): Extension {
-    return scheme === "dark" ? oneDark : [];
+    return editorTheme(scheme);
 }
 
 /** Duración del destello tras un salto (coincide con la animación CSS). */

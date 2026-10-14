@@ -10,6 +10,7 @@
  */
 
 import type { GraphBounds, GraphNode, ValueKind } from "@/bindings";
+import { cssColorToHex } from "@/lib/color";
 
 // ─────────────────────────────────────────────
 // Constantes (mismos valores que la GTK)
@@ -158,6 +159,54 @@ export function applyWheel(view: ViewTransform, event: WheelLike, px: number, py
 }
 
 // ─────────────────────────────────────────────
+// Teclado (canvas enfocado)
+// ─────────────────────────────────────────────
+
+/** Multiplicador del paso de pan con Shift + flecha. */
+export const KEY_PAN_FAST = 4;
+
+/** Lo que importa de un `KeyboardEvent`. */
+export type KeyLike = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">;
+
+/** Resultado de una tecla: vista nueva, encuadrar, o `null` si no es nuestra. */
+export type GraphKeyAction = { kind: "view"; view: ViewTransform } | { kind: "fit" } | null;
+
+/**
+ * Navegación por teclado sobre el canvas enfocado:
+ *   `+` / `=` acerca y `-` / `_` aleja (anclado al centro, como los botones),
+ *   `0` encuadra, y las flechas mueven la cámara `SCROLL_PAN_STEP` px (x4 con
+ *   Shift): flecha derecha = ver lo que está a la derecha.
+ * Con Ctrl/Meta/Alt no hace nada, así Ctrl++ / Ctrl+0 siguen siendo la
+ * escala del texto de la app.
+ */
+export function graphKeyAction(view: ViewTransform, event: KeyLike, width: number, height: number): GraphKeyAction {
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+        return null;
+    }
+    const step = SCROLL_PAN_STEP * (event.shiftKey ? KEY_PAN_FAST : 1);
+    switch (event.key) {
+        case "+":
+        case "=":
+            return { kind: "view", view: zoomAt(view, ZOOM_BTN_FACTOR, width / 2, height / 2) };
+        case "-":
+        case "_":
+            return { kind: "view", view: zoomAt(view, 1 / ZOOM_BTN_FACTOR, width / 2, height / 2) };
+        case "0":
+            return { kind: "fit" };
+        case "ArrowLeft":
+            return { kind: "view", view: { ...view, panX: view.panX + step } };
+        case "ArrowRight":
+            return { kind: "view", view: { ...view, panX: view.panX - step } };
+        case "ArrowUp":
+            return { kind: "view", view: { ...view, panY: view.panY + step } };
+        case "ArrowDown":
+            return { kind: "view", view: { ...view, panY: view.panY - step } };
+        default:
+            return null;
+    }
+}
+
+// ─────────────────────────────────────────────
 // Culling, aristas e hit-testing
 // ─────────────────────────────────────────────
 
@@ -271,7 +320,7 @@ export function truncationToastNeeded(wasTruncated: boolean, truncated: boolean)
 }
 
 // ─────────────────────────────────────────────
-// Paleta (claro / oscuro, colores GNOME de la GTK)
+// Paleta (claro / oscuro, de los tokens `--graph-*`)
 // ─────────────────────────────────────────────
 
 export type GraphPalette = {
@@ -290,36 +339,41 @@ export type GraphPalette = {
     text: string;
 };
 
+/*
+ * Respaldo cuando las variables CSS no están (tests sin hoja de estilos):
+ * la conversión exacta a hex de los tokens `--graph-*` de `styles/tokens.css`.
+ * `tokens.test.ts` falla si se desincronizan.
+ */
 export const LIGHT_PALETTE: GraphPalette = {
-    background: "#fafafa",
+    background: "#f5f7f9",
     nodeFill: "#ffffff",
-    nodeBorder: "#d3d2d4",
-    nodeSelected: "#3584e4",
-    nodeMatch: "#e5a50a",
-    edge: "#b8b6bc",
-    key: "#77767b",
-    string: "#26a269",
-    number: "#1c71d8",
-    boolean: "#813d9c",
-    null: "#e66100",
-    reference: "#9a9996",
-    text: "#3d3846",
+    nodeBorder: "#babec4",
+    nodeSelected: "#106ed7",
+    nodeMatch: "#be7100",
+    edge: "#a0a5ac",
+    key: "#59616c",
+    string: "#137738",
+    number: "#0160c1",
+    boolean: "#813faa",
+    null: "#af4803",
+    reference: "#636972",
+    text: "#1b222b",
 };
 
 export const DARK_PALETTE: GraphPalette = {
-    background: "#242424",
-    nodeFill: "#303030",
-    nodeBorder: "#4a4a4a",
-    nodeSelected: "#3584e4",
-    nodeMatch: "#e5a50a",
-    edge: "#5e5c64",
-    key: "#9a9996",
-    string: "#8ff0a4",
-    number: "#99c1f1",
-    boolean: "#dc8add",
-    null: "#ffbe6f",
-    reference: "#77767b",
-    text: "#deddda",
+    background: "#0b1016",
+    nodeFill: "#191f26",
+    nodeBorder: "#3c434c",
+    nodeSelected: "#5ba0fa",
+    nodeMatch: "#f0b135",
+    edge: "#4f565f",
+    key: "#a0a9b4",
+    string: "#7cdd93",
+    number: "#78bff9",
+    boolean: "#d99ee7",
+    null: "#f6ab6b",
+    reference: "#899098",
+    text: "#e5e8ec",
 };
 
 /** Variable CSS de cada color (`styles/tokens.css`, `--graph-*`). */
@@ -340,8 +394,9 @@ export const PALETTE_VARIABLES: Record<keyof GraphPalette, string> = {
 };
 
 /**
- * Paleta del canvas: cada color sale de su variable CSS y, si no está
- * definida, de la paleta de la GTK para el esquema activo.
+ * Paleta del canvas: cada color sale de su variable CSS (OKLCH en los tokens,
+ * convertido a hex para el contexto 2D) y, si no está definida, del respaldo
+ * del esquema activo.
  */
 export function resolvePalette(dark: boolean, readVariable: (name: string) => string = () => ""): GraphPalette {
     const fallback = dark ? DARK_PALETTE : LIGHT_PALETTE;
@@ -349,7 +404,7 @@ export function resolvePalette(dark: boolean, readVariable: (name: string) => st
     for (const key of Object.keys(PALETTE_VARIABLES) as (keyof GraphPalette)[]) {
         const value = readVariable(PALETTE_VARIABLES[key]).trim();
         if (value !== "") {
-            out[key] = value;
+            out[key] = cssColorToHex(value);
         }
     }
     return out;

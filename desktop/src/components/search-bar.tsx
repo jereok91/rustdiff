@@ -11,7 +11,8 @@ import { type Ref, useEffect, useImperativeHandle, useMemo, useRef, useState } f
 import { useTranslation } from "react-i18next";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { Input } from "@/components/ui/input";
 import type { CodeEditorHandle } from "@/components/code-editor";
 import {
     currentMatch,
@@ -112,9 +113,13 @@ export function SearchBar({ text, targetLabel, getEditor, onClose, ref }: Search
                 : t("search.count", { total: matches.length >= MAX_MATCHES ? `${MAX_MATCHES}+` : matches.length });
 
     return (
-        <div className="bg-card flex shrink-0 items-center gap-1 border-b px-2 py-1" data-testid="search-bar">
+        <div
+            className="bg-card text-card-foreground flex h-(--toolbar-height) shrink-0 items-center gap-1.5 border-b px-2"
+            role="search"
+            data-testid="search-bar"
+        >
             <Search className="text-muted-foreground size-4 shrink-0" aria-hidden />
-            <input
+            <Input
                 ref={inputRef}
                 type="search"
                 value={query}
@@ -130,40 +135,36 @@ export function SearchBar({ text, targetLabel, getEditor, onClose, ref }: Search
                 }}
                 placeholder={t("search.placeholder")}
                 aria-label={t("search.placeholder")}
-                className="border-input focus-visible:ring-ring/50 h-7 w-64 rounded-md border bg-transparent px-2 text-sm outline-none focus-visible:ring-[3px]"
+                className="w-64"
             />
             <span
-                className="text-muted-foreground min-w-24 text-xs tabular-nums"
+                className="text-muted-foreground min-w-24 text-caption tabular-nums"
                 role="status"
                 aria-live="polite"
                 data-testid="search-counter"
             >
                 {counter}
             </span>
-            <Button
-                variant="ghost"
-                size="icon-sm"
+            <IconButton
+                label={t("search.prev")}
+                tooltip={`${t("search.prev")} (Shift+Enter)`}
                 onClick={() => go("prev")}
                 disabled={matches.length === 0}
-                aria-label={t("search.prev")}
-                title={`${t("search.prev")} (Shift+Enter)`}
             >
                 <ChevronUp />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon-sm"
+            </IconButton>
+            <IconButton
+                label={t("search.next")}
+                tooltip={`${t("search.next")} (Enter)`}
                 onClick={() => go("next")}
                 disabled={matches.length === 0}
-                aria-label={t("search.next")}
-                title={`${t("search.next")} (Enter)`}
             >
                 <ChevronDown />
-            </Button>
-            <span className="text-muted-foreground ml-1 flex-1 truncate text-xs">{targetLabel}</span>
-            <Button variant="ghost" size="icon-sm" onClick={close} aria-label={t("search.close")} title={t("search.close")}>
+            </IconButton>
+            <span className="text-muted-foreground ml-1 flex-1 truncate text-caption">{targetLabel}</span>
+            <IconButton label={t("search.close")} onClick={close}>
                 <X />
-            </Button>
+            </IconButton>
         </div>
     );
 }

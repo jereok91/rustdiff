@@ -11,6 +11,7 @@ import { TextAlignStart, Download, FolderOpen, GitCompare, History, List, Networ
 
 import { MainMenu, type MainMenuProps } from "@/components/main-menu";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -32,6 +33,9 @@ function WithTooltip({ label, children }: { label: string; children: ReactNode }
         </Tooltip>
     );
 }
+
+/** Estado "activado" de los toggles de la cabecera. */
+const PRESSED = "bg-accent text-accent-foreground";
 
 export type AppHeaderProps = {
     /** `true` con los dos editores visibles (modo comparación). */
@@ -69,7 +73,7 @@ export function AppHeader(props: AppHeaderProps) {
     };
 
     return (
-        <header className="bg-card flex h-12 shrink-0 items-center gap-1 border-b px-2">
+        <header className="bg-card text-card-foreground flex h-(--header-height) shrink-0 items-center gap-1 border-b px-2">
             <WithTooltip label={t("header.open_left_tooltip")}>
                 <Button variant="ghost" size="sm" onClick={props.onOpenLeft}>
                     <FolderOpen />
@@ -116,19 +120,16 @@ export function AppHeader(props: AppHeaderProps) {
                 </SelectContent>
             </Select>
 
-            <WithTooltip label={t("header.format_tooltip")}>
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("header.format")}
-                    onClick={props.onFormat}
-                    disabled={!props.editorsVisible}
-                >
-                    <TextAlignStart />
-                </Button>
-            </WithTooltip>
+            <IconButton
+                label={t("header.format")}
+                tooltip={t("header.format_tooltip")}
+                onClick={props.onFormat}
+                disabled={!props.editorsVisible}
+            >
+                <TextAlignStart />
+            </IconButton>
 
-            <Separator orientation="vertical" className="mx-1 h-6" />
+            <Separator orientation="vertical" className="mx-1 h-5" />
 
             <DropdownMenu>
                 <WithTooltip label={t("header.export_tooltip")}>
@@ -148,42 +149,33 @@ export function AppHeader(props: AppHeaderProps) {
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
-            <WithTooltip label={t("header.history_tooltip")}>
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("header.history")}
-                    aria-pressed={props.historyVisible}
-                    onClick={props.onToggleHistory}
-                    className={cn(props.historyVisible && "bg-accent text-accent-foreground")}
-                >
-                    <History />
-                </Button>
-            </WithTooltip>
-            <WithTooltip label={t("graph.toggle_tooltip")}>
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("header.graph")}
-                    aria-pressed={props.graphVisible}
-                    onClick={props.onToggleGraph}
-                    className={cn(props.graphVisible && "bg-accent text-accent-foreground")}
-                >
-                    <Network />
-                </Button>
-            </WithTooltip>
-            <WithTooltip label={t("header.diff_panel_tooltip")}>
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t("header.diff_panel")}
-                    aria-pressed={props.diffPanelVisible}
-                    onClick={props.onToggleDiffPanel}
-                    className={cn(props.diffPanelVisible && "bg-accent text-accent-foreground")}
-                >
-                    <List />
-                </Button>
-            </WithTooltip>
+            <IconButton
+                label={t("header.history")}
+                tooltip={t("header.history_tooltip")}
+                aria-pressed={props.historyVisible}
+                onClick={props.onToggleHistory}
+                className={cn(props.historyVisible && PRESSED)}
+            >
+                <History />
+            </IconButton>
+            <IconButton
+                label={t("header.graph")}
+                tooltip={t("graph.toggle_tooltip")}
+                aria-pressed={props.graphVisible}
+                onClick={props.onToggleGraph}
+                className={cn(props.graphVisible && PRESSED)}
+            >
+                <Network />
+            </IconButton>
+            <IconButton
+                label={t("header.diff_panel")}
+                tooltip={t("header.diff_panel_tooltip")}
+                aria-pressed={props.diffPanelVisible}
+                onClick={props.onToggleDiffPanel}
+                className={cn(props.diffPanelVisible && PRESSED)}
+            >
+                <List />
+            </IconButton>
             <MainMenu {...props.menu} editorsVisible={props.editorsVisible} onFormat={props.onFormat} />
         </header>
     );

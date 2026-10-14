@@ -56,9 +56,9 @@ const KIND_COLOR: Record<DiffKind, string> = {
 };
 
 const FILTER_ACTIVE: Record<DiffKind, string> = {
-    Added: "border-diff-added/60 bg-diff-added/15",
-    Removed: "border-diff-removed/60 bg-diff-removed/15",
-    Changed: "border-diff-changed/60 bg-diff-changed/15",
+    Added: "border-diff-added/60 bg-(--diff-added-row)",
+    Removed: "border-diff-removed/60 bg-(--diff-removed-row)",
+    Changed: "border-diff-changed/60 bg-(--diff-changed-row)",
 };
 
 export type RangesFetcher = (left: string, right: string) => Promise<InlineRanges>;
@@ -225,8 +225,8 @@ export function DiffTable({
 
     return (
         <div className="flex h-full min-h-0 flex-col" data-testid="diff-panel">
-            <div className="flex shrink-0 items-center gap-2 border-b px-2 py-1">
-                <span className="text-muted-foreground flex-1 truncate text-xs" data-testid="diff-summary">
+            <div className="bg-card text-card-foreground flex h-(--toolbar-height) shrink-0 items-center gap-2 border-b px-2">
+                <span className="text-muted-foreground flex-1 truncate text-caption" data-testid="diff-summary">
                     {summary}
                 </span>
                 {ALL_KINDS.map((kind) => (
@@ -237,39 +237,40 @@ export function DiffTable({
                         data-testid={`filter-${kind}`}
                         onClick={() => toggle(kind)}
                         className={cn(
-                            "inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition-colors",
-                            "focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]",
-                            filters[kind] ? FILTER_ACTIVE[kind] : "text-muted-foreground opacity-60 hover:opacity-100",
+                            "focus-ring inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-caption font-medium transition-colors",
+                            filters[kind]
+                                ? FILTER_ACTIVE[kind]
+                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground border-dashed",
                         )}
                     >
                         <span className={cn(filters[kind] && KIND_COLOR[kind])}>{t(FILTER_LABEL[kind])}</span>
-                        <span className="bg-background/70 rounded px-1 tabular-nums">{counts[kind]}</span>
+                        <span className="bg-background text-foreground rounded px-1 tabular-nums">{counts[kind]}</span>
                     </button>
                 ))}
             </div>
 
             {allRows.length === 0 ? (
-                <div className="text-muted-foreground flex flex-1 items-center justify-center text-sm">
+                <div className="text-muted-foreground flex flex-1 items-center justify-center text-body">
                     {t(result ? "diff.summary_identical" : "panel.summary_none")}
                 </div>
             ) : (
                 <div
                     ref={scrollRef}
-                    className="focus-visible:ring-ring/50 min-h-0 flex-1 overflow-auto outline-none focus-visible:ring-[2px] focus-visible:ring-inset"
+                    className="focus-ring-inset min-h-0 flex-1 overflow-auto"
                     tabIndex={0}
                     role="grid"
                     aria-rowcount={rows.length}
                     onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
                     onKeyDown={onKeyDown}
                 >
-                    <table className="w-full table-fixed border-collapse text-sm" data-testid="diff-table">
+                    <table className="w-full table-fixed border-collapse text-body" data-testid="diff-table">
                         <colgroup>
                             <col className="w-32" />
                             <col className="w-[30%]" />
                             <col />
                             <col />
                         </colgroup>
-                        <thead className="bg-card text-muted-foreground sticky top-0 z-10 text-left">
+                        <thead className="bg-card text-muted-foreground sticky top-0 z-10 text-left text-caption">
                             <tr style={{ height: ROW_HEIGHT }}>
                                 <th className="border-b px-2 font-medium">{t("panel.col_type")}</th>
                                 <th className="border-b border-l px-2 font-medium">{t("panel.col_path")}</th>
@@ -321,11 +322,11 @@ function DiffRow({ item, selected, ranges, onClick, label }: DiffRowProps) {
             style={{ height: ROW_HEIGHT }}
             className={cn(
                 "cursor-pointer",
-                selected ? "bg-accent text-accent-foreground" : cn(`diff-row-${item.kind}`, "hover:bg-accent/60"),
+                selected ? "bg-accent text-accent-foreground" : cn(`diff-row-${item.kind}`, "hover:bg-accent"),
             )}
         >
-            <td className={cn("truncate border-b px-2 whitespace-nowrap", KIND_COLOR[item.kind])}>{label}</td>
-            <td className="truncate border-b border-l px-2 font-mono whitespace-nowrap" title={item.path}>
+            <td className={cn("truncate border-b px-2 font-medium whitespace-nowrap", KIND_COLOR[item.kind])}>{label}</td>
+            <td className="truncate border-b border-l px-2 font-mono text-code whitespace-nowrap" title={item.path}>
                 {item.path}
             </td>
             <ValueCell value={item.left} ranges={ranges?.left} highlightClass="diff-cell-inline-removed" />
@@ -348,7 +349,7 @@ function ValueCell({
     }
     const segments = ranges && ranges.length > 0 ? valueSegments(value, ranges) : null;
     return (
-        <td className="truncate border-b border-l px-2 font-mono whitespace-nowrap" title={value}>
+        <td className="truncate border-b border-l px-2 font-mono text-code whitespace-nowrap" title={value}>
             {segments
                 ? segments.map((segment, index) =>
                       segment.highlight ? (

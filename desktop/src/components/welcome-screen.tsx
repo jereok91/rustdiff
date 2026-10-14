@@ -1,11 +1,11 @@
 /*
- * Pantalla de bienvenida (`build_welcome_screen` de la GTK): título, el flujo
- * en tres pasos, dos acciones principales y enlaces secundarios.
+ * Pantalla de bienvenida (`build_welcome_screen` de la GTK): icono, título,
+ * el flujo en tres pasos, dos acciones principales y enlaces secundarios,
+ * en una tarjeta centrada.
  */
 
-import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, GitCompare } from "lucide-react";
+import { FileText, GitCompare, History, Keyboard } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -16,42 +16,61 @@ export type WelcomeScreenProps = {
     onViewHistory: () => void;
 };
 
+/** Icono de la app (copia de `data/icons/com.digitalgex.RustDiff.svg` en `public/`). */
+const APP_ICON = "/com.digitalgex.RustDiff.svg";
+
 export function WelcomeScreen({ onOpenDocument, onNewComparison, onShowShortcuts, onViewHistory }: WelcomeScreenProps) {
     const { t } = useTranslation();
     const steps = [t("welcome.step1"), t("welcome.step2"), t("welcome.step3")];
 
     return (
-        <section className="flex h-full flex-col items-center justify-center gap-2 p-10" data-testid="welcome">
-            <h1 className="text-3xl font-bold">{t("app.title")}</h1>
-            <p className="text-muted-foreground mb-5">{t("welcome.subtitle")}</p>
+        <section className="flex h-full items-center justify-center overflow-auto p-8" data-testid="welcome">
+            <div className="bg-card text-card-foreground flex w-full max-w-xl flex-col items-center gap-6 rounded-xl border px-10 py-10 text-center shadow-sm">
+                <img src={APP_ICON} alt="" width={80} height={80} className="size-20 drop-shadow-sm" />
 
-            <ol className="text-muted-foreground mb-6 flex items-center gap-2.5 text-xs">
-                {steps.map((step, index) => (
-                    <Fragment key={step}>
-                        {index > 0 && <span aria-hidden>→</span>}
-                        <li>{step}</li>
-                    </Fragment>
-                ))}
-            </ol>
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-display font-bold tracking-tight">{t("app.title")}</h1>
+                    <p className="text-muted-foreground text-body">{t("welcome.subtitle")}</p>
+                </div>
 
-            <div className="mb-3 flex gap-3">
-                <Button className="w-52 rounded-full" onClick={onOpenDocument}>
-                    <FileText />
-                    {t("welcome.open_document")}
-                </Button>
-                <Button variant="outline" className="w-52 rounded-full" onClick={onNewComparison}>
-                    <GitCompare />
-                    {t("welcome.new_comparison")}
-                </Button>
-            </div>
+                <ol className="grid w-full grid-cols-3 gap-3">
+                    {steps.map((step, index) => (
+                        <li
+                            key={step}
+                            className="bg-background flex flex-col items-center gap-2 rounded-lg border px-3 py-3"
+                        >
+                            <span
+                                aria-hidden
+                                className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-full text-caption font-semibold"
+                            >
+                                {index + 1}
+                            </span>
+                            <span className="text-muted-foreground text-caption">{step}</span>
+                        </li>
+                    ))}
+                </ol>
 
-            <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={onViewHistory}>
-                    {t("welcome.view_history")}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={onShowShortcuts}>
-                    {t("welcome.shortcuts")}
-                </Button>
+                <div className="flex flex-wrap justify-center gap-3">
+                    <Button size="lg" className="min-w-48" onClick={onOpenDocument}>
+                        <FileText />
+                        {t("welcome.open_document")}
+                    </Button>
+                    <Button size="lg" variant="outline" className="min-w-48" onClick={onNewComparison}>
+                        <GitCompare />
+                        {t("welcome.new_comparison")}
+                    </Button>
+                </div>
+
+                <div className="flex w-full flex-wrap justify-center gap-2 border-t pt-4">
+                    <Button variant="ghost" size="sm" onClick={onViewHistory}>
+                        <History />
+                        {t("welcome.view_history")}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={onShowShortcuts}>
+                        <Keyboard />
+                        {t("welcome.shortcuts")}
+                    </Button>
+                </div>
             </div>
         </section>
     );

@@ -12,7 +12,7 @@ export function StatusBar({ message }: { message: StatusMessage }) {
             role="status"
             data-testid="status"
             className={cn(
-                "bg-card shrink-0 truncate border-t px-2 py-1 text-xs",
+                "bg-card shrink-0 truncate border-t px-3 py-1 text-caption",
                 message.error ? "text-destructive" : "text-muted-foreground",
             )}
         >

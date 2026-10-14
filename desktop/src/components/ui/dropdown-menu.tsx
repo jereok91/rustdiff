@@ -13,7 +13,7 @@ function DropdownMenuTrigger(props: React.ComponentProps<typeof DropdownMenuPrim
 }
 
 const contentClasses =
-    "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border p-1 shadow-md";
+    "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-lg border p-1 shadow-lg";
 
 function DropdownMenuContent({
     className,
@@ -33,7 +33,7 @@ function DropdownMenuContent({
 }
 
 const itemClasses =
-    "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4";
+    "focus:bg-accent focus:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-body focus-ring-inset select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4";
 
 function DropdownMenuItem({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Item>) {
     return <DropdownMenuPrimitive.Item data-slot="dropdown-menu-item" className={cn(itemClasses, className)} {...props} />;
@@ -78,7 +78,7 @@ function DropdownMenuShortcut({ className, ...props }: React.ComponentProps<"spa
     return (
         <span
             data-slot="dropdown-menu-shortcut"
-            className={cn("text-muted-foreground ml-auto pl-4 text-xs tracking-widest", className)}
+            className={cn("text-muted-foreground ml-auto pl-4 font-mono text-caption", className)}
             {...props}
         />
     );

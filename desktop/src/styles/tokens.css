@@ -1,30 +1,171 @@
 /*
- * Tokens de color del diff — fuente única.
+ * Tokens del sistema de diseño de RustDiff — fuente única de verdad.
  *
- * Mismos valores que la app GTK (`src/ui/highlighter.rs`, paleta tipo GitHub
- * con alpha bajo para que funcione sobre fondo claro y oscuro):
- *   --diff-*        color base (texto de la tabla, iconos)
- *   --diff-*-line   fondo sutil de la línea completa
- *   --diff-*-inline fondo más saturado del rango exacto de caracteres
+ * Todo color de la app sale de acá, en OKLCH, para el tema claro (`:root`) y
+ * el oscuro (`.dark`, que hereda lo que no redefine). Convención de shadcn/ui
+ * para la UI general, más tres familias propias:
  *
- * F7 (sistema de diseño) los refina acá; los componentes solo consumen las
- * variables y las clases `cm-diff-*`.
+ *   --diff-<kind>          texto del tipo (tabla, filtros, iconos)
+ *   --diff-<kind>-line     fondo sutil de la línea completa en el editor
+ *   --diff-<kind>-inline   fondo más saturado del rango exacto de caracteres
+ *   --diff-<kind>-row      tinte de la fila en la tabla de diferencias
+ *   --graph-*              paleta del canvas de grafo (`lib/graph-view.ts`
+ *                          la lee y la convierte a hex)
+ *
+ * Contraste: `tokens.test.ts` lee este archivo y exige WCAG AA (4.5:1 texto,
+ * 3:1 UI) sobre los valores reales; tocar un color que lo rompa falla el
+ * test. Los fondos con alpha se componen sobre `--background` (el editor).
+ *
+ * Las clases que pintan con estos tokens (decoraciones de CodeMirror, celdas
+ * de la tabla, animación de salto) viven al final de este archivo; los
+ * componentes solo consumen variables y clases, nunca colores sueltos.
  */
 
 :root {
-    --diff-added: rgb(46, 160, 67);
-    --diff-removed: rgb(248, 81, 73);
-    --diff-changed: rgb(210, 153, 34);
+    /* ── Forma ───────────────────────────────── */
+    --radius: 0.5rem;
 
-    --diff-added-line: rgba(46, 160, 67, 0.22);
-    --diff-removed-line: rgba(248, 81, 73, 0.22);
-    /* Sin uso en F3 (la GTK no pinta líneas "cambiadas"); queda para F4/F7. */
-    --diff-changed-line: rgba(210, 153, 34, 0.22);
+    /* ── Tipografía ──────────────────────────── */
+    --font-family-sans: system-ui, -apple-system, "Segoe UI", "Cantarell", "Noto Sans", sans-serif;
+    --font-family-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", monospace;
 
-    --diff-added-inline: rgba(46, 160, 67, 0.45);
-    --diff-removed-inline: rgba(248, 81, 73, 0.45);
-    --diff-changed-inline: rgba(210, 153, 34, 0.5);
+    --font-size-caption: 0.75rem; /* 12px: metadatos, contadores, barra de estado */
+    --line-height-caption: 1rem;
+    --font-size-body: 0.875rem; /* 14px: texto de la UI, menús, tablas */
+    --line-height-body: 1.25rem;
+    --font-size-code: 0.8125rem; /* 13px: editores, rutas y valores */
+    --line-height-code: 1.25rem;
+    --font-size-title: 1.125rem; /* 18px: títulos de diálogo */
+    --line-height-title: 1.5rem;
+    --font-size-display: 1.75rem; /* 28px: bienvenida */
+    --line-height-display: 2.25rem;
+
+    /* ── Medidas del shell ───────────────────── */
+    --header-height: 3rem;
+    --toolbar-height: 2.25rem;
+    --control-height: 1.75rem;
+    --sidebar-width: 18rem;
+
+    /* ── Movimiento ──────────────────────────── */
+    --duration-fast: 120ms;
+    --duration-flash: 1.2s;
+
+    /* ── Superficies y texto (shadcn/ui) ─────── */
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.21 0.02 256);
+    --card: oklch(0.975 0.004 256);
+    --card-foreground: oklch(0.21 0.02 256);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.21 0.02 256);
+    --primary: oklch(0.52 0.16 41);
+    --primary-foreground: oklch(0.99 0.004 60);
+    --secondary: oklch(0.945 0.008 256);
+    --secondary-foreground: oklch(0.25 0.02 256);
+    --muted: oklch(0.955 0.006 256);
+    --muted-foreground: oklch(0.49 0.02 256);
+    --accent: oklch(0.935 0.012 256);
+    --accent-foreground: oklch(0.21 0.02 256);
+    --destructive: oklch(0.53 0.2 27);
+    --destructive-foreground: oklch(0.99 0.004 27);
+    --border: oklch(0.91 0.008 256);
+    --input: oklch(0.62 0.015 256);
+    --ring: oklch(0.55 0.16 41);
+
+    /* ── Editor (CodeMirror, `lib/editor-theme.ts`) ── */
+    --editor-selection: oklch(0.6 0.15 256 / 0.22);
+    --editor-active-line: oklch(0.55 0.03 256 / 0.05);
+
+    /* ── Diff ────────────────────────────────── */
+    --diff-added: oklch(0.5 0.13 150);
+    --diff-removed: oklch(0.52 0.19 27);
+    --diff-changed: oklch(0.52 0.11 70);
+
+    --diff-added-line: oklch(0.75 0.17 150 / 0.18);
+    --diff-removed-line: oklch(0.7 0.19 25 / 0.15);
+    --diff-changed-line: oklch(0.82 0.15 80 / 0.2);
+
+    --diff-added-inline: oklch(0.75 0.17 150 / 0.42);
+    --diff-removed-inline: oklch(0.7 0.19 25 / 0.36);
+    --diff-changed-inline: oklch(0.82 0.15 80 / 0.5);
+
+    --diff-added-row: oklch(0.75 0.17 150 / 0.08);
+    --diff-removed-row: oklch(0.7 0.19 25 / 0.07);
+    --diff-changed-row: oklch(0.82 0.15 80 / 0.1);
+
+    /* ── Grafo ───────────────────────────────── */
+    --graph-background: oklch(0.975 0.004 256);
+    --graph-node-fill: oklch(1 0 0);
+    --graph-node-border: oklch(0.8 0.01 256);
+    --graph-node-selected: oklch(0.55 0.18 256);
+    --graph-node-match: oklch(0.62 0.14 65);
+    --graph-edge: oklch(0.72 0.012 256);
+    --graph-key: oklch(0.49 0.02 256);
+    --graph-string: oklch(0.5 0.13 150);
+    --graph-number: oklch(0.5 0.17 256);
+    --graph-boolean: oklch(0.5 0.17 310);
+    --graph-null: oklch(0.53 0.15 45);
+    --graph-reference: oklch(0.52 0.015 256);
+    --graph-text: oklch(0.25 0.02 256);
 }
+
+.dark {
+    --background: oklch(0.195 0.015 256);
+    --foreground: oklch(0.95 0.006 256);
+    --card: oklch(0.17 0.014 256);
+    --card-foreground: oklch(0.95 0.006 256);
+    --popover: oklch(0.235 0.017 256);
+    --popover-foreground: oklch(0.95 0.006 256);
+    --primary: oklch(0.75 0.14 55);
+    --primary-foreground: oklch(0.2 0.03 45);
+    --secondary: oklch(0.27 0.018 256);
+    --secondary-foreground: oklch(0.95 0.006 256);
+    --muted: oklch(0.26 0.018 256);
+    --muted-foreground: oklch(0.73 0.02 256);
+    --accent: oklch(0.3 0.022 256);
+    --accent-foreground: oklch(0.97 0.004 256);
+    --destructive: oklch(0.7 0.18 25);
+    --destructive-foreground: oklch(0.18 0.03 25);
+    --border: oklch(0.3 0.016 256);
+    --input: oklch(0.52 0.02 256);
+    --ring: oklch(0.75 0.14 55);
+
+    --editor-selection: oklch(0.65 0.13 256 / 0.3);
+    --editor-active-line: oklch(0.9 0.02 256 / 0.04);
+
+    --diff-added: oklch(0.78 0.15 150);
+    --diff-removed: oklch(0.75 0.15 25);
+    --diff-changed: oklch(0.83 0.13 82);
+
+    --diff-added-line: oklch(0.65 0.15 150 / 0.18);
+    --diff-removed-line: oklch(0.62 0.18 25 / 0.2);
+    --diff-changed-line: oklch(0.72 0.13 80 / 0.16);
+
+    --diff-added-inline: oklch(0.65 0.15 150 / 0.38);
+    --diff-removed-inline: oklch(0.62 0.18 25 / 0.42);
+    --diff-changed-inline: oklch(0.72 0.13 80 / 0.36);
+
+    --diff-added-row: oklch(0.65 0.15 150 / 0.1);
+    --diff-removed-row: oklch(0.62 0.18 25 / 0.1);
+    --diff-changed-row: oklch(0.72 0.13 80 / 0.09);
+
+    --graph-background: oklch(0.17 0.014 256);
+    --graph-node-fill: oklch(0.235 0.017 256);
+    --graph-node-border: oklch(0.38 0.018 256);
+    --graph-node-selected: oklch(0.7 0.15 256);
+    --graph-node-match: oklch(0.8 0.15 80);
+    --graph-edge: oklch(0.45 0.018 256);
+    --graph-key: oklch(0.73 0.02 256);
+    --graph-string: oklch(0.82 0.14 150);
+    --graph-number: oklch(0.78 0.11 245);
+    --graph-boolean: oklch(0.78 0.12 320);
+    --graph-null: oklch(0.8 0.12 60);
+    --graph-reference: oklch(0.65 0.015 256);
+    --graph-text: oklch(0.93 0.006 256);
+}
+
+/* ─────────────────────────────────────────────
+ * Clases que consumen los tokens
+ * ───────────────────────────────────────────── */
 
 /* Decoraciones de CodeMirror (ver `lib/editor-decorations.ts`). */
 .cm-diff-line-added {
@@ -35,12 +176,15 @@
 }
 .cm-diff-added {
     background-color: var(--diff-added-inline);
+    border-radius: 2px;
 }
 .cm-diff-removed {
     background-color: var(--diff-removed-inline);
+    border-radius: 2px;
 }
 .cm-diff-changed {
     background-color: var(--diff-changed-inline);
+    border-radius: 2px;
 }
 
 /* Destello del rango al que salta un click en la tabla o la búsqueda. */
@@ -48,7 +192,7 @@
     0%,
     40% {
         background-color: var(--diff-changed-inline);
-        outline: 2px solid var(--diff-changed);
+        outline: 2px solid var(--ring);
     }
     100% {
         background-color: transparent;
@@ -57,7 +201,7 @@
 }
 .cm-diff-flash {
     border-radius: 2px;
-    animation: cm-diff-flash 1.2s ease-out;
+    animation: cm-diff-flash var(--duration-flash) ease-out;
 }
 
 /* Fragmentos resaltados dentro de las celdas Left/Right de la tabla
@@ -72,50 +216,34 @@
     font-weight: 600;
     border-radius: 2px;
 }
-/* Fondo sutil por tipo en las celdas de la tabla (`.diff-added` & co. de la GTK). */
+/* Tinte por tipo en las filas de la tabla (`.diff-added` & co. de la GTK). */
 .diff-row-Added {
-    background-color: rgba(46, 160, 67, 0.08);
+    background-color: var(--diff-added-row);
 }
 .diff-row-Removed {
-    background-color: rgba(248, 81, 73, 0.08);
+    background-color: var(--diff-removed-row);
 }
 .diff-row-Changed {
-    background-color: rgba(210, 153, 34, 0.08);
+    background-color: var(--diff-changed-row);
 }
 
 /*
- * Paleta del canvas de grafo (`lib/graph-view.ts` la lee con
- * `getComputedStyle`). Mismos colores GNOME que `palette()` en
- * `src/ui/graph_view.rs`; F7 los ajusta acá sin tocar el renderer.
+ * Movimiento reducido: sin animaciones ni transiciones. El salto sigue
+ * marcando el rango (fondo + contorno estáticos) durante el mismo tiempo,
+ * así que la información no depende de la animación.
  */
-:root {
-    --graph-background: #fafafa;
-    --graph-node-fill: #ffffff;
-    --graph-node-border: #d3d2d4;
-    --graph-node-selected: #3584e4;
-    --graph-node-match: #e5a50a;
-    --graph-edge: #b8b6bc;
-    --graph-key: #77767b;
-    --graph-string: #26a269;
-    --graph-number: #1c71d8;
-    --graph-boolean: #813d9c;
-    --graph-null: #e66100;
-    --graph-reference: #9a9996;
-    --graph-text: #3d3846;
-}
-
-.dark {
-    --graph-background: #242424;
-    --graph-node-fill: #303030;
-    --graph-node-border: #4a4a4a;
-    --graph-node-selected: #3584e4;
-    --graph-node-match: #e5a50a;
-    --graph-edge: #5e5c64;
-    --graph-key: #9a9996;
-    --graph-string: #8ff0a4;
-    --graph-number: #99c1f1;
-    --graph-boolean: #dc8add;
-    --graph-null: #ffbe6f;
-    --graph-reference: #77767b;
-    --graph-text: #deddda;
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .cm-diff-flash {
+        animation: none !important;
+        background-color: var(--diff-changed-inline);
+        outline: 2px solid var(--ring);
+    }
 }

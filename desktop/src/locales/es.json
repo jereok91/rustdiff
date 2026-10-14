@@ -155,5 +155,13 @@
     "compare.error_right": "Error en documento derecho: %{error}",
     "errors.too_large": "Documento demasiado grande: %{error}",
     "errors.generic": "Error: %{error}",
-    "dialog.all_files": "Todos los archivos"
+    "dialog.all_files": "Todos los archivos",
+    "menu.theme": "Tema",
+    "menu.theme_system": "Sistema",
+    "menu.theme_light": "Claro",
+    "menu.theme_dark": "Oscuro",
+    "dialog.close": "Cerrar",
+    "graph.canvas_label": "Grafo del documento izquierdo",
+    "graph.keyboard_hint": "Las flechas desplazan, + y - hacen zoom, 0 encuadra el grafo, Escape cierra el detalle del nodo",
+    "graph.node_detail": "Detalle del nodo"
 }
