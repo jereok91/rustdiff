@@ -64,5 +64,16 @@ panic         = "abort"
 # ─────────────────────────────────────────────
 [profile.dev]
 opt-level   = 1
-debug       = true
+# Solo tablas de linea: alcanza para backtraces legibles y enlazar deja de ser
+# el cuello de botella (el binario de debug del shell pasaba los 100 MB).
+debug       = 1
 incremental = true
+# En Linux el default es "off", que mete todo el DWARF dentro del binario:
+# sacarlo aparte acelera el enlazado y achica el disco.
+split-debuginfo = "unpacked"
+
+# Las dependencias (Tauri, WebKit, glib, rusqlite...) son el 95% del codigo y
+# nadie las depura a mano. Sin su info de debug, `cargo test` y `cargo build`
+# bajan muchisimo de tiempo y de tamano.
+[profile.dev.package."*"]
+debug = false
