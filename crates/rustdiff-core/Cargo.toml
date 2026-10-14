@@ -41,6 +41,11 @@ publish = false
 # `serde` es para el IPC: los tipos publicos del diff viajan al frontend tal
 # cual. El nucleo no sabe quien los consume.
 serde      = { version = "1", features = ["derive"] }
+
+# `specta` describe esos mismos tipos para generar los bindings TypeScript del
+# shell Tauri (D6). No es una UI: es el mismo contrato del IPC, declarado una
+# sola vez. Version exacta porque `tauri-specta` la fija (`specta =2.0.0-rc.25`).
+specta     = { version = "=2.0.0-rc.25", features = ["derive"] }
 serde_json = "1"
 quick-xml  = { version = "0.36", features = ["serialize"] }
 sqlformat  = "0.3"

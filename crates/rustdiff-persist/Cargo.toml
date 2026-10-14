@@ -46,6 +46,10 @@ rusqlite = { version = "0.31", features = ["bundled", "backup"] }
 serde      = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# Igual que en rustdiff-core: describe los tipos del IPC para los bindings TS.
+# Version exacta porque `tauri-specta` fija `specta =2.0.0-rc.25`.
+specta     = { version = "=2.0.0-rc.25", features = ["derive"] }
+
 # ── I18N ─────────────────────────────────────
 # `Session::display` traduce el resumen de una sesion guardada.
 rust-i18n = "3"

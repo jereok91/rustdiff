@@ -3,15 +3,17 @@
   "private": true,
   "version": "0.4.0",
   "type": "module",
-  "comment": "Frontend del reemplazo de la UI GTK. F1 (spike) solo prueba el transporte: un comando real por IPC y una pantalla minima que lo invoca. Tailwind y shadcn/ui entran en F3/F7.",
+  "comment": "Frontend del reemplazo de la UI GTK. F2 (contrato IPC) usa los bindings generados en src/bindings.ts (tauri-specta + specta); Tailwind y shadcn/ui entran en F3/F7.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "bindings": "cd src-tauri && RUSTDIFF_UPDATE_BINDINGS=1 cargo test --test bindings",
     "tauri": "tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.3",
+    "@tauri-apps/plugin-dialog": "2.7.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

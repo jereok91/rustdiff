@@ -39,7 +39,7 @@ pub enum StorageError {
 // ─────────────────────────────────────────────
 
 /// Resumen serializable de un resultado de diff (para guardar en la BD).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct DiffSummary {
     pub added: usize,
     pub removed: usize,
@@ -48,7 +48,10 @@ pub struct DiffSummary {
 }
 
 /// Una sesión de comparación guardada.
-#[derive(Debug, Clone)]
+///
+/// `Serialize` + `specta::Type` para el IPC: el historial viaja al frontend tal
+/// cual sale de SQLite (D6).
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct Session {
     pub id: i64,
     pub created_at: String,

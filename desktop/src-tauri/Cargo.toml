@@ -39,18 +39,45 @@ publish = false
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+# ── TARGETS ───────────────────────────────────
+# F2 parte el shell en libreria + binario fino: los comandos y la definicion
+# del contrato IPC viven en la lib (los tests de integracion y el export de
+# bindings los necesitan), y `main.rs` solo arma la app.
+[lib]
+name = "rustdiff_desktop"
+path = "src/lib.rs"
+
 [dependencies]
-rustdiff-core = { path = "../../crates/rustdiff-core" }
+rustdiff-core    = { path = "../../crates/rustdiff-core" }
+rustdiff-persist = { path = "../../crates/rustdiff-persist" }
 
 # ── SHELL ────────────────────────────────────
 # El CLI de Tauri exige mismo major/minor entre el crate Rust y
 # @tauri-apps/api: ambos en 2.12.
-tauri = { version = "2.12", features = [] }
+#
+# La feature `specta` implementa `FunctionArg` para `tauri::State` (y para los
+# handles), que es lo que permite anotar con `#[specta::specta]` un comando que
+# recibe estado; sin ella el export de bindings no compila.
+tauri = { version = "2.12", features = ["specta"] }
+
+# El frontend no toca el filesystem (S8): los paths llegan del dialogo nativo.
+#
+# Version exacta porque el plugin JS (`@tauri-apps/plugin-dialog`) tiene que ir
+# en el mismo patch: los dos lados son un solo plugin. 2.8.x exige Rust 1.90 y
+# el workspace declara 1.85 (ver `rust-version` en el Cargo.toml de la raiz).
+tauri-plugin-dialog = "=2.7.3"
 
 # ── SERIALIZACION DEL IPC ────────────────────
 serde      = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# ── BINDINGS TYPESCRIPT (D6) ──────────────────
+# `tauri-specta` deriva los tipos TS de las firmas de los comandos y el
+# `specta::Type` que el nucleo y la persistencia ya declaran sobre sus tipos.
+# Versiones fijadas por `tauri-specta` (rc mientras no salga 2.0 estable).
+tauri-specta       = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
+specta             = { version = "=2.0.0-rc.25", features = ["derive"] }
+specta-typescript  = "=0.0.12"
 # ─────────────────────────────────────────────
 # FEATURES
 # ─────────────────────────────────────────────

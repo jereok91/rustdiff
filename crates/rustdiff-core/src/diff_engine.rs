@@ -24,8 +24,9 @@ use std::ops::Range;
 /// Tipo de diferencia detectada entre dos documentos.
 ///
 /// `Serialize` para el IPC: el frontend recibe el resultado del diff tal cual
-/// lo produce el nucleo.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+/// lo produce el nucleo. `specta::Type` describe el mismo contrato para los
+/// bindings TypeScript (D6).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
 pub enum DiffKind {
     /// El elemento existe solo en el documento derecho (fue añadido).
     Added,
@@ -36,7 +37,7 @@ pub enum DiffKind {
 }
 
 /// Una diferencia individual entre dos documentos.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
 pub struct DiffItem {
     /// Ruta al elemento afectado, usando notación de puntos.
     /// Ejemplo: `"persona.direccion.calle"` o `"usuarios[2].nombre"`
@@ -50,7 +51,7 @@ pub struct DiffItem {
 }
 
 /// Resultado completo de una comparación entre dos documentos.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, specta::Type)]
 pub struct DiffResult {
     /// Elementos presentes solo en el documento derecho.
     pub added: Vec<DiffItem>,

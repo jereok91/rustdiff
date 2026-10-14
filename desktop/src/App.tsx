@@ -1,38 +1,19 @@
 /*
- * Pantalla mínima del spike de F1.
+ * Pantalla mínima del spike.
  *
  * No es la UI final: su único trabajo es probar la cadena completa
  * React -> IPC -> rustdiff-core -> React con documentos reales, para que la
  * fase F3 empiece sobre algo que ya se sabe que funciona.
  *
+ * Desde F2 los tipos y las llamadas salen de `./bindings`, generado desde las
+ * firmas de los comandos Rust (D6): ya no hay tipos IPC escritos a mano que
+ * puedan quedar desincronizados. Regenerar con `pnpm bindings`.
+ *
  * Tailwind y shadcn/ui entran en F3/F7 (S4: primero portar, después rediseñar).
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-
-/** Espejo de los tipos de rustdiff-core. En F2 los genera tauri-specta (D6). */
-type DiffKind = "Added" | "Removed" | "Changed";
-
-interface DiffItem {
-    path: string;
-    kind: DiffKind;
-    left: string | null;
-    right: string | null;
-}
-
-interface DiffResult {
-    added: DiffItem[];
-    removed: DiffItem[];
-    changed: DiffItem[];
-}
-
-type Format = "Json" | "Xml" | "Sql" | "Text";
-
-interface DiffResponse {
-    format: Format;
-    result: DiffResult;
-}
+import { commands, type CommandError, type DiffItem, type DiffResponse } from "./bindings";
 
 const DOCUMENTO_IZQUIERDO = `{
   "usuario": { "nombre": "ana", "edad": 30 },
@@ -45,11 +26,20 @@ const DOCUMENTO_DERECHO = `{
   "activo": true
 }`;
 
-function filas(result: DiffResult | null): DiffItem[] {
+function filas(result: DiffResponse["result"] | null): DiffItem[] {
     if (!result) {
         return [];
     }
     return [...result.removed, ...result.added, ...result.changed];
+}
+
+/** El backend rechaza con `{ code, message }` (ErrorHandlingMode::Throw). */
+function mensajeDeError(error: unknown): string {
+    const tipado = error as Partial<CommandError> | undefined;
+    if (tipado?.code && tipado.message) {
+        return `${tipado.code}: ${tipado.message}`;
+    }
+    return typeof error === "string" ? error : String(error);
 }
 
 export default function App() {
@@ -63,15 +53,12 @@ export default function App() {
         setComparando(true);
         setError(null);
         try {
-            const obtenida = await invoke<DiffResponse>("diff_documents", {
-                left: izquierdo,
-                right: derecho,
-                format: null,
-            });
+            // `format: null` = detección automática desde el documento izquierdo.
+            const obtenida = await commands.diffDocuments(izquierdo, derecho, null);
             setRespuesta(obtenida);
         } catch (e) {
             setRespuesta(null);
-            setError(typeof e === "string" ? e : String(e));
+            setError(mensajeDeError(e));
         } finally {
             setComparando(false);
         }

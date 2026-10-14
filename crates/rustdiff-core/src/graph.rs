@@ -7,6 +7,7 @@
 
 use std::collections::VecDeque;
 
+use serde::Serialize;
 use serde_json::Value as JsonValue;
 
 use crate::parser::{XmlChild, XmlNode};
@@ -28,7 +29,10 @@ pub const MAX_VALUE_CHARS: usize = 60;
 // ─────────────────────────────────────────────
 
 /// Tipo semántico del valor de una fila, usado por la UI para colorear.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// `Serialize` y `specta::Type` para el IPC: el frontend dibuja el grafo con
+/// estos mismos tipos (D6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 pub enum ValueKind {
     String,
     Number,
@@ -43,7 +47,7 @@ pub enum ValueKind {
 }
 
 /// Una fila `clave: valor` dentro de un nodo del grafo.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct GraphRow {
     /// Clave de la fila. Vacía para escalares sueltos (ej. raíz escalar).
     pub key: String,
@@ -56,7 +60,7 @@ pub struct GraphRow {
 pub type NodeId = usize;
 
 /// Un nodo del grafo: una tarjeta con filas `clave: valor`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct GraphNode {
     pub id: NodeId,
     /// Clave/tag por el que se llegó a este nodo (útil para búsqueda).
@@ -72,7 +76,7 @@ pub struct GraphNode {
 }
 
 /// Arista dirigida entre un nodo padre y uno hijo.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct GraphEdge {
     pub from: NodeId,
     /// Índice de la fila del padre donde ancla la curva (la fila `{N keys}`).
@@ -84,7 +88,7 @@ pub struct GraphEdge {
 }
 
 /// Grafo completo: nodos (id == índice), aristas y flag de truncado.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, specta::Type)]
 pub struct Graph {
     pub nodes: Vec<GraphNode>,
     pub edges: Vec<GraphEdge>,

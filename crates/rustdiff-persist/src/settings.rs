@@ -5,7 +5,7 @@
 //! para que el archivo sea facil de editar a mano si hace falta.
 
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Valor del campo `language` cuando se debe detectar del entorno.
 pub const LANGUAGE_AUTO: &str = "auto";
@@ -21,7 +21,7 @@ pub const UI_SCALE_MIN: f64 = 0.6;
 pub const UI_SCALE_MAX: f64 = 2.0;
 pub const UI_SCALE_DEFAULT: f64 = 1.0;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Settings {
     /// `"auto"`, `"en"` o `"es"`.
     #[serde(default = "default_language")]
@@ -64,7 +64,15 @@ impl Settings {
         let Some(path) = settings_path() else {
             return Self::default();
         };
-        match std::fs::read_to_string(&path) {
+        Self::load_from(&path)
+    }
+
+    /// Igual que `load`, pero desde una ruta arbitraria.
+    ///
+    /// Existe para el IPC (tests de ida y vuelta sin tocar
+    /// `~/.config/rustdiff/settings.json`) y para futuros perfiles.
+    pub fn load_from(path: &Path) -> Self {
+        match std::fs::read_to_string(path) {
             Ok(content) => serde_json::from_str(&content).unwrap_or_else(|e| {
                 tracing::warn!("settings.json corrupto, usando defaults: {e}");
                 Self::default()
@@ -79,24 +87,25 @@ impl Settings {
             tracing::warn!("No hay directorio de configuracion disponible");
             return;
         };
+        if let Err(e) = self.save_to(&path) {
+            tracing::warn!("Error escribiendo {:?}: {e}", path);
+        }
+    }
+
+    /// Igual que `save`, pero a una ruta arbitraria y devolviendo el error.
+    /// El llamador decide que hacer con el (el comando del IPC lo mapea a `Io`).
+    pub fn save_to(&self, path: &Path) -> std::io::Result<()> {
         if let Some(parent) = path.parent() {
-            if let Err(e) = std::fs::create_dir_all(parent) {
-                tracing::warn!("Error creando {:?}: {e}", parent);
-                return;
-            }
+            std::fs::create_dir_all(parent)?;
         }
-        match serde_json::to_string_pretty(self) {
-            Ok(json) => {
-                if let Err(e) = std::fs::write(&path, json) {
-                    tracing::warn!("Error escribiendo {:?}: {e}", path);
-                }
-            }
-            Err(e) => tracing::warn!("Error serializando settings: {e}"),
-        }
+        let json =
+            serde_json::to_string_pretty(self).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        std::fs::write(path, json)
     }
 }
 
-fn settings_path() -> Option<PathBuf> {
+/// Ruta del archivo de preferencias (`~/.config/rustdiff/settings.json`).
+pub fn settings_path() -> Option<PathBuf> {
     dirs::config_dir().map(|p| p.join("rustdiff").join("settings.json"))
 }
 

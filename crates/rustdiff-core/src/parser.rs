@@ -18,7 +18,9 @@ use thiserror::Error;
 /// Formatos de documento soportados por RustDiff.
 ///
 /// `Serialize` para el IPC: el frontend muestra el formato detectado.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+/// `specta::Type` describe ese mismo contrato para generar los bindings
+/// TypeScript del shell Tauri (D6); no agrega ninguna dependencia de UI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 pub enum Format {
     Json,
     Xml,
