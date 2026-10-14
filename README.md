@@ -278,12 +278,12 @@ rustdiff schema_v1.xml schema_v2.xml
 ## Tests
 
 ```bash
-# Full test suite
+# Full test suite (every crate in the workspace)
 cargo test
 
-# Integration tests
-cargo test --test parser_tests
-cargo test --test diff_engine_tests
+# Integration tests of the UI-free core crate
+cargo test -p rustdiff-core --test parser_tests
+cargo test -p rustdiff-core --test diff_engine_tests
 ```
 
 ## Flathub and packaging documentation

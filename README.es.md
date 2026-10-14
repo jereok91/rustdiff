@@ -278,12 +278,12 @@ rustdiff esquema_v1.xml esquema_v2.xml
 ## Tests
 
 ```bash
-# Suite completa
+# Suite completa (todas las crates del workspace)
 cargo test
 
-# Tests de integracion
-cargo test --test parser_tests
-cargo test --test diff_engine_tests
+# Tests de integracion del nucleo sin UI
+cargo test -p rustdiff-core --test parser_tests
+cargo test -p rustdiff-core --test diff_engine_tests
 ```
 
 ## Documentacion de Flathub y empaquetado
