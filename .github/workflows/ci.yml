@@ -18,18 +18,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install GTK4 system dependencies
+      - name: Install GTK4 and WebKit system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libgtk-4-dev \
             libadwaita-1-dev \
-            libgtksourceview-5-dev
+            libgtksourceview-5-dev \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev \
+            librsvg2-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+
+      # ── Frontend ─────────────────────────────────────────────────────────
+      # Va ANTES de los pasos de cargo: `tauri-build` valida que exista
+      # `desktop/dist` al compilar el shell, asi que un `--workspace` sin el
+      # frontend compilado falla.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: desktop
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and build the frontend
+        working-directory: desktop
+        run: pnpm build
 
       - name: Cache cargo
         uses: actions/cache@v4

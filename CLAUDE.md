@@ -35,8 +35,21 @@ This is a Cargo workspace. The root package is the GTK app — a library (`src/l
 ```
 crates/rustdiff-core/      format, parsing, semantic diff, graph layout, export
 crates/rustdiff-persist/   SQLite session history + user preferences
+desktop/                   the replacement frontend: React + Vite + TypeScript
+desktop/src-tauri/         the Tauri v2 shell around rustdiff-core (phase F1)
 src/                       the GTK4 app (app.rs, ui/)
 ```
+
+Both frontends coexist while the migration to Tauri runs (branch `feat/tauri-migration`, plan in `odd/tasks/tauri-migration.md`). In F8 the GTK app is deleted and `desktop/*` moves to the repository root.
+
+**Build order matters:** `tauri-build` validates that `desktop/dist` exists when it compiles the shell, so a workspace-wide cargo command fails until the frontend is built:
+
+```bash
+cd desktop && pnpm install && pnpm build   # once, and after every frontend change
+cd .. && cargo test --workspace            # now the Tauri member builds too
+```
+
+`desktop/src-tauri` is a workspace member but **not** a default member, precisely so that GTK-only work does not depend on the frontend being built. CI builds the frontend first and then uses `--workspace`.
 
 Module boundaries are strict and one-directional: `parser` → `diff_engine` → `graph`/`export` → the frontend, with `storage` and `settings` as independent, orthogonal services that depend on the core. `rustdiff-core` must stay free of `gtk4`, `libadwaita`, `sourceview5`, `cairo` and `tauri` — `crates/rustdiff-core/tests/no_ui_dependencies.rs` fails if it isn't, so the logic survives any future change of GUI toolkit.
 
@@ -52,6 +65,27 @@ Module boundaries are strict and one-directional: `parser` → `diff_engine` →
   - `graph_view.rs` — the Cairo drawing surface for the graph view (pan, zoom, fit, node search) on top of the geometry from `rustdiff_core::graph`.
   - `highlighter.rs` — syntax highlighting glue for `sourceview5` plus the diff tags in the editors, including loading custom language specs from `data/language-specs/` (dev path, `.deb`/`/usr/share` path, and Flatpak `/app/share` path are all checked — replicate this three-path pattern if adding more bundled resources).
 - **`src/app.rs`** — GTK application bootstrap: locale detection (`Settings::language` → `LANG`/`LC_*` env → fallback `en`) and CLI arg handling (two positional args = auto-load into left/right panels).
+
+## Desktop shell (Tauri v2)
+
+The `desktop/` frontend is plain React + TypeScript today; Tailwind and shadcn/ui arrive in F3/F7.
+
+```bash
+cd desktop
+pnpm install
+pnpm dev                 # Vite dev server only (browser)
+pnpm tauri dev           # the app in a WebView, hot reload
+pnpm tauri build         # production bundle -> target/release/bundle/deb
+```
+
+The Rust side is one command in `desktop/src-tauri/src/main.rs`: `diff_documents(left, right, format)`, which reuses `rustdiff-core` exactly like the GTK app does (explicit format wins, otherwise it is detected from the left document; each side reports its own parse error). The frontend never touches the filesystem or parses anything (the core's limits and errors stay authoritative).
+
+Two things that bite:
+
+- **`custom-protocol` is not optional.** In tauri 2.11+, `let dev = !custom_protocol` decides whether the WebView loads `build.devUrl` or the embedded `frontendDist`. Build the shell with the CLI (`pnpm tauri build`, which enables it) or with `cargo build --release --features custom-protocol`; a plain `cargo build --release` produces a binary that shows "Could not connect to localhost" in the window.
+- **`tauri` (crate) and `@tauri-apps/api` (npm) must share major/minor**, or the CLI refuses to build with a version-mismatch error.
+
+`desktop/scripts/smoke-headless.sh` runs the app under a private headless `sway` compositor (its own `XDG_RUNTIME_DIR`, so it never touches the running desktop session), reports startup time, process-tree RSS and process count, and writes a screenshot. It needs `sway`, `swaymsg` and `grim`, and exports `WEBKIT_DISABLE_DMABUF_RENDERER=1` because the headless backend has no GPU/dmabuf.
 
 ## Internationalization
 
