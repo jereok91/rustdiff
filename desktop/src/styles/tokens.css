@@ -1,0 +1,44 @@
+/*
+ * Tokens de color del diff — fuente única.
+ *
+ * Mismos valores que la app GTK (`src/ui/highlighter.rs`, paleta tipo GitHub
+ * con alpha bajo para que funcione sobre fondo claro y oscuro):
+ *   --diff-*        color base (texto de la tabla, iconos)
+ *   --diff-*-line   fondo sutil de la línea completa
+ *   --diff-*-inline fondo más saturado del rango exacto de caracteres
+ *
+ * F7 (sistema de diseño) los refina acá; los componentes solo consumen las
+ * variables y las clases `cm-diff-*`.
+ */
+
+:root {
+    --diff-added: rgb(46, 160, 67);
+    --diff-removed: rgb(248, 81, 73);
+    --diff-changed: rgb(210, 153, 34);
+
+    --diff-added-line: rgba(46, 160, 67, 0.22);
+    --diff-removed-line: rgba(248, 81, 73, 0.22);
+    /* Sin uso en F3 (la GTK no pinta líneas "cambiadas"); queda para F4/F7. */
+    --diff-changed-line: rgba(210, 153, 34, 0.22);
+
+    --diff-added-inline: rgba(46, 160, 67, 0.45);
+    --diff-removed-inline: rgba(248, 81, 73, 0.45);
+    --diff-changed-inline: rgba(210, 153, 34, 0.5);
+}
+
+/* Decoraciones de CodeMirror (ver `lib/editor-decorations.ts`). */
+.cm-diff-line-added {
+    background-color: var(--diff-added-line);
+}
+.cm-diff-line-removed {
+    background-color: var(--diff-removed-line);
+}
+.cm-diff-added {
+    background-color: var(--diff-added-inline);
+}
+.cm-diff-removed {
+    background-color: var(--diff-removed-inline);
+}
+.cm-diff-changed {
+    background-color: var(--diff-changed-inline);
+}
