@@ -48,13 +48,18 @@ jobs:
 
       # ── Tests ──────────────────────────────
       - name: Run tests
-        run: cargo test --all-targets
+        run: cargo test --workspace --all-targets
 
       # ── Clippy (warnings = error) ──────────
       - name: Run clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       # ── Verificar que empaqueta bien ───────
+      # OJO: el paquete raiz ahora depende de crates internos del workspace
+      # (rustdiff-core, rustdiff-persist), que son `publish = false`, asi que
+      # este paso falla. El canal crates.io se retira en la fase F8 de la
+      # migracion a Tauri, junto con install.sh; hasta entonces los tags de
+      # release se cortan desde main. Ver odd/tasks/tauri-migration.md (D7).
       - name: Dry-run publish
         run: cargo publish --dry-run
 

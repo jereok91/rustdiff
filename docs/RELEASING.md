@@ -22,7 +22,8 @@ installs itself.
 ## Checklist
 
 1. **Bump the version**
-   - `Cargo.toml` → `version`
+   - `Cargo.toml` → `[workspace.package].version` (the root package and every
+     member crate inherit it, so there is one line to change)
    - `Cargo.lock` → refresh with any `cargo build`
 2. **Add the AppStream release entry** in
    `data/com.digitalgex.RustDiff.metainfo.xml` (`<release version=… date=…>`,
@@ -65,7 +66,7 @@ installs itself.
 ## Local validation
 
 ```bash
-cargo fmt --check && cargo clippy --all-targets && cargo test
+cargo fmt --all --check && cargo clippy --workspace --all-targets && cargo test --workspace
 cargo build --release
 
 # crates.io: what would actually be published
