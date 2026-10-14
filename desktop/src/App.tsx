@@ -1,6 +1,6 @@
 /*
- * Shell de la app (F3): cabecera, bienvenida, dos editores CodeMirror,
- * tabla simple de diferencias y barra de estado.
+ * Shell de la app: cabecera, bienvenida, dos editores CodeMirror, panel de
+ * diferencias (F4), barra de búsqueda (F4) y barra de estado.
  *
  * Paridad con `src/ui/main_window.rs`:
  *   - Bienvenida hasta cargar un documento o pulsar "New comparison".
@@ -8,6 +8,9 @@
  *     comparison" revela el editor derecho.
  *   - Auto-compare con debounce de 500 ms (`DEBOUNCE_MS`) + Compare manual.
  *   - Resaltado de líneas y caracteres en ambos editores (`lib/line-diff`).
+ *   - Click en una fila de la tabla: salto y destello en los dos editores
+ *     (`highlight_and_scroll_to_item`, ver `lib/locate`).
+ *   - Ctrl+F: búsqueda en el último editor enfocado (`connect_search_bar`).
  *
  * Todo el parseo, la detección y el disco pasan por `commands.*` (S8).
  */
@@ -16,10 +19,11 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useTranslation } from "react-i18next";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
-import { commands, type DiffResponse, type FileContents, type Format } from "@/bindings";
+import { commands, type DiffItem, type DiffResponse, type FileContents, type Format } from "@/bindings";
 import { AppHeader } from "@/components/app-header";
-import { CodeEditor } from "@/components/code-editor";
+import { CodeEditor, type CodeEditorHandle } from "@/components/code-editor";
 import { DiffTable } from "@/components/diff-table";
+import { SearchBar, type SearchBarHandle } from "@/components/search-bar";
 import { ShortcutsDialog } from "@/components/shortcuts-dialog";
 import { StatusBar } from "@/components/status-bar";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -28,6 +32,7 @@ import { WelcomeScreen } from "@/components/welcome-screen";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { type ShortcutAction, useShortcuts } from "@/hooks/use-shortcuts";
+import { DEFAULT_FILTERS, type KindFilters } from "@/lib/diff-rows";
 import {
     compareErrorStatus,
     formatErrorStatus,
@@ -38,6 +43,7 @@ import {
 } from "@/lib/errors";
 import { editorLanguage, formatArg, formatDisplayName, type FormatChoice } from "@/lib/formats";
 import { buildDiffDecorations, type DiffDecorations, EMPTY_DECORATIONS } from "@/lib/line-diff";
+import { itemJumpTargets } from "@/lib/locate";
 
 type Side = "left" | "right";
 
@@ -58,6 +64,13 @@ export default function App() {
     const [status, setStatus] = useState<StatusMessage>(READY);
     const [diffPanelVisible, setDiffPanelVisible] = useState(true);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [diffFilters, setDiffFilters] = useState<KindFilters>(DEFAULT_FILTERS);
+    const [focusedSide, setFocusedSide] = useState<Side>("left");
+
+    const leftEditor = useRef<CodeEditorHandle>(null);
+    const rightEditor = useRef<CodeEditorHandle>(null);
+    const searchBar = useRef<SearchBarHandle>(null);
 
     // Espejo síncrono del estado que leen las operaciones asíncronas.
     const latest = useRef({ left, right, comparing, formatChoice });
@@ -248,6 +261,32 @@ export default function App() {
         [scheduleCompare],
     );
 
+    /** Click en una fila: `highlight_and_scroll_to_item` de la GTK. */
+    const onActivateItem = useCallback((item: DiffItem) => {
+        const leftHandle = leftEditor.current;
+        const rightHandle = latest.current.comparing ? rightEditor.current : null;
+        const targets = itemJumpTargets(item, leftHandle?.getText() ?? "", rightHandle?.getText() ?? "");
+        if (leftHandle && targets.left) {
+            leftHandle.reveal(targets.left, { flash: true });
+        }
+        if (rightHandle && targets.right) {
+            rightHandle.reveal(targets.right, { flash: true });
+        }
+    }, []);
+
+    // La búsqueda va al último editor enfocado (el derecho solo si existe).
+    const searchSide: Side = comparing && focusedSide === "right" ? "right" : "left";
+    const getSearchEditor = useCallback(
+        () => (searchSide === "right" ? rightEditor.current : leftEditor.current),
+        [searchSide],
+    );
+
+    const openSearch = useCallback(() => {
+        setSearchOpen(true);
+        // Si ya estaba abierta, solo se re-enfoca el campo.
+        searchBar.current?.focus();
+    }, []);
+
     const onShortcut = useCallback(
         (action: ShortcutAction) => {
             switch (action) {
@@ -273,9 +312,25 @@ export default function App() {
                 case "showShortcuts":
                     setShortcutsOpen(true);
                     break;
+                case "search":
+                    if (view === "editors") {
+                        openSearch();
+                    }
+                    break;
+                case "findNext":
+                case "findPrevious":
+                    if (view !== "editors") {
+                        break;
+                    }
+                    if (searchOpen && searchBar.current) {
+                        searchBar.current.go(action === "findNext" ? "next" : "prev");
+                    } else {
+                        openSearch();
+                    }
+                    break;
             }
         },
-        [compareNow, formatDocuments, openInto, view],
+        [compareNow, formatDocuments, openInto, openSearch, searchOpen, view],
     );
     useShortcuts(onShortcut);
 
@@ -333,49 +388,71 @@ export default function App() {
                             onShowShortcuts={() => setShortcutsOpen(true)}
                         />
                     ) : (
-                        <ResizablePanelGroup orientation="vertical">
-                            <ResizablePanel id="editors" defaultSize="70" minSize="20">
-                                <ResizablePanelGroup orientation="horizontal">
-                                    <ResizablePanel id="left" defaultSize="50" minSize="15">
-                                        <EditorPane label={t("editor.left_label")}>
-                                            <CodeEditor
-                                                value={left}
-                                                onChange={onLeftChange}
-                                                language={language}
-                                                scheme={scheme}
-                                                decorations={decorations.left}
-                                                ariaLabel={t("editor.left_label")}
-                                            />
-                                        </EditorPane>
-                                    </ResizablePanel>
-                                    {comparing && (
-                                        <>
-                                            <ResizableHandle />
-                                            <ResizablePanel id="right" defaultSize="50" minSize="15">
-                                                <EditorPane label={t("editor.right_label")}>
+                        <div className="flex h-full min-h-0 flex-col">
+                            {searchOpen && (
+                                <SearchBar
+                                    ref={searchBar}
+                                    text={searchSide === "right" ? right : left}
+                                    targetLabel={t(searchSide === "right" ? "editor.right_label" : "editor.left_label")}
+                                    getEditor={getSearchEditor}
+                                    onClose={() => setSearchOpen(false)}
+                                />
+                            )}
+                            <div className="min-h-0 flex-1">
+                                <ResizablePanelGroup orientation="vertical">
+                                    <ResizablePanel id="editors" defaultSize="70" minSize="20">
+                                        <ResizablePanelGroup orientation="horizontal">
+                                            <ResizablePanel id="left" defaultSize="50" minSize="15">
+                                                <EditorPane label={t("editor.left_label")}>
                                                     <CodeEditor
-                                                        value={right}
-                                                        onChange={onRightChange}
+                                                        ref={leftEditor}
+                                                        onFocus={() => setFocusedSide("left")}
+                                                        value={left}
+                                                        onChange={onLeftChange}
                                                         language={language}
                                                         scheme={scheme}
-                                                        decorations={decorations.right}
-                                                        ariaLabel={t("editor.right_label")}
+                                                        decorations={decorations.left}
+                                                        ariaLabel={t("editor.left_label")}
                                                     />
                                                 </EditorPane>
+                                            </ResizablePanel>
+                                            {comparing && (
+                                                <>
+                                                    <ResizableHandle />
+                                                    <ResizablePanel id="right" defaultSize="50" minSize="15">
+                                                        <EditorPane label={t("editor.right_label")}>
+                                                            <CodeEditor
+                                                                ref={rightEditor}
+                                                                onFocus={() => setFocusedSide("right")}
+                                                                value={right}
+                                                                onChange={onRightChange}
+                                                                language={language}
+                                                                scheme={scheme}
+                                                                decorations={decorations.right}
+                                                                ariaLabel={t("editor.right_label")}
+                                                            />
+                                                        </EditorPane>
+                                                    </ResizablePanel>
+                                                </>
+                                            )}
+                                        </ResizablePanelGroup>
+                                    </ResizablePanel>
+                                    {diffPanelVisible && (
+                                        <>
+                                            <ResizableHandle />
+                                            <ResizablePanel id="diff" defaultSize="30" minSize="10">
+                                                <DiffTable
+                                                    result={response?.result ?? null}
+                                                    onActivate={onActivateItem}
+                                                    filters={diffFilters}
+                                                    onFiltersChange={setDiffFilters}
+                                                />
                                             </ResizablePanel>
                                         </>
                                     )}
                                 </ResizablePanelGroup>
-                            </ResizablePanel>
-                            {diffPanelVisible && (
-                                <>
-                                    <ResizableHandle />
-                                    <ResizablePanel id="diff" defaultSize="30" minSize="10">
-                                        <DiffTable result={response?.result ?? null} />
-                                    </ResizablePanel>
-                                </>
-                            )}
-                        </ResizablePanelGroup>
+                            </div>
+                        </div>
                     )}
                 </main>
 

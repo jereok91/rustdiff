@@ -21,6 +21,13 @@ describe("matchShortcut", () => {
         expect(matchShortcut(key("/", { shift: true }))).toBe("showShortcuts");
     });
 
+    it("Ctrl+F abre la búsqueda propia y F3 navega sin modificador", () => {
+        expect(matchShortcut(key("f"))).toBe("search");
+        expect(matchShortcut(key("F3", { ctrl: false }))).toBe("findNext");
+        expect(matchShortcut(key("F3", { ctrl: false, shift: true }))).toBe("findPrevious");
+        expect(matchShortcut(key("F3", { ctrl: false, alt: true }))).toBeNull();
+    });
+
     it("acepta Cmd en macOS", () => {
         expect(matchShortcut(key("o", { ctrl: false, meta: true }))).toBe("openLeft");
     });
@@ -28,8 +35,6 @@ describe("matchShortcut", () => {
     it("ignora teclas sin modificador, con Alt o que no son nuestras", () => {
         expect(matchShortcut(key("o", { ctrl: false }))).toBeNull();
         expect(matchShortcut(key("o", { alt: true }))).toBeNull();
-        // Ctrl+F sin Shift es la búsqueda de CodeMirror (F4 la reemplaza).
-        expect(matchShortcut(key("f"))).toBeNull();
         expect(matchShortcut(key("x"))).toBeNull();
     });
 });

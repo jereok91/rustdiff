@@ -7,8 +7,10 @@
  *   2. En los bloques reemplazados, las líneas se emparejan por posición y
  *      se marcan los caracteres exactos que difieren con
  *      `commands.inlineCharRanges` (el mismo `inline_char_ranges` del núcleo).
- *   3. Resaltado semántico: la primera aparición del valor de cada `DiffItem`
- *      (y de su clave `"key"`) se marca con el color de su tipo.
+ *   3. Resaltado semántico: el valor de cada `DiffItem` (y su clave) se marca
+ *      con el color de su tipo. A diferencia de la GTK, que toma la primera
+ *      aparición cruda, se ancla por la ruta y se busca el token completo
+ *      (`lib/locate`).
  *
  * Todas las posiciones que salen de este módulo son offsets UTF-16 sobre el
  * texto completo, que es lo que entiende CodeMirror. El núcleo devuelve
@@ -17,6 +19,7 @@
 
 import { diffArrays } from "diff";
 import type { CharRange, DiffItem, DiffResult, InlineRanges } from "@/bindings";
+import { cleanSearchValue, locateItem, type TextRange } from "@/lib/locate";
 
 /** Tope de pares de líneas que piden rangos inline al backend por comparación. */
 export const MAX_INLINE_PAIRS = 500;
@@ -162,52 +165,8 @@ export function inlineMarks(lineStart: number, lineText: string, ranges: CharRan
     return marks;
 }
 
-/** Quita las comillas envolventes de un string JSON (`clean_search_value`). */
-export function cleanSearchValue(value: string): string {
-    const trimmed = value.trim();
-    if (trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')) {
-        return trimmed.slice(1, -1);
-    }
-    return trimmed;
-}
-
-/** Último segmento de una ruta de diff como nombre de clave (`extract_key_from_path`). */
-export function extractKeyFromPath(path: string): string {
-    // Atributo XML: `[@attr]`.
-    const attr = path.lastIndexOf("[@");
-    if (attr !== -1) {
-        const end = path.indexOf("]", attr);
-        if (end !== -1) {
-            return path.slice(attr + 2, end);
-        }
-    }
-    // Texto XML: `.[text]` al final.
-    if (path.endsWith("[text]")) {
-        let base = path;
-        while (base.endsWith(".[text]")) {
-            base = base.slice(0, -".[text]".length);
-        }
-        const parts = base.split(".");
-        return parts[parts.length - 1];
-    }
-    const parts = path.split(".");
-    const last = parts[parts.length - 1];
-    const bracket = last.lastIndexOf("[");
-    if (bracket > 0) {
-        return last.slice(0, bracket);
-    }
-    return last;
-}
-
-/** Primera aparición sin distinguir mayúsculas (como `CASE_INSENSITIVE` de GTK). */
-function firstOccurrence(text: string, needle: string): number {
-    const lowered = text.toLowerCase();
-    // Si bajar a minúsculas cambia longitudes, los offsets no sirven: búsqueda exacta.
-    if (lowered.length !== text.length) {
-        return text.indexOf(needle);
-    }
-    return lowered.indexOf(needle.toLowerCase());
-}
+// Las utilidades de búsqueda viven en `lib/locate`; se reexportan por compatibilidad.
+export { cleanSearchValue, extractKeyFromPath } from "@/lib/locate";
 
 export type Side = "left" | "right";
 
@@ -217,10 +176,9 @@ export function semanticMarks(text: string, result: DiffResult, side: Side): Mar
         side === "left" ? [...result.removed, ...result.changed] : [...result.added, ...result.changed];
     const marks: Mark[] = [];
 
-    const mark = (needle: string, kind: MarkKind) => {
-        const from = firstOccurrence(text, needle);
-        if (from !== -1) {
-            marks.push({ from, to: from + needle.length, kind });
+    const push = (range: TextRange | null, kind: MarkKind) => {
+        if (range && range.to > range.from) {
+            marks.push({ from: range.from, to: range.to, kind });
         }
     };
 
@@ -240,18 +198,14 @@ export function semanticMarks(text: string, result: DiffResult, side: Side): Mar
         } else {
             continue;
         }
-        if (!value) {
+        if (!value || cleanSearchValue(value) === "") {
             continue;
         }
-        const clean = cleanSearchValue(value);
-        if (clean === "") {
-            continue;
-        }
-        mark(clean, kind);
-        const key = extractKeyFromPath(item.path);
-        if (key !== "") {
-            mark(`"${key}"`, kind);
-        }
+        // Clave y valor anclados por la ruta (ver `lib/locate`), no la
+        // primera aparición cruda del texto.
+        const found = locateItem(text, item.path, value);
+        push(found.value, kind);
+        push(found.key, kind);
     }
     return marks;
 }

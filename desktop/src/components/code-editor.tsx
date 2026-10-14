@@ -5,11 +5,14 @@
  * `Compartment`s para cambiarlos sin recrear el editor (se conservan cursor,
  * scroll e historial de deshacer). Un `value` externo distinto del documento
  * (abrir archivo, Format) reemplaza el contenido entero.
+ *
+ * El padre recibe un `CodeEditorHandle` por `ref` para saltar a un rango
+ * (click en la tabla, búsqueda) sin pasar por el estado de React.
  */
 
-import { useEffect, useRef } from "react";
+import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
 import { basicSetup } from "codemirror";
-import { Compartment, EditorState, type Extension } from "@codemirror/state";
+import { Compartment, EditorSelection, EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { json } from "@codemirror/lang-json";
 import { xml } from "@codemirror/lang-xml";
@@ -18,7 +21,8 @@ import { oneDark } from "@codemirror/theme-one-dark";
 
 import type { ColorScheme } from "@/hooks/use-color-scheme";
 import type { EditorLanguage } from "@/lib/formats";
-import { diffDecorations, setDiffDecorations } from "@/lib/editor-decorations";
+import { diffDecorations, setDiffDecorations, setFlashRange } from "@/lib/editor-decorations";
+import type { TextRange } from "@/lib/locate";
 import type { SideDecorations } from "@/lib/line-diff";
 
 function languageExtension(language: EditorLanguage): Extension {
@@ -38,6 +42,20 @@ function themeExtension(scheme: ColorScheme): Extension {
     return scheme === "dark" ? oneDark : [];
 }
 
+/** Duración del destello tras un salto (coincide con la animación CSS). */
+const FLASH_MS = 1200;
+
+/** API imperativa del editor para el padre. */
+export type CodeEditorHandle = {
+    /** Texto actual del documento (puede ir por delante del `value` de React). */
+    getText: () => string;
+    /** Selección principal actual. */
+    getSelection: () => TextRange;
+    /** Selecciona `range`, lo centra en pantalla y opcionalmente lo destella. */
+    reveal: (range: TextRange, options?: { flash?: boolean }) => void;
+    focus: () => void;
+};
+
 export type CodeEditorProps = {
     value: string;
     onChange: (value: string) => void;
@@ -45,18 +63,73 @@ export type CodeEditorProps = {
     scheme: ColorScheme;
     decorations: SideDecorations;
     ariaLabel: string;
+    /** Se llama cuando el editor gana el foco (la búsqueda usa el último enfocado). */
+    onFocus?: () => void;
+    ref?: Ref<CodeEditorHandle>;
 };
 
-export function CodeEditor({ value, onChange, language, scheme, decorations, ariaLabel }: CodeEditorProps) {
+export function CodeEditor({
+    value,
+    onChange,
+    language,
+    scheme,
+    decorations,
+    ariaLabel,
+    onFocus,
+    ref,
+}: CodeEditorProps) {
     const hostRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
     const languageConf = useRef(new Compartment());
     const themeConf = useRef(new Compartment());
 
+    const onFocusRef = useRef(onFocus);
+    const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     useEffect(() => {
         onChangeRef.current = onChange;
-    }, [onChange]);
+        onFocusRef.current = onFocus;
+    }, [onChange, onFocus]);
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            getText: () => viewRef.current?.state.doc.toString() ?? "",
+            getSelection: () => {
+                const main = viewRef.current?.state.selection.main;
+                return main ? { from: main.from, to: main.to } : { from: 0, to: 0 };
+            },
+            reveal: (range, options) => {
+                const view = viewRef.current;
+                if (!view) {
+                    return;
+                }
+                const length = view.state.doc.length;
+                const from = Math.max(0, Math.min(range.from, length));
+                const to = Math.max(from, Math.min(range.to, length));
+                view.dispatch({
+                    selection: EditorSelection.single(from, to),
+                    effects: [
+                        EditorView.scrollIntoView(from, { y: "center" }),
+                        setFlashRange.of(options?.flash ? { from, to } : null),
+                    ],
+                });
+                if (flashTimer.current) {
+                    clearTimeout(flashTimer.current);
+                    flashTimer.current = null;
+                }
+                if (options?.flash) {
+                    flashTimer.current = setTimeout(() => {
+                        flashTimer.current = null;
+                        viewRef.current?.dispatch({ effects: setFlashRange.of(null) });
+                    }, FLASH_MS);
+                }
+            },
+            focus: () => viewRef.current?.focus(),
+        }),
+        [],
+    );
 
     // Creación única; los efectos de abajo sincronizan el resto de las props.
     useEffect(() => {
@@ -78,12 +151,18 @@ export function CodeEditor({ value, onChange, language, scheme, decorations, ari
                         if (update.docChanged) {
                             onChangeRef.current(update.state.doc.toString());
                         }
+                        if (update.focusChanged && update.view.hasFocus) {
+                            onFocusRef.current?.();
+                        }
                     }),
                 ],
             }),
         });
         viewRef.current = view;
         return () => {
+            if (flashTimer.current) {
+                clearTimeout(flashTimer.current);
+            }
             view.destroy();
             viewRef.current = null;
         };

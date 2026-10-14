@@ -100,6 +100,28 @@ describe("resaltado semántico", () => {
         expect(semanticMarks("1", added, "left")).toEqual([]);
     });
 
+    it("la marca de un valor corto no cae dentro de una clave (captura de F3)", () => {
+        // Antes: la primera aparición cruda de `b` estaba en `"nombre"`.
+        const left = '{"usuario":{"nombre":"ana","edad":30},"tags":["a","b"]}';
+        const result: DiffResult = {
+            ...EMPTY,
+            changed: [
+                { path: "$.tags[1]", kind: "Changed", left: '"b"', right: '"c"' },
+                { path: "$.usuario.edad", kind: "Changed", left: "30", right: "31" },
+            ],
+        };
+        const marks = semanticMarks(left, result, "left");
+        const valueB = left.indexOf('"b"') + 1;
+        expect(marks).toContainEqual({ from: valueB, to: valueB + 1, kind: "changed" });
+        const nombre = left.indexOf('"nombre"');
+        // Ninguna marca toca la clave `"nombre"` ni el valor `"ana"`.
+        for (const mark of marks) {
+            expect(mark.to <= nombre || mark.from >= left.indexOf('"ana"') + 5).toBe(true);
+        }
+        expect(marks).toContainEqual({ from: left.indexOf("30"), to: left.indexOf("30") + 2, kind: "changed" });
+        expect(marks).toContainEqual({ from: left.indexOf('"tags"'), to: left.indexOf('"tags"') + 6, kind: "changed" });
+    });
+
     it("el texto plano (line[N]) no usa resaltado semántico", () => {
         const result: DiffResult = {
             ...EMPTY,

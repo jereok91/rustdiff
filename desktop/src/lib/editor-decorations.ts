@@ -84,7 +84,34 @@ const diffField = StateField.define<DecorationSet>({
     provide: (field) => EditorView.decorations.from(field),
 });
 
+/**
+ * Destello sobre el rango al que salta un click en la tabla o la búsqueda:
+ * `null` lo apaga. Vive aparte de las decoraciones del diff para no
+ * reconstruirlas.
+ */
+export const setFlashRange = StateEffect.define<{ from: number; to: number } | null>();
+
+const FLASH_MARK = Decoration.mark({ class: "cm-diff-flash" });
+
+const flashField = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(value, tr) {
+        let next = value.map(tr.changes);
+        for (const effect of tr.effects) {
+            if (effect.is(setFlashRange)) {
+                const range = effect.value;
+                next =
+                    range && range.to > range.from && range.to <= tr.state.doc.length
+                        ? Decoration.set([FLASH_MARK.range(range.from, range.to)])
+                        : Decoration.none;
+            }
+        }
+        return next;
+    },
+    provide: (field) => EditorView.decorations.from(field),
+});
+
 /** Extensión a instalar en cada editor. */
 export function diffDecorations(): Extension {
-    return diffField;
+    return [diffField, flashField];
 }

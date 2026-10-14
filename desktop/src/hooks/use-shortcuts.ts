@@ -14,13 +14,20 @@ export type ShortcutAction =
     | "compare"
     | "format"
     | "toggleDiffPanel"
-    | "showShortcuts";
+    | "showShortcuts"
+    | "search"
+    | "findNext"
+    | "findPrevious";
 
 type KeyLike = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">;
 
 /** Traduce un evento de teclado a una acción; `null` si no es un atajo nuestro. */
 export function matchShortcut(event: KeyLike): ShortcutAction | null {
     const mod = event.ctrlKey || event.metaKey;
+    // F3 / Shift+F3: siguiente / anterior coincidencia de la búsqueda.
+    if (event.key === "F3" && !mod && !event.altKey) {
+        return event.shiftKey ? "findPrevious" : "findNext";
+    }
     if (!mod || event.altKey) {
         return null;
     }
@@ -31,8 +38,9 @@ export function matchShortcut(event: KeyLike): ShortcutAction | null {
     if (key === "enter" && !event.shiftKey) {
         return "compare";
     }
-    if (key === "f" && event.shiftKey) {
-        return "format";
+    if (key === "f") {
+        // Ctrl+F es la barra de búsqueda propia (le gana al panel de CodeMirror).
+        return event.shiftKey ? "format" : "search";
     }
     if (key === "d" && !event.shiftKey) {
         return "toggleDiffPanel";

@@ -42,3 +42,43 @@
 .cm-diff-changed {
     background-color: var(--diff-changed-inline);
 }
+
+/* Destello del rango al que salta un click en la tabla o la búsqueda. */
+@keyframes cm-diff-flash {
+    0%,
+    40% {
+        background-color: var(--diff-changed-inline);
+        outline: 2px solid var(--diff-changed);
+    }
+    100% {
+        background-color: transparent;
+        outline-color: transparent;
+    }
+}
+.cm-diff-flash {
+    border-radius: 2px;
+    animation: cm-diff-flash 1.2s ease-out;
+}
+
+/* Fragmentos resaltados dentro de las celdas Left/Right de la tabla
+ * (`markup_with_ranges` de la GTK: fondo saturado y negrita). */
+.diff-cell-inline-removed {
+    background-color: var(--diff-removed-inline);
+    font-weight: 600;
+    border-radius: 2px;
+}
+.diff-cell-inline-added {
+    background-color: var(--diff-added-inline);
+    font-weight: 600;
+    border-radius: 2px;
+}
+/* Fondo sutil por tipo en las celdas de la tabla (`.diff-added` & co. de la GTK). */
+.diff-row-Added {
+    background-color: rgba(46, 160, 67, 0.08);
+}
+.diff-row-Removed {
+    background-color: rgba(248, 81, 73, 0.08);
+}
+.diff-row-Changed {
+    background-color: rgba(210, 153, 34, 0.08);
+}

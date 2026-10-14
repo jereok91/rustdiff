@@ -1,9 +1,9 @@
 /*
  * Cableado del shell con el backend simulado: bienvenida, arranque con dos
- * archivos y resumen en la barra de estado.
+ * archivos, resumen en la barra de estado, click-to-jump y búsqueda Ctrl+F.
  */
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -26,6 +26,10 @@ beforeAll(() => {
         unobserve() {}
         disconnect() {}
     } as unknown as typeof ResizeObserver;
+    // jsdom no mide rangos de texto; CodeMirror los pide al hacer scroll.
+    const emptyRects = () => [] as unknown as DOMRectList;
+    Range.prototype.getClientRects ??= emptyRects;
+    Range.prototype.getBoundingClientRect ??= () => new DOMRect();
 });
 
 afterEach(cleanup);
@@ -72,5 +76,53 @@ describe("App", () => {
         expect(await screen.findByText("Enable comparison")).toBeTruthy();
         expect(screen.getAllByTestId("code-editor")).toHaveLength(1);
         expect(screen.getByTestId("status").textContent).toContain("Loaded a.json");
+    });
+    /** Arranca con dos documentos y espera a que la tabla tenga filas. */
+    async function startWithTwoDocs() {
+        mocks.startupFiles.mockResolvedValue([
+            { path: "/a.json", name: "a.json", content: '{"usuario":{"nombre":"ana","edad":30},"tags":["a","b"]}' },
+            { path: "/b.json", name: "b.json", content: '{"usuario":{"nombre":"ana","edad":31},"tags":["a","c"]}' },
+        ]);
+        mocks.diffDocuments.mockResolvedValue({
+            format: "Json",
+            result: {
+                added: [],
+                removed: [],
+                changed: [{ path: "$.tags[1]", kind: "Changed", left: '"b"', right: '"c"' }],
+            },
+        });
+        render(<App />);
+        await waitFor(() => expect(screen.getByTestId("diff-table").textContent).toContain("$.tags[1]"), {
+            timeout: 2000,
+        });
+    }
+
+    it("click en una fila selecciona el valor en los dos editores", async () => {
+        await startWithTwoDocs();
+        fireEvent.click(screen.getByText("$.tags[1]"));
+        // El destello marca el token correcto en cada editor (no la `b` de "nombre").
+        const flashes = document.querySelectorAll(".cm-diff-flash");
+        expect([...flashes].map((f) => f.textContent)).toEqual(["b", "c"]);
+    });
+
+    it("Ctrl+F abre la búsqueda: contador, siguiente/anterior con wrap y Escape", async () => {
+        await startWithTwoDocs();
+        fireEvent.keyDown(window, { key: "f", ctrlKey: true });
+        const input = await screen.findByPlaceholderText("Find in document");
+        fireEvent.change(input, { target: { value: "a" } });
+        const counter = screen.getByTestId("search-counter");
+        // `a` aparece 6 veces en el izquierdo: usu-a-rio, "ana" (2), "edad", "tags", "a".
+        await waitFor(() => expect(counter.textContent).toBe("1 of 6"));
+        fireEvent.keyDown(input, { key: "Enter" });
+        expect(counter.textContent).toBe("2 of 6");
+        fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+        fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+        expect(counter.textContent).toBe("6 of 6");
+        fireEvent.keyDown(window, { key: "F3" });
+        expect(counter.textContent).toBe("1 of 6");
+        fireEvent.change(input, { target: { value: "zzz" } });
+        await waitFor(() => expect(counter.textContent).toBe("No results"));
+        fireEvent.keyDown(input, { key: "Escape" });
+        expect(screen.queryByTestId("search-bar")).toBeNull();
     });
 });
