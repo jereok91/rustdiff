@@ -106,6 +106,24 @@ F6 grafo, F7 sistema de diseño, F8 empaquetado y retiro del front GTK.
   `members` (lock y `target` compartidos) y el CI usa `--workspace` después de compilar el
   frontend.
 
+### F2–F8 — resto de la migración (autorizadas en L13)
+
+**S9 — Completar todas las fases; la revisión final la hace el usuario.**
+Pedido literal: *"finaliza todas las interaciones  la final de la migracion yo hago una revision cmpleta de la app"*.
+Consecuencia: cada fase se implementa, se verifica (fmt, clippy, tests, `pnpm build`, smoke
+con captura) y se commitea sin esperar aprobación intermedia. La review nativa por candidato
+queda explícitamente delegada a la revisión completa del usuario al final.
+
+| ID | Tarea | Spec | Ruta | Commit |
+|----|-------|------|------|--------|
+| T10 | F2: contrato IPC completo (formato, pretty-print, diff, rangos inline, export, grafo, archivos, settings, historial) con tipos TS generados y errores con código | S2, S8 | worker | |
+| T11 | F3: Tailwind + shadcn/ui, shell de la app, welcome, editores CodeMirror 6, auto-compare 500 ms, formateo, resaltado de diff, i18n (i18next, en/es) | S2, S4 | worker | |
+| T12 | F4: tabla de diferencias con filtros, click-to-jump y búsqueda Ctrl+F | S2 | worker | |
+| T13 | F5: historial, export txt/html, diálogo de salida, escala de texto e idioma | S2, S8 | worker | |
+| T14 | F6: vista de grafo en canvas 2D sobre el layout de `graph.rs` | S2 | worker | |
+| T15 | F7: sistema de diseño (tokens, claro/oscuro, accesibilidad) | S3 | worker | |
+| T16 | F8: empaquetado (Flatpak, deb, macOS, install.sh), retiro del front GTK y de crates.io, docs | S1, D4, D7 | worker | |
+
 ## Log
 
 **L1** (pedido original, verbatim):
@@ -300,3 +318,10 @@ Queda en F1 lo barato: `src-tauri` + front mínimo, medir bundle y arranque, y r
 - El estado `escalated` deja la autoridad de esa lineage **sin quemar** y sin ruta de
   corrección ofrecida: los arreglos son trabajo nuevo y sin revisar, y qué hacer con esa
   lineage es decisión del humano.
+
+**L13** (verbatim):
+> finaliza todas las interaciones  la final de la migracion yo hago una revision cmpleta de la app
+
+Lectura: F2–F8 autorizadas de punta a punta; la review nativa por candidato se omite por
+decisión explícita del usuario, que revisa la app completa al final. D3 (i18next), D4
+(retirar la app GTK en F8) y D6 (tipos generados) se toman con la recomendación.
