@@ -56,6 +56,8 @@ name = "rustdiff"
 path = "src/main.rs"
 
 [dependencies]
+# Para dejar rastro del parche de arranque de WebKit (ver lib.rs).
+tracing = "0.1"
 rustdiff-core    = { path = "../../crates/rustdiff-core" }
 rustdiff-persist = { path = "../../crates/rustdiff-persist" }
 
