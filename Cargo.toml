@@ -30,7 +30,12 @@ members  = ["crates/*", "desktop/src-tauri"]
 # Un `cargo test` pelado en la raiz corre lo mismo que el CI. Sin esto Cargo
 # testea solo el paquete del directorio actual y los tests del nucleo
 # quedarian afuera sin que nadie lo note.
-default-members = [".", "crates/*", "desktop/src-tauri"]
+#
+# `desktop/src-tauri` queda FUERA a proposito: compilarlo arrastra todo Tauri y
+# WebKitGTK (~200 crates) y exige las libs de desarrollo de WebKit, asi que
+# incluirlo dejaria a quien trabaja solo en la app GTK sin poder correr los
+# tests. El CI lo cubre con --workspace.
+default-members = [".", "crates/*"]
 
 [workspace.package]
 version      = "0.4.0"

@@ -262,3 +262,41 @@ Queda en F1 lo barato: `src-tauri` + front mínimo, medir bundle y arranque, y r
   regenerar `cargo-sources.json` (sigue diferido de L8: el manifest Flatpak no se tocó porque
   WebKit ya está resuelto desde L9).
 - S4 se respeta: F1 no tocó ni una línea de diseño; Tailwind y shadcn/ui siguen siendo F3/F7.
+
+**L12** (review nativa de F1, verificación independiente y los arreglos que salieron de ahí):
+
+- **La review del slice de código cerró en `escalated`, no en `approved`** (lineage
+  `review-6fa13d7ad3d22ed0`): causa `unknown_causality` sobre R1-001, y el refuter del
+  proveedor **corroboró R3-1 y R4-BUILD-01** apuntando a `Cargo.toml:29/33`,
+  `CLAUDE.md:45/52`, este documento, `ci.yml` y `desktop/.gitignore:2`.
+- **Limitación real del presupuesto del revisor**: los dos primeros intentos murieron con
+  `lens_context_budget_exceeded` (candidato rama-vs-main, y candidato F1 completo). De las
+  ~6.3k líneas del rango de F1, **6.123 son lockfiles** (`Cargo.lock` +5.259,
+  `pnpm-lock.yaml` +864) más iconos binarios. El candidato que sí entró fue el slice de
+  código: 22 archivos / 1.836 líneas, sin el churn del `Cargo.lock`. Conclusión para F2+:
+  **una regeneración de lockfile de este tamaño no cabe en un candidato de review**; el
+  churn mecánico va en su propio commit base y se revisa el código.
+- **Verificación independiente** (`gentle-ai-verify`): veredicto `findings`.
+  - **F1 (alto)**: `desktop/src-tauri` **estaba en `default-members`**, contradiciendo
+    `CLAUDE.md` y el propio mensaje del commit. Un `cargo test` pelado compilaba todo
+    Tauri/WebKitGTK y exigía las libs de WebKit.
+  - **F2 (medio)**: la razón documentada del orden de build era **falsa**: `tauri-codegen`
+    solo valida `frontendDist` cuando `custom-protocol` está activo, así que `cargo test`
+    y `clippy` no necesitan `desktop/dist`.
+  - **F3**: los tests no cubren el binding de argumentos — renombrar `left` compila y rompe
+    la app en runtime.
+  - **F4**: falta el corto-circuito de entrada vacía que la GTK hace antes de tocar el
+    núcleo (con entradas no vacías la paridad es exacta).
+  - **F5**: el script podía dejar huérfanos los procesos de WebKit y no limpiaba
+    `WAYLAND_SOCKET`. **F6**: comentario colgado en el manifiesto.
+- **Arreglado en este commit**: `desktop/src-tauri` fuera de `default-members` con la razón
+  real (compila la pila Tauri y exige las libs de WebKit; el CI lo cubre con `--workspace`);
+  la afirmación sobre el orden de build corregida; el test del payload extendido a la
+  nulidad de `left`/`right` en añadidos y eliminados, más un comentario que declara que el
+  nombre del comando y sus argumentos los cubre el smoke e2e y no un test unitario; el script
+  con grupo de procesos propio (`setsid` + `kill -TERM -- -PID`), `WAYLAND_SOCKET` limpio y
+  `trap` antes del `mktemp`; el comentario colgado afuera.
+- **Diferido a F3**: el corto-circuito de entrada vacía es UX del frontend, no del núcleo.
+- El estado `escalated` deja la autoridad de esa lineage **sin quemar** y sin ruta de
+  corrección ofrecida: los arreglos son trabajo nuevo y sin revisar, y qué hacer con esa
+  lineage es decisión del humano.

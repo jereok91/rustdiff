@@ -56,16 +56,10 @@ serde_json = "1"
 # ─────────────────────────────────────────────
 [features]
 # Produccion: el webview sirve los assets embebidos de `frontendDist` en vez de
-# apuntar al dev server. En tauri 2.11 la decision es `dev = !custom_protocol`
+# apuntar al dev server. En tauri 2.11+ la decision es `dev = !custom_protocol`
 # (tauri/build.rs), asi que SIN esta feature un `cargo build --release` arranca
 # apuntando a http://localhost:1420 y muestra "Connection refused" en la
 # ventana. El CLI de Tauri la activa al construir; declararla aca la hace
 # explicita y deja el camino abierto para `cargo build --features custom-protocol`.
 # NO BORRAR.
 custom-protocol = ["tauri/custom-protocol"]
-
-# ─────────────────────────────────────────────
-# PERFIL DE DESARROLLO
-# ─────────────────────────────────────────────
-# El default del workspace (opt-level = 1) deja el arranque del webview
-# lento al medir; el spike se mide en release.

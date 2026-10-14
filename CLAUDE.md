@@ -42,14 +42,14 @@ src/                       the GTK4 app (app.rs, ui/)
 
 Both frontends coexist while the migration to Tauri runs (branch `feat/tauri-migration`, plan in `odd/tasks/tauri-migration.md`). In F8 the GTK app is deleted and `desktop/*` moves to the repository root.
 
-**Build order matters:** `tauri-build` validates that `desktop/dist` exists when it compiles the shell, so a workspace-wide cargo command fails until the frontend is built:
+**Build order matters for production builds only:** `tauri-codegen` validates that `desktop/dist` exists at the moment the production assets are embedded, and that only happens with the `custom-protocol` feature on (`pnpm tauri build`, or `cargo build --release --features custom-protocol`). Dev builds, `cargo test` and `cargo clippy` do not need `desktop/dist`. CI still builds the frontend before the cargo steps so the production path is exercised end to end:
 
 ```bash
 cd desktop && pnpm install && pnpm build   # once, and after every frontend change
-cd .. && cargo test --workspace            # now the Tauri member builds too
+cd .. && cargo test --workspace            # compiles the Tauri member too
 ```
 
-`desktop/src-tauri` is a workspace member but **not** a default member, precisely so that GTK-only work does not depend on the frontend being built. CI builds the frontend first and then uses `--workspace`.
+`desktop/src-tauri` is a workspace member but **not** a default member: compiling it pulls the whole Tauri/WebKitGTK stack and needs the WebKit development libraries, so a bare `cargo test` stays usable for GTK-only work. CI uses `--workspace` to cover it.
 
 Module boundaries are strict and one-directional: `parser` → `diff_engine` → `graph`/`export` → the frontend, with `storage` and `settings` as independent, orthogonal services that depend on the core. `rustdiff-core` must stay free of `gtk4`, `libadwaita`, `sourceview5`, `cairo` and `tauri` — `crates/rustdiff-core/tests/no_ui_dependencies.rs` fails if it isn't, so the logic survives any future change of GUI toolkit.
 

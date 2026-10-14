@@ -42,6 +42,14 @@ fn resolve_format(explicit: Option<&str>, left: &str) -> Result<Format, String> 
 ///
 /// Los errores son texto porque el frontend es quien los traduce (D3); la
 /// taxonomia de errores con codigo llega en F2 junto con los tipos generados.
+///
+/// El nombre del comando y el de sus argumentos son parte del contrato con el
+/// frontend y **no** los cubre ningun test unitario: los tests llaman a esta
+/// funcion como Rust, sin pasar por `generate_handler!` ni por el binding de
+/// argumentos (renombrar `left` a `left_document` compilaria y romperia la app).
+/// Quien ejercita ese borde es el smoke e2e
+/// (`desktop/scripts/smoke-headless.sh`), que corre la app real y deja una
+/// captura con el diff renderizado.
 #[tauri::command]
 fn diff_documents(left: String, right: String, format: Option<String>) -> Result<DiffResponse, String> {
     let fmt = resolve_format(format.as_deref(), &left)?;
@@ -140,5 +148,21 @@ mod tests {
         assert!(cambiado["right"].is_string());
         assert!(serializado["result"]["added"].is_array());
         assert!(serializado["result"]["removed"].is_array());
+
+        // Los dos lados nulos tambien son contrato: el frontend los muestra
+        // como "—" y los tipa `string | null`. Un `skip_serializing_if` los
+        // borraria del JSON y la UI los leeria como `undefined`.
+        let anadido = &serializado["result"]["added"][0];
+        assert_eq!(anadido["kind"], json!("Added"));
+        assert!(anadido["left"].is_null(), "un anadido no tiene lado izquierdo");
+        assert!(anadido["right"].is_string());
+
+        let con_eliminado =
+            diff_documents(r#"{"a":1,"b":2}"#.into(), r#"{"a":1}"#.into(), Some("json".into())).unwrap();
+        let serializado: Value = serde_json::to_value(&con_eliminado).unwrap();
+        let eliminado = &serializado["result"]["removed"][0];
+        assert_eq!(eliminado["kind"], json!("Removed"));
+        assert!(eliminado["left"].is_string());
+        assert!(eliminado["right"].is_null(), "un eliminado no tiene lado derecho");
     }
 }

@@ -33,6 +33,30 @@ done
 
 mkdir -p "$SALIDA"
 
+# ── Estado y limpieza ────────────────────────
+# La limpieza se declara antes de crear nada: si algo falla entre el mktemp y
+# el trap, el directorio temporal no queda colgado.
+RUNTIME=""
+SWAY_PID=""
+APP_PID=""
+# `setsid` pone a cada proceso al frente de su propio grupo, así la limpieza
+# mata también a los hijos de WebKit (WebKitWebProcess y compañía) y no los
+# deja huérfanos.
+LIDER=""
+command -v setsid >/dev/null && LIDER="setsid"
+
+limpiar() {
+    local pid
+    for pid in "$APP_PID" "$SWAY_PID"; do
+        [[ -z "$pid" ]] && continue
+        kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+    done
+    [[ -n "$SWAY_PID" ]] && wait "$SWAY_PID" 2>/dev/null || true
+    [[ -n "$RUNTIME" ]] && rm -rf "$RUNTIME"
+    return 0
+}
+trap limpiar EXIT
+
 # ── Aislamiento ──────────────────────────────
 # Un XDG_RUNTIME_DIR propio evita chocar con la sesión del usuario (su sway, su
 # socket wayland-1 y su SWAYSOCK): el smoke tiene que poder correr con la
@@ -42,10 +66,12 @@ chmod 700 "$RUNTIME"
 export XDG_RUNTIME_DIR="$RUNTIME"
 export WLR_BACKENDS=headless
 export WLR_LIBINPUT_NO_DEVICES=1
-# Sin esto GTK puede elegir X11 (DISPLAY) y la ventana aparece en el escritorio
-# del usuario en vez del compositor headless.
+# Sin esto GTK puede elegir X11 (DISPLAY) o un socket heredado (WAYLAND_SOCKET)
+# y la ventana aparece en el escritorio del usuario en vez del compositor
+# headless.
 unset DISPLAY
 unset WAYLAND_DISPLAY
+unset WAYLAND_SOCKET
 unset SWAYSOCK
 
 # El backend headless de wlroots no tiene GPU ni dmabuf: sin estos dos switches
@@ -54,20 +80,10 @@ unset SWAYSOCK
 # la app, son parte del entorno sintetico (en un escritorio real no hacen falta).
 export WEBKIT_DISABLE_DMABUF_RENDERER=1
 export WEBKIT_DISABLE_COMPOSITING_MODE=1
-
-SWAY_PID=""
-APP_PID=""
-
-limpiar() {
-    [[ -n "$APP_PID" ]] && kill "$APP_PID" 2>/dev/null || true
-    [[ -n "$SWAY_PID" ]] && kill "$SWAY_PID" 2>/dev/null || true
-    [[ -n "$SWAY_PID" ]] && wait "$SWAY_PID" 2>/dev/null || true
-    rm -rf "$RUNTIME"
-}
-trap limpiar EXIT
+export GDK_BACKEND=wayland
 
 printf 'output HEADLESS-1 resolution 1280x800\n' >"$RUNTIME/sway.conf"
-sway -c "$RUNTIME/sway.conf" >"$SALIDA/sway.log" 2>&1 &
+$LIDER sway -c "$RUNTIME/sway.conf" >"$SALIDA/sway.log" 2>&1 &
 SWAY_PID=$!
 
 # sway nombra el socket solo (wayland-0/1/2 según lo que esté libre), así que se
@@ -91,7 +107,7 @@ export SWAYSOCK="$SOCKET_SWAY"
 # ── Arranque medido ──────────────────────────
 # El cronómetro mide proceso -> ventana mapeada, no proceso -> proceso vivo.
 INICIO_MS=$(date +%s%3N)
-"$BIN" >"$SALIDA/app.log" 2>&1 &
+$LIDER "$BIN" >"$SALIDA/app.log" 2>&1 &
 APP_PID=$!
 
 VENTANA=""
