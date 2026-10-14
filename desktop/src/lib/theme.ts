@@ -1,9 +1,12 @@
 /*
  * Tema claro / oscuro / sistema.
  *
- * `system` (por defecto) sigue `prefers-color-scheme`; `light` y `dark` lo
- * fijan. La elección vive en `localStorage`: las preferencias del backend
- * (`settings.json`) no tienen campo de tema y F7 no toca el backend.
+ * `dark` es el predeterminado (el sistema de diseño nace oscuro, ver
+ * `docs/design-system.md`); `light` lo fija en claro y `system` sigue
+ * `prefers-color-scheme`. La elección vive en `localStorage`: las
+ * preferencias del backend (`settings.json`) no tienen campo de tema.
+ * `index.html` repite esta resolución en un script en línea para que la
+ * primera pintura ya salga con el tema correcto.
  *
  * Aplicar un esquema = poner o sacar la clase `.dark` en `<html>` (la que
  * usan los tokens y shadcn/ui) y fijar `color-scheme` para que scrollbars y
@@ -16,6 +19,8 @@ export type ColorScheme = "light" | "dark";
 export const THEME_STORAGE_KEY = "rustdiff.theme";
 export const THEME_SETTINGS: readonly ThemeSetting[] = ["system", "light", "dark"];
 export const DARK_QUERY = "(prefers-color-scheme: dark)";
+/** Tema sin elección guardada (o con una ilegible). */
+export const DEFAULT_THEME_SETTING: ThemeSetting = "dark";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
@@ -29,14 +34,14 @@ function defaultStorage(): StorageLike | null {
 }
 
 export function normalizeThemeSetting(value: string | null | undefined): ThemeSetting {
-    return value === "light" || value === "dark" ? value : "system";
+    return value === "light" || value === "dark" || value === "system" ? value : DEFAULT_THEME_SETTING;
 }
 
 export function readThemeSetting(storage: StorageLike | null = defaultStorage()): ThemeSetting {
     try {
         return normalizeThemeSetting(storage?.getItem(THEME_STORAGE_KEY));
     } catch {
-        return "system";
+        return DEFAULT_THEME_SETTING;
     }
 }
 

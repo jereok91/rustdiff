@@ -1,10 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark" style="color-scheme: dark">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="icon" type="image/svg+xml" href="/com.digitalgex.RustDiff.svg" />
         <title>RustDiff</title>
+        <script>
+            // Primera pintura sin parpadeo: la misma resolución que `lib/theme.ts`
+            // (oscuro por defecto; "light" fija claro; "system" sigue al sistema).
+            try {
+                var t = localStorage.getItem("rustdiff.theme");
+                var dark = t === "light" ? false : t === "system" ? matchMedia("(prefers-color-scheme: dark)").matches : true;
+                document.documentElement.classList.toggle("dark", dark);
+                document.documentElement.style.colorScheme = dark ? "dark" : "light";
+            } catch (e) {
+                /* sin almacenamiento: queda el oscuro de la etiqueta <html> */
+            }
+        </script>
     </head>
     <body>
         <div id="root"></div>

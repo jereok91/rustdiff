@@ -114,53 +114,64 @@ export function SearchBar({ text, targetLabel, getEditor, onClose, ref }: Search
 
     return (
         <div
-            className="bg-card text-card-foreground flex h-(--toolbar-height) shrink-0 items-center gap-1.5 border-b px-2"
+            className="bg-card text-card-foreground flex h-(--toolbar-height) shrink-0 items-center gap-2 border-b px-3"
             role="search"
             data-testid="search-bar"
         >
-            <Search className="text-muted-foreground size-4 shrink-0" aria-hidden />
-            <Input
-                ref={inputRef}
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                        event.preventDefault();
-                        go(event.shiftKey ? "prev" : "next");
-                    } else if (event.key === "Escape") {
-                        event.preventDefault();
-                        close();
-                    }
-                }}
-                placeholder={t("search.placeholder")}
-                aria-label={t("search.placeholder")}
-                className="w-64"
-            />
+            <div className="relative">
+                <Search
+                    className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2"
+                    aria-hidden
+                />
+                <Input
+                    ref={inputRef}
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                            event.preventDefault();
+                            go(event.shiftKey ? "prev" : "next");
+                        } else if (event.key === "Escape") {
+                            event.preventDefault();
+                            close();
+                        }
+                    }}
+                    placeholder={t("search.placeholder")}
+                    aria-label={t("search.placeholder")}
+                    className="w-64 pl-8 text-caption"
+                />
+            </div>
             <span
-                className="text-muted-foreground min-w-24 text-caption tabular-nums"
+                className="text-muted-foreground min-w-24 text-caption tabular"
                 role="status"
                 aria-live="polite"
                 data-testid="search-counter"
             >
                 {counter}
             </span>
-            <IconButton
-                label={t("search.prev")}
-                tooltip={`${t("search.prev")} (Shift+Enter)`}
-                onClick={() => go("prev")}
-                disabled={matches.length === 0}
-            >
-                <ChevronUp />
-            </IconButton>
-            <IconButton
-                label={t("search.next")}
-                tooltip={`${t("search.next")} (Enter)`}
-                onClick={() => go("next")}
-                disabled={matches.length === 0}
-            >
-                <ChevronDown />
-            </IconButton>
+            <div className="flex">
+                <IconButton
+                    variant="outline"
+                    className="rounded-r-none"
+                    label={t("search.prev")}
+                    tooltip={`${t("search.prev")} (Shift+Enter)`}
+                    onClick={() => go("prev")}
+                    disabled={matches.length === 0}
+                >
+                    <ChevronUp />
+                </IconButton>
+                <IconButton
+                    variant="outline"
+                    className="-ml-px rounded-l-none"
+                    label={t("search.next")}
+                    tooltip={`${t("search.next")} (Enter)`}
+                    onClick={() => go("next")}
+                    disabled={matches.length === 0}
+                >
+                    <ChevronDown />
+                </IconButton>
+            </div>
             <span className="text-muted-foreground ml-1 flex-1 truncate text-caption">{targetLabel}</span>
             <IconButton label={t("search.close")} onClick={close}>
                 <X />

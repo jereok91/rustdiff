@@ -27,6 +27,7 @@
 
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FileCode, FolderOpen } from "lucide-react";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 
 import { commands, type DiffItem, type DiffResponse, type FileContents, type Format } from "@/bindings";
@@ -36,6 +37,7 @@ import { DiffTable } from "@/components/diff-table";
 import { type ExitChoice, ExitDialog } from "@/components/exit-dialog";
 import { GraphView } from "@/components/graph-view";
 import { HistorySidebar } from "@/components/history-sidebar";
+import { IconButton } from "@/components/ui/icon-button";
 import { SearchBar, type SearchBarHandle } from "@/components/search-bar";
 import { ShortcutsDialog } from "@/components/shortcuts-dialog";
 import { StatusBar } from "@/components/status-bar";
@@ -66,6 +68,7 @@ import { itemJumpTargets } from "@/lib/locate";
 import { toast } from "@/lib/toast";
 import { uiScalePercent } from "@/lib/ui-scale";
 import { type EditorSnapshot, hasUnsavedContent } from "@/lib/unsaved";
+import { lineCount } from "@/lib/text-stats";
 
 type Side = "left" | "right";
 
@@ -94,6 +97,8 @@ export default function App() {
     const [historyRefresh, setHistoryRefresh] = useState(0);
     const [exitOpen, setExitOpen] = useState(false);
     const [graphOpen, setGraphOpen] = useState(false);
+    // Nombre del archivo abierto en cada panel (solo para la cabecera del panel).
+    const [fileNames, setFileNames] = useState<Record<Side, string | null>>({ left: null, right: null });
     const preferences = usePreferences();
 
     const leftEditor = useRef<CodeEditorHandle>(null);
@@ -276,6 +281,7 @@ export default function App() {
     const loadFile = useCallback(
         (side: Side, file: FileContents) => {
             setView("editors");
+            setFileNames((names) => ({ ...names, [side]: file.name }));
             if (side === "left") {
                 latest.current.left = file.content;
                 setLeft(file.content);
@@ -411,6 +417,7 @@ export default function App() {
                 latest.current.right = session.right_content;
                 setLeft(session.left_content);
                 setRight(session.right_content);
+                setFileNames({ left: null, right: null });
                 savedSnapshot.current = { left: session.left_content, right: session.right_content };
                 scheduleCompare();
                 notify(restoredStatus(session));
@@ -634,6 +641,9 @@ export default function App() {
     }, [closeGraph, loadFile]);
 
     const language = useMemo(() => editorLanguage(formatChoice, detected), [formatChoice, detected]);
+    const leftLines = useMemo(() => lineCount(left), [left]);
+    const rightLines = useMemo(() => lineCount(right), [right]);
+    const formatName = detected ? formatDisplayName(detected) : null;
 
     return (
         <TooltipProvider>
@@ -654,6 +664,8 @@ export default function App() {
                     onToggleHistory={() => setHistoryOpen((open) => !open)}
                     graphVisible={graphOpen}
                     onToggleGraph={toggleGraph}
+                    scheme={scheme}
+                    onToggleScheme={() => theme.setSetting(scheme === "dark" ? "light" : "dark")}
                     menu={{
                         onExport: (kind) => void exportTo(kind),
                         onShowShortcuts: () => setShortcutsOpen(true),
@@ -700,7 +712,14 @@ export default function App() {
                                         <ResizablePanel id="editors" defaultSize="70" minSize="20">
                                             <ResizablePanelGroup orientation="horizontal">
                                                 <ResizablePanel id="left" defaultSize="50" minSize="15">
-                                                    <EditorPane label={t("editor.left_label")}>
+                                                    <EditorPane
+                                                        side="left"
+                                                        label={t("editor.left_label")}
+                                                        fileName={fileNames.left}
+                                                        meta={{ format: formatName, lines: leftLines }}
+                                                        openLabel={t("header.open_left_tooltip")}
+                                                        onOpen={() => void openInto("left")}
+                                                    >
                                                         <CodeEditor
                                                             ref={leftEditor}
                                                             onFocus={() => setFocusedSide("left")}
@@ -717,7 +736,14 @@ export default function App() {
                                                     <>
                                                         <ResizableHandle />
                                                         <ResizablePanel id="right" defaultSize="50" minSize="15">
-                                                            <EditorPane label={t("editor.right_label")}>
+                                                            <EditorPane
+                                                                side="right"
+                                                                label={t("editor.right_label")}
+                                                                fileName={fileNames.right}
+                                                                meta={{ format: formatName, lines: rightLines }}
+                                                                openLabel={t("header.open_right_tooltip")}
+                                                                onOpen={() => void openInto("right")}
+                                                            >
                                                                 <CodeEditor
                                                                     ref={rightEditor}
                                                                     onFocus={() => setFocusedSide("right")}
@@ -768,7 +794,7 @@ export default function App() {
                     </main>
                 </div>
 
-                <StatusBar message={status} />
+                <StatusBar message={status} format={response ? formatName : null} />
                 <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
                 <ExitDialog
                     open={exitOpen}
@@ -781,12 +807,51 @@ export default function App() {
     );
 }
 
-function EditorPane({ label, children }: { label: string; children: ReactNode }) {
+/**
+ * Panel de un documento con la cabecera del `code-pane.tsx` del prototipo:
+ * letra A/B, archivo (o el nombre del panel), formato y líneas, y "abrir".
+ */
+function EditorPane({
+    side,
+    label,
+    fileName,
+    meta,
+    openLabel,
+    onOpen,
+    children,
+}: {
+    side: Side;
+    label: string;
+    fileName: string | null;
+    meta: { format: string | null; lines: number };
+    openLabel: string;
+    onOpen: () => void;
+    children: ReactNode;
+}) {
+    const { t } = useTranslation();
     return (
-        <section className="flex h-full min-h-0 flex-col" aria-label={label}>
-            <div className="bg-card text-muted-foreground shrink-0 border-b px-3 py-1 text-caption font-semibold tracking-wide uppercase">
-                {label}
-            </div>
+        <section className="bg-editor @container flex h-full min-h-0 flex-col" aria-label={label}>
+            <header className="flex h-10 shrink-0 items-center gap-2 border-b pr-1.5 pl-3">
+                <span
+                    aria-hidden
+                    className="bg-muted text-muted-foreground grid size-5 shrink-0 place-items-center rounded font-mono text-caption font-semibold"
+                >
+                    {side === "left" ? "A" : "B"}
+                </span>
+                <FileCode className="text-muted-foreground size-4 shrink-0" aria-hidden />
+                <span className="min-w-0 truncate text-body font-medium" title={fileName ?? label}>
+                    {fileName ?? label}
+                </span>
+                <span className="text-muted-foreground hidden shrink-0 text-caption tabular @md:inline">
+                    {meta.format ? `${meta.format} · ` : ""}
+                    {t("editor.lines", { count: meta.lines })}
+                </span>
+                <div className="ml-auto flex shrink-0 items-center">
+                    <IconButton label={openLabel} className="size-7" onClick={onOpen}>
+                        <FolderOpen />
+                    </IconButton>
+                </div>
+            </header>
             <div className="min-h-0 flex-1">{children}</div>
         </section>
     );

@@ -1,16 +1,21 @@
 /*
- * Entrada de estilos: Tailwind v4 + shadcn/ui (new-york).
+ * Entrada de estilos: Tailwind v4 + shadcn/ui (new-york) + Geist.
  *
  * Los valores viven todos en `styles/tokens.css` (fuente única, claro y
- * oscuro). Este archivo solo los expone a Tailwind (`@theme inline`), define
- * las utilidades de foco y la base. Referencia: `docs/design-system.md`.
+ * oscuro). Este archivo solo los expone a Tailwind (`@theme inline`), carga
+ * las fuentes, define las utilidades de foco y la base. Referencias:
+ * `docs/design-system.md` y el prototipo `docs/NuevaUX/rustdiff-ui/`.
  */
 
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Geist y Geist Mono autoalojadas: sin CDN, funcionan dentro del sandbox de Flatpak. */
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 @import "./styles/tokens.css";
 
-@custom-variant dark (&:is(.dark *));
+/* `.dark` (app) o `[data-theme="dark"]` (guía visual) activan el tema oscuro. */
+@custom-variant dark (&:is(.dark *, [data-theme="dark"] *));
 
 @theme inline {
     --font-sans: var(--font-family-sans);
@@ -28,11 +33,13 @@
     --text-display: var(--font-size-display);
     --text-display--line-height: var(--line-height-display);
 
+    /* Radios (derivados de --radius) */
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) + 4px);
 
+    /* shadcn */
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
@@ -52,9 +59,27 @@
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
+
+    /* Diff */
     --color-diff-added: var(--diff-added);
+    --color-diff-added-foreground: var(--diff-added-foreground);
     --color-diff-removed: var(--diff-removed);
+    --color-diff-removed-foreground: var(--diff-removed-foreground);
     --color-diff-changed: var(--diff-changed);
+    --color-diff-changed-foreground: var(--diff-changed-foreground);
+
+    /* Sintaxis */
+    --color-syntax-key: var(--syntax-key);
+    --color-syntax-string: var(--syntax-string);
+    --color-syntax-number: var(--syntax-number);
+    --color-syntax-literal: var(--syntax-literal);
+    --color-syntax-punct: var(--syntax-punct);
+
+    /* Superficies */
+    --color-editor: var(--editor);
+    --color-gutter: var(--gutter);
+    --color-gutter-foreground: var(--gutter-foreground);
+    --color-titlebar: var(--titlebar);
 }
 
 /*
@@ -78,6 +103,10 @@
     }
 }
 
+@utility tabular {
+    font-variant-numeric: tabular-nums;
+}
+
 @layer base {
     * {
         @apply border-border;
@@ -97,9 +126,19 @@
         /* En rem: la escala de texto (`ui_scale`) mueve el font-size de la raíz. */
         font-size: var(--font-size-body);
         line-height: var(--line-height-body);
+        font-feature-settings: "ss01", "cv11";
     }
-    kbd {
-        font-family: var(--font-family-mono);
+    /* Scrollbars discretos, coherentes en ambos temas. */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
+    }
+    ::selection {
+        background: var(--editor-selection);
+    }
+    input,
+    textarea {
+        caret-color: var(--primary);
     }
 }
 

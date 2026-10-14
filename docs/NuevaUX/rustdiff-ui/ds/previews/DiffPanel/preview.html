@@ -1,0 +1,17 @@
+<!-- @dsCard group="Diff" height=620 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>DiffPanel — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  function Demo(props){ var sel=R.React.useState('d1'), f=R.React.useState('all'), q=R.React.useState('');
+    var list=R.demo.entries; var step=function(d){var i=list.findIndex(function(e){return e.id===sel[0]});sel[1](list[(i+d+list.length)%list.length].id)};
+    return h('div',{className:'h-[300px] border-y'}, h(R.DiffPanel,{entries:props.empty?[]:list,status:props.status,selectedId:sel[0],onSelect:sel[1],filter:f[0],onFilterChange:f[1],query:q[0],onQueryChange:q[1],onPrev:function(){step(-1)},onNext:function(){step(1)}})) }
+  R.mount(root, h('div',{className:'grid gap-3'},
+    h(Demo,{status:{kind:'ready'}}),
+    h('div',{className:'grid grid-cols-2 gap-3'}, h(Demo,{status:{kind:'loading'}}), h(Demo,{empty:true,status:{kind:'ready'}}))))
+</script>
+</body>
+</html>

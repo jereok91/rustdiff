@@ -1,0 +1,13 @@
+<!-- @dsCard group="Diff" height=96 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>JsonPath — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  R.mount(root, h('div',{className:'flex flex-col gap-2 p-4'},
+  h(R.JsonPath,{path:'$.adjustments.type'}), h(R.JsonPath,{path:'$.register.Inicial[0].F_CIA'}), h(R.JsonPath,{path:'$.register.Movimientocontable[0].F350_ID_CO'})))
+</script>
+</body>
+</html>

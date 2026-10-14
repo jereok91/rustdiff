@@ -89,3 +89,38 @@ export function visibleWindow(
     const end = Math.min(total, first + count + overscan);
     return { start, end: Math.max(start, end) };
 }
+
+/** Tramo de una ruta: la raíz `$`, un nombre (`.a` o el primero sin punto) o un índice `[0]`. */
+export type PathSegment = { text: string; kind: "root" | "name" | "index"; last: boolean };
+
+const PATH_TOKEN = /^\$|^[^.[]+|\.[^.[]+|\[[^\]]*\]/g;
+
+/**
+ * Trocea una ruta del núcleo (`$.a.b[0]` en JSON, `raiz.hijo[1]` en XML,
+ * `stmt[3]` en SQL) para pintarla como el `JsonPath` del prototipo: ancestros
+ * atenuados y el último tramo resaltado. Si algo no encaja, la ruta entera
+ * es un único tramo.
+ */
+export function pathSegments(path: string): PathSegment[] {
+    const parts = path.match(PATH_TOKEN) ?? [];
+    if (parts.length === 0 || parts.join("") !== path) {
+        return [{ text: path, kind: "name", last: true }];
+    }
+    return parts.map((text, index) => ({
+        text,
+        kind: text === "$" && index === 0 ? "root" : text.startsWith("[") ? "index" : "name",
+        last: index === parts.length - 1,
+    }));
+}
+
+/** Índice de la fila vecina a la seleccionada en una dirección, con vuelta (-1 sin filas). */
+export function stepRow<T>(rows: readonly T[], selected: T | null, direction: 1 | -1): number {
+    if (rows.length === 0) {
+        return -1;
+    }
+    const current = selected === null ? -1 : rows.indexOf(selected);
+    if (current < 0) {
+        return direction === 1 ? 0 : rows.length - 1;
+    }
+    return (current + direction + rows.length) % rows.length;
+}

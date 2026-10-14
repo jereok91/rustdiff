@@ -250,6 +250,14 @@ describe("paleta", () => {
         expect(palette.nodeFill).toBe(DARK_PALETTE.nodeFill);
     });
 
+    it("un var() sin resolver o un valor que no es color se quedan con el respaldo", () => {
+        const palette = resolvePalette(false, (name) =>
+            name === "--graph-string" ? "var(--syntax-string)" : name === "--graph-text" ? "oklch(0 0 0)" : "",
+        );
+        expect(palette.string).toBe(LIGHT_PALETTE.string);
+        expect(palette.text).toBe("#000000");
+    });
+
     it("colorea cada tipo de valor", () => {
         expect(valueColor(LIGHT_PALETTE, "String")).toBe(LIGHT_PALETTE.string);
         expect(valueColor(LIGHT_PALETTE, "Number")).toBe(LIGHT_PALETTE.number);

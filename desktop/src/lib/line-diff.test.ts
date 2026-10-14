@@ -119,7 +119,39 @@ describe("resaltado semántico", () => {
             expect(mark.to <= nombre || mark.from >= left.indexOf('"ana"') + 5).toBe(true);
         }
         expect(marks).toContainEqual({ from: left.indexOf("30"), to: left.indexOf("30") + 2, kind: "changed" });
-        expect(marks).toContainEqual({ from: left.indexOf('"tags"'), to: left.indexOf('"tags"') + 6, kind: "changed" });
+        // La clave de `$.tags[1]` no es `"tags"` (el token anterior).
+        expect(marks.some((m) => m.from === left.indexOf('"tags"'))).toBe(false);
+    });
+
+    it("la clave marcada es la del item, no el token anterior (captura del design system)", () => {
+        const docs = {
+            left: '{\n  "usuario": {"nombre": "ana", "edad": 30},\n  "tags": ["a", "b"]\n}\n',
+            right: '{\n  "usuario": {"nombre": "ana", "edad": 31},\n  "tags": ["a", "c"],\n  "activo": true\n}\n',
+        };
+        const result: DiffResult = {
+            ...EMPTY,
+            added: [{ path: "$.activo", kind: "Added", left: null, right: "true" }],
+            changed: [
+                { path: "$.tags[1]", kind: "Changed", left: '"b"', right: '"c"' },
+                { path: "$.usuario.edad", kind: "Changed", left: "30", right: "31" },
+            ],
+        };
+        for (const side of ["left", "right"] as const) {
+            const text = docs[side];
+            const marked = semanticMarks(text, result, side).map((m) => text.slice(m.from, m.to));
+            // `$.usuario.edad`: clave `"edad"` y su valor.
+            expect(marked).toContain('"edad"');
+            expect(marked).toContain(side === "left" ? "30" : "31");
+            // `$.tags[1]`: solo el valor del elemento, ni `"tags"` ni otra clave.
+            expect(marked).toContain(side === "left" ? "b" : "c");
+            for (const wrong of ['"usuario"', '"nombre"', '"tags"', '"ana"']) {
+                expect(marked).not.toContain(wrong);
+            }
+            // Exactamente en el `"edad"` que precede al valor cambiado.
+            const edad = text.indexOf('"edad"');
+            const marks = semanticMarks(text, result, side);
+            expect(marks).toContainEqual({ from: edad, to: edad + 6, kind: "changed" });
+        }
     });
 
     it("el texto plano (line[N]) no usa resaltado semántico", () => {

@@ -1,0 +1,15 @@
+<!-- @dsCard group="Diff" height=72 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>ValueChip — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  R.mount(root, h('div',{className:'flex items-center gap-3 p-4'},
+  h(R.ValueChip,{kind:'changed',value:'"011"',other:'"02211"'}), h('span',{className:'text-muted-foreground'},'→'),
+  h(R.ValueChip,{kind:'changed',value:'"02211"',other:'"011"'}), h('span',{className:'w-6'}),
+  h(R.ValueChip,{kind:'removed',value:'[{"F_CIA":"001"}]'}), h(R.ValueChip,{kind:'added'})))
+</script>
+</body>
+</html>

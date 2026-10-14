@@ -80,7 +80,9 @@ describe("locateItem", () => {
     it("un valor corto no cae dentro de una clave (bug de la captura de F3)", () => {
         const found = locateItem(doc, "$.tags[1]", '"b"');
         expect(found.value).toEqual({ from: doc.indexOf('"b"') + 1, to: doc.indexOf('"b"') + 2 });
-        expect(slice(doc, found.key)).toBe('"tags"');
+        // La clave de un elemento de array es el elemento, no `"tags"`.
+        expect(slice(doc, found.key)).toBe('"b"');
+        expect(slice('{"xs": [1, {"k": 2}]}', locateItem('{"xs": [1, {"k": 2}]}', "$.xs[1]", null).key)).toBe("{");
         // `"a"` tampoco cae en `"usuario"` ni en `"ana"`.
         expect(locateItem(doc, "$.tags[0]", '"a"').value?.from).toBe(doc.indexOf('"a",') + 1);
     });

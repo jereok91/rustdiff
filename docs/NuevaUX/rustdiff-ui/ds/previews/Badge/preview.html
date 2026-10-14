@@ -1,0 +1,14 @@
+<!-- @dsCard group="Estado" height=64 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Badge — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  R.mount(root, h('div',{className:'flex flex-wrap items-center gap-2 p-4'},
+  h(R.Badge,null,'JSON'), h(R.Badge,{variant:'secondary'},'Auto'), h(R.Badge,{variant:'outline'},'UTF-8'),
+  h(R.Badge,{variant:'added'},'+ 1'), h(R.Badge,{variant:'removed'},'− 1'), h(R.Badge,{variant:'changed'},'~ 3')))
+</script>
+</body>
+</html>

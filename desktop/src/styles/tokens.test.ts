@@ -41,18 +41,54 @@ const SHADCN_TOKENS = [
     "--ring",
 ];
 
+/** Tokens propios del prototipo: diff, sintaxis y superficies. */
+const PROTOTYPE_TOKENS = [
+    ...["added", "removed", "changed"].flatMap((kind) => [`--diff-${kind}`, `--diff-${kind}-foreground`]),
+    "--syntax-key",
+    "--syntax-string",
+    "--syntax-number",
+    "--syntax-literal",
+    "--syntax-punct",
+    "--editor",
+    "--gutter",
+    "--gutter-foreground",
+    "--titlebar",
+];
+
+/** Tintes derivados con `color-mix(in oklch, <base> p%, transparent)`. */
+const DERIVED_TOKENS = [
+    ...["added", "removed", "changed"].flatMap((kind) =>
+        ["-line", "-inline", "-row"].map((suffix) => `--diff-${kind}${suffix}`),
+    ),
+    "--editor-selection",
+    "--editor-active-line",
+];
+
 describe("tokens.css", () => {
-    it("define el set de shadcn/ui y los de diff en OKLCH, en los dos temas", () => {
-        const diff = ["added", "removed", "changed"].flatMap((kind) =>
-            ["", "-line", "-inline", "-row"].map((suffix) => `--diff-${kind}${suffix}`),
-        );
+    it("define shadcn/ui, diff, sintaxis y superficies en OKLCH opaco, en los dos temas", () => {
         for (const [name, tokens] of Object.entries(themes)) {
-            for (const token of [...SHADCN_TOKENS, ...diff, ...Object.values(PALETTE_VARIABLES)]) {
+            for (const token of [...SHADCN_TOKENS, ...PROTOTYPE_TOKENS, ...Object.values(PALETTE_VARIABLES)]) {
                 expect(tokens[token], `${name} ${token}`).toMatch(/^oklch\(/);
-                expect(parseColor(tokens[token]), `${name} ${token}`).not.toBeNull();
+                expect(parseColor(tokens[token])?.a, `${name} ${token}`).toBe(1);
             }
         }
         expect(themes.light["--radius"]).toBe("0.5rem");
+    });
+
+    it("los tintes se derivan de su base con color-mix y quedan translúcidos", () => {
+        for (const [name, tokens] of Object.entries(themes)) {
+            for (const token of DERIVED_TOKENS) {
+                expect(tokens[token], `${name} ${token}`).toMatch(/^color-mix\(in oklch, oklch\(.+\) \d+%, transparent\)$/);
+                const alpha = parseColor(tokens[token])?.a ?? 1;
+                expect(alpha, `${name} ${token}`).toBeGreaterThan(0);
+                expect(alpha, `${name} ${token}`).toBeLessThan(1);
+            }
+        }
+    });
+
+    it("la tipografía es Geist (sans y mono) con respaldo del sistema", () => {
+        expect(themes.light["--font-family-sans"]).toMatch(/^"Geist Variable", /);
+        expect(themes.light["--font-family-mono"]).toMatch(/^"Geist Mono Variable", /);
     });
 
     it("todos los colores caen dentro de sRGB (lo medido es lo que se pinta)", () => {

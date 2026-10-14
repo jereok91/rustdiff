@@ -1,0 +1,93 @@
+/* Hoja de la guía visual: igual que src/index.css pero SIN valores de tokens
+   (los pone tokens.css del sistema de diseño) ni @font-face. */
+/* ==========================================================================
+   RustDiff · Design tokens para shadcn/ui (Tailwind CSS v4)
+   --------------------------------------------------------------------------
+   1. Tokens estándar de shadcn  → todos los componentes de @/components/ui
+   2. Tokens de diff             → added / removed / changed
+   3. Tokens de sintaxis         → resaltado de JSON en los paneles
+   4. Tokens de superficie       → editor, gutter, barra de estado
+   Todos los colores en OKLCH. El tema oscuro es el predeterminado de la app.
+   ========================================================================== */
+
+@import "tailwindcss";
+@source "../src";
+@source "./previews";
+@import "tw-animate-css";
+
+/* .dark (app) o [data-theme="dark"] (guía visual) activan el tema oscuro */
+@custom-variant dark (&:is(.dark *, [data-theme="dark"] *));
+
+@theme inline {
+  /* shadcn */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Diff */
+  --color-diff-added: var(--diff-added);
+  --color-diff-added-foreground: var(--diff-added-foreground);
+  --color-diff-removed: var(--diff-removed);
+  --color-diff-removed-foreground: var(--diff-removed-foreground);
+  --color-diff-changed: var(--diff-changed);
+  --color-diff-changed-foreground: var(--diff-changed-foreground);
+
+  /* Sintaxis */
+  --color-syntax-key: var(--syntax-key);
+  --color-syntax-string: var(--syntax-string);
+  --color-syntax-number: var(--syntax-number);
+  --color-syntax-literal: var(--syntax-literal);
+  --color-syntax-punct: var(--syntax-punct);
+
+  /* Superficies */
+  --color-editor: var(--editor);
+  --color-gutter: var(--gutter);
+  --color-gutter-foreground: var(--gutter-foreground);
+  --color-titlebar: var(--titlebar);
+
+  /* Radios (derivados de --radius) */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  /* Scrollbars discretos, coherentes en ambos temas */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

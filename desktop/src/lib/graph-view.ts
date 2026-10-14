@@ -10,7 +10,7 @@
  */
 
 import type { GraphBounds, GraphNode, ValueKind } from "@/bindings";
-import { cssColorToHex } from "@/lib/color";
+import { cssColorToHex, parseColor } from "@/lib/color";
 
 // ─────────────────────────────────────────────
 // Constantes (mismos valores que la GTK)
@@ -41,7 +41,7 @@ export const LOD_EDGE_LABEL_ZOOM = 0.45;
 /** `MAX_GRAPH_NODES` del núcleo: el texto del aviso de truncado lo muestra. */
 export const MAX_GRAPH_NODES = 3000;
 /** Familia monoespaciada del canvas (la misma pila que los editores). */
-export const MONO_FONT_FAMILY = 'ui-monospace, "JetBrains Mono", "Cascadia Code", monospace';
+export const MONO_FONT_FAMILY = '"Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace';
 
 /**
  * Largo en caracteres (code points), como `chars().count()` del núcleo: el
@@ -347,33 +347,33 @@ export type GraphPalette = {
 export const LIGHT_PALETTE: GraphPalette = {
     background: "#f5f7f9",
     nodeFill: "#ffffff",
-    nodeBorder: "#babec4",
-    nodeSelected: "#106ed7",
-    nodeMatch: "#be7100",
-    edge: "#a0a5ac",
-    key: "#59616c",
-    string: "#137738",
-    number: "#0160c1",
-    boolean: "#813faa",
-    null: "#af4803",
-    reference: "#636972",
-    text: "#1b222b",
+    nodeBorder: "#c1c4cb",
+    nodeSelected: "#2763d7",
+    nodeMatch: "#8d4e00",
+    edge: "#a7abb3",
+    key: "#636974",
+    string: "#025884",
+    number: "#007272",
+    boolean: "#a8347f",
+    null: "#5847b7",
+    reference: "#5f636c",
+    text: "#15181f",
 };
 
 export const DARK_PALETTE: GraphPalette = {
-    background: "#0b1016",
-    nodeFill: "#191f26",
-    nodeBorder: "#3c434c",
-    nodeSelected: "#5ba0fa",
-    nodeMatch: "#f0b135",
-    edge: "#4f565f",
-    key: "#a0a9b4",
-    string: "#7cdd93",
-    number: "#78bff9",
-    boolean: "#d99ee7",
-    null: "#f6ab6b",
-    reference: "#899098",
-    text: "#e5e8ec",
+    background: "#0f1014",
+    nodeFill: "#16181d",
+    nodeBorder: "#3a3d44",
+    nodeSelected: "#5d92f6",
+    nodeMatch: "#efb146",
+    edge: "#4a4d54",
+    key: "#9399a2",
+    string: "#8ecbe8",
+    number: "#73d1ca",
+    boolean: "#f197c2",
+    null: "#b9b0f7",
+    reference: "#8e929a",
+    text: "#edeef2",
 };
 
 /** Variable CSS de cada color (`styles/tokens.css`, `--graph-*`). */
@@ -403,7 +403,9 @@ export function resolvePalette(dark: boolean, readVariable: (name: string) => st
     const out = { ...fallback };
     for (const key of Object.keys(PALETTE_VARIABLES) as (keyof GraphPalette)[]) {
         const value = readVariable(PALETTE_VARIABLES[key]).trim();
-        if (value !== "") {
+        // Solo colores que el contexto 2D entiende: un `var(...)` sin
+        // resolver (o cualquier sintaxis rara) se queda con el respaldo.
+        if (value !== "" && parseColor(value) !== null) {
             out[key] = cssColorToHex(value);
         }
     }

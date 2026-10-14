@@ -3,9 +3,12 @@
  *
  * `fg` va sobre `bg`; si `bg` tiene alpha se compone sobre las capas `under`
  * (la última tiene que ser opaca). `min` es 4.5 para texto y 3 para
- * indicadores de UI (anillo de foco, bordes de campos, nodos del grafo).
+ * indicadores de UI (anillo de foco, bordes de campos, contornos del grafo).
  * `tokens.test.ts` recorre esta lista; `docs/design-system.md` publica los
  * resultados.
+ *
+ * Cada par sale de un uso real: la superficie donde se pinta el texto o el
+ * indicador en la app (editor, margen, barra de título, panel, menús).
  */
 
 import { AA_TEXT, AA_UI } from "@/lib/color";
@@ -21,55 +24,71 @@ const text = (fg: string, bg: string, note: string, under?: string[]): ContrastP
 });
 const ui = (fg: string, bg: string, note: string): ContrastPair => ({ fg, bg, min: AA_UI, note });
 
+const KINDS = ["added", "removed", "changed"] as const;
+const SYNTAX = ["--syntax-key", "--syntax-string", "--syntax-number", "--syntax-literal", "--syntax-punct"] as const;
+
 export const CONTRAST_PAIRS: ContrastPair[] = [
     // Texto de la UI sobre sus superficies.
     text("--foreground", "--background", "body text"),
-    text("--card-foreground", "--card", "chrome text (header, toolbars, status bar)"),
+    text("--foreground", "--titlebar", "header and status bar text"),
+    text("--card-foreground", "--card", "panel text (differences, history)"),
     text("--popover-foreground", "--popover", "menus, popovers, toasts"),
+    text("--background", "--foreground", "tooltips"),
     text("--muted-foreground", "--background", "secondary text on content"),
-    text("--muted-foreground", "--card", "secondary text on chrome"),
-    text("--muted-foreground", "--muted", "secondary text on muted fill"),
+    text("--muted-foreground", "--card", "secondary text on panels"),
+    text("--muted-foreground", "--titlebar", "secondary text in header and status bar"),
+    text("--muted-foreground", "--muted", "secondary text on muted fill (toggle groups, chips)"),
     text("--muted-foreground", "--popover", "shortcut hints in menus"),
+    text("--muted-foreground", "--editor", "empty-pane hints"),
     text("--primary-foreground", "--primary", "primary button"),
     text("--secondary-foreground", "--secondary", "secondary button"),
     text("--accent-foreground", "--accent", "hovered / pressed items"),
+    text("--foreground", "--accent", "selected row"),
+    text("--primary", "--accent", "selected row number"),
+    text("--primary", "--background", "link buttons"),
+    text("--foreground", "--muted", "value chips"),
     text("--destructive-foreground", "--destructive", "destructive button"),
-    text("--destructive", "--card", "error text in the status bar"),
+    text("--destructive", "--titlebar", "error text in the status bar"),
     text("--destructive", "--popover", "error toast"),
 
-    text("--foreground", "--editor-selection", "selected code", ["--background"]),
-    text("--foreground", "--editor-active-line", "code on the active line", ["--background"]),
+    // Editor: código, margen y selección.
+    text("--foreground", "--editor", "code"),
+    text("--gutter-foreground", "--gutter", "line numbers"),
+    text("--foreground", "--gutter", "active line number"),
+    ...SYNTAX.map((token) => text(token, "--editor", `${token.slice(2)} on the editor`)),
+    text("--foreground", "--editor-selection", "selected code", ["--editor"]),
+    ...SYNTAX.map((token) => text(token, "--editor-selection", `selected ${token.slice(9)}`, ["--editor"])),
+    text("--foreground", "--editor-active-line", "code on the active line", ["--editor"]),
+    ...SYNTAX.map((token) =>
+        text(token, "--editor-active-line", `${token.slice(9)} on the active line`, ["--editor"]),
+    ),
 
     // Indicadores de UI.
-    ui("--ring", "--background", "focus ring on content"),
-    ui("--ring", "--card", "focus ring on chrome"),
-    ui("--ring", "--popover", "focus ring in popovers"),
-    ui("--input", "--background", "input border on content"),
-    ui("--input", "--card", "input border on chrome"),
+    ...["--background", "--card", "--popover", "--editor", "--gutter", "--titlebar"].map((bg) =>
+        ui("--ring", bg, `focus ring on ${bg.slice(2)}`),
+    ),
+    ...["--background", "--card", "--popover", "--titlebar"].map((bg) =>
+        ui("--input", bg, `input border on ${bg.slice(2)}`),
+    ),
 
-    // Diff: texto del tipo y texto del documento sobre los fondos de diff.
-    text("--diff-added", "--background", "Added label"),
-    text("--diff-removed", "--background", "Removed label"),
-    text("--diff-changed", "--background", "Changed label"),
-    text("--diff-added", "--diff-added-row", "Added label on its row", ["--background"]),
-    text("--diff-removed", "--diff-removed-row", "Removed label on its row", ["--background"]),
-    text("--diff-changed", "--diff-changed-row", "Changed label on its row", ["--background"]),
-    text("--diff-added", "--card", "Added filter on chrome"),
-    text("--diff-removed", "--card", "Removed filter on chrome"),
-    text("--diff-changed", "--card", "Changed filter on chrome"),
-    text("--foreground", "--diff-added-line", "code on added line", ["--background"]),
-    text("--foreground", "--diff-removed-line", "code on removed line", ["--background"]),
-    text("--foreground", "--diff-changed-line", "code on changed line", ["--background"]),
-    text("--foreground", "--diff-added-inline", "code on added chars", ["--diff-added-line", "--background"]),
-    text("--foreground", "--diff-removed-inline", "code on removed chars", ["--diff-removed-line", "--background"]),
-    text("--foreground", "--diff-changed-inline", "code on changed chars", ["--background"]),
-    text("--foreground", "--diff-added-inline", "value on added chars (table)", ["--diff-added-row", "--background"]),
-    text("--foreground", "--diff-removed-inline", "value on removed chars (table)", [
-        "--diff-removed-row",
-        "--background",
+    // Diff, por tipo.
+    ...KINDS.flatMap((kind) => [
+        text(`--diff-${kind}-foreground`, "--editor", `${kind} text on the editor`),
+        text(`--diff-${kind}-foreground`, "--card", `${kind} text on panels`),
+        text(`--diff-${kind}-foreground`, "--gutter", `${kind} marker in the gutter`),
+        text(`--diff-${kind}-foreground`, `--diff-${kind}-row`, `${kind} badge`, ["--card"]),
+        text(`--diff-${kind}-foreground`, `--diff-${kind}-row`, `${kind} badge on the selected row`, ["--accent"]),
+        text("--foreground", `--diff-${kind}-line`, `code on a ${kind} line`, ["--editor"]),
+        ...SYNTAX.map((token) =>
+            text(token, `--diff-${kind}-line`, `${token.slice(9)} on a ${kind} line`, ["--editor"]),
+        ),
+        text(`--diff-${kind}-foreground`, `--diff-${kind}-inline`, `${kind} characters in the editor`, [
+            `--diff-${kind}-line`,
+            "--editor",
+        ]),
     ]),
-    text("--accent-foreground", "--diff-added-inline", "selected row, added chars", ["--accent"]),
-    text("--accent-foreground", "--diff-removed-inline", "selected row, removed chars", ["--accent"]),
+    // Los chips de valor de la tabla resaltan con el tono "changed" a ambos lados.
+    text("--diff-changed-foreground", "--diff-changed-inline", "changed characters in a value chip", ["--muted"]),
 
     // Grafo.
     text("--graph-text", "--graph-node-fill", "graph labels"),

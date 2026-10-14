@@ -1,39 +1,49 @@
 /*
  * Tokens del sistema de diseño de RustDiff — fuente única de verdad.
  *
- * Todo color de la app sale de acá, en OKLCH, para el tema claro (`:root`) y
- * el oscuro (`.dark`, que hereda lo que no redefine). Convención de shadcn/ui
- * para la UI general, más tres familias propias:
+ * Paleta, radios y tipografía vienen del prototipo de referencia
+ * (`docs/NuevaUX/rustdiff-ui/src/index.css`): azul cobalto como acción
+ * principal, grises fríos, todo en OKLCH. El tema oscuro es el predeterminado
+ * de la app (`lib/theme.ts`); `:root` es el claro y `.dark` sobreescribe.
  *
- *   --diff-<kind>          texto del tipo (tabla, filtros, iconos)
- *   --diff-<kind>-line     fondo sutil de la línea completa en el editor
- *   --diff-<kind>-inline   fondo más saturado del rango exacto de caracteres
- *   --diff-<kind>-row      tinte de la fila en la tabla de diferencias
+ * Familias:
+ *   shadcn/ui              --background, --primary, --muted-foreground, ...
+ *   --diff-<kind>          color base del tipo: puntos, barras, marcadores
+ *   --diff-<kind>-foreground  texto legible del tipo (insignias, marcadores)
+ *   --diff-<kind>-line     tinte de la línea completa en el editor
+ *   --diff-<kind>-inline   énfasis del rango exacto de caracteres
+ *   --diff-<kind>-row      relleno de los filtros activos del panel
+ *   --syntax-*             resaltado del código (evita verde/rojo/ámbar)
+ *   --editor, --gutter*, --titlebar   superficies del shell
  *   --graph-*              paleta del canvas de grafo (`lib/graph-view.ts`
  *                          la lee y la convierte a hex)
  *
- * Contraste: `tokens.test.ts` lee este archivo y exige WCAG AA (4.5:1 texto,
- * 3:1 UI) sobre los valores reales; tocar un color que lo rompa falla el
- * test. Los fondos con alpha se componen sobre `--background` (el editor).
+ * Los tintes de diff, la selección y la línea activa se derivan con
+ * `color-mix(in oklch, <base> p%, transparent)`: cambian solos si cambia la
+ * base. `lib/color.ts` sabe interpretar esa forma.
  *
- * Las clases que pintan con estos tokens (decoraciones de CodeMirror, celdas
- * de la tabla, animación de salto) viven al final de este archivo; los
- * componentes solo consumen variables y clases, nunca colores sueltos.
+ * Contraste: `tokens.test.ts` lee este archivo y exige WCAG AA (4.5:1 texto,
+ * 3:1 UI) sobre los valores reales, en los dos temas
+ * (`styles/contrast-pairs.ts`); tocar un color que lo rompa falla el test.
+ *
+ * Las clases que pintan con estos tokens (decoraciones de CodeMirror,
+ * destello de llegada) viven al final de este archivo; los componentes solo
+ * consumen variables y clases, nunca colores sueltos.
  */
 
 :root {
     /* ── Forma ───────────────────────────────── */
     --radius: 0.5rem;
 
-    /* ── Tipografía ──────────────────────────── */
-    --font-family-sans: system-ui, -apple-system, "Segoe UI", "Cantarell", "Noto Sans", sans-serif;
-    --font-family-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", monospace;
+    /* ── Tipografía (Geist, autoalojada con @fontsource) ── */
+    --font-family-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+    --font-family-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
 
     --font-size-caption: 0.75rem; /* 12px: metadatos, contadores, barra de estado */
     --line-height-caption: 1rem;
     --font-size-body: 0.875rem; /* 14px: texto de la UI, menús, tablas */
     --line-height-body: 1.25rem;
-    --font-size-code: 0.8125rem; /* 13px: editores, rutas y valores */
+    --font-size-code: 0.78125rem; /* 12.5px: editores, rutas y valores */
     --line-height-code: 1.25rem;
     --font-size-title: 1.125rem; /* 18px: títulos de diálogo */
     --line-height-title: 1.5rem;
@@ -42,125 +52,161 @@
 
     /* ── Medidas del shell ───────────────────── */
     --header-height: 3rem;
-    --toolbar-height: 2.25rem;
-    --control-height: 1.75rem;
+    --toolbar-height: 2.75rem;
+    --control-height: 2rem;
     --sidebar-width: 18rem;
 
     /* ── Movimiento ──────────────────────────── */
-    --duration-fast: 120ms;
+    --duration-fast: 150ms;
+    --duration-arrive: 700ms;
     --duration-flash: 1.2s;
+    --ease-arrive: cubic-bezier(0.16, 1, 0.3, 1);
 
     /* ── Superficies y texto (shadcn/ui) ─────── */
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.21 0.02 256);
-    --card: oklch(0.975 0.004 256);
-    --card-foreground: oklch(0.21 0.02 256);
+    --background: oklch(0.985 0.002 260);
+    --foreground: oklch(0.21 0.015 262);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.21 0.015 262);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.21 0.02 256);
-    --primary: oklch(0.52 0.16 41);
-    --primary-foreground: oklch(0.99 0.004 60);
-    --secondary: oklch(0.945 0.008 256);
-    --secondary-foreground: oklch(0.25 0.02 256);
-    --muted: oklch(0.955 0.006 256);
-    --muted-foreground: oklch(0.49 0.02 256);
-    --accent: oklch(0.935 0.012 256);
-    --accent-foreground: oklch(0.21 0.02 256);
-    --destructive: oklch(0.53 0.2 27);
-    --destructive-foreground: oklch(0.99 0.004 27);
-    --border: oklch(0.91 0.008 256);
-    --input: oklch(0.62 0.015 256);
-    --ring: oklch(0.55 0.16 41);
+    --popover-foreground: oklch(0.21 0.015 262);
 
-    /* ── Editor (CodeMirror, `lib/editor-theme.ts`) ── */
-    --editor-selection: oklch(0.6 0.15 256 / 0.22);
-    --editor-active-line: oklch(0.55 0.03 256 / 0.05);
+    /* Azul cobalto: acción principal, foco, selección */
+    --primary: oklch(0.53 0.19 262);
+    --primary-foreground: oklch(0.985 0.005 260);
+
+    --secondary: oklch(0.955 0.006 262);
+    --secondary-foreground: oklch(0.26 0.02 262);
+    --muted: oklch(0.96 0.005 262);
+    --muted-foreground: oklch(0.52 0.018 262);
+    --accent: oklch(0.948 0.014 262);
+    --accent-foreground: oklch(0.26 0.04 262);
+    --destructive: oklch(0.577 0.215 25);
+    --destructive-foreground: oklch(0.985 0.005 25);
+
+    --border: oklch(0.915 0.007 262);
+    --input: oklch(0.65 0.009 262);
+    --ring: oklch(0.6 0.17 262);
 
     /* ── Diff ────────────────────────────────── */
-    --diff-added: oklch(0.5 0.13 150);
-    --diff-removed: oklch(0.52 0.19 27);
-    --diff-changed: oklch(0.52 0.11 70);
+    --diff-added: oklch(0.63 0.15 155);
+    --diff-added-foreground: oklch(0.43 0.109 155);
+    --diff-removed: oklch(0.62 0.2 23);
+    --diff-removed-foreground: oklch(0.465 0.18 23);
+    --diff-changed: oklch(0.76 0.15 72);
+    --diff-changed-foreground: oklch(0.49 0.115 62);
 
-    --diff-added-line: oklch(0.75 0.17 150 / 0.18);
-    --diff-removed-line: oklch(0.7 0.19 25 / 0.15);
-    --diff-changed-line: oklch(0.82 0.15 80 / 0.2);
+    /* Derivados: línea (el tinte al 10% del prototipo), énfasis (30%, 35%) e insignia (12%, 14%). */
+    --diff-added-line: color-mix(in oklch, var(--diff-added) 10%, transparent);
+    --diff-removed-line: color-mix(in oklch, var(--diff-removed) 10%, transparent);
+    --diff-changed-line: color-mix(in oklch, var(--diff-changed) 10%, transparent);
+    --diff-added-inline: color-mix(in oklch, var(--diff-added) 30%, transparent);
+    --diff-removed-inline: color-mix(in oklch, var(--diff-removed) 30%, transparent);
+    --diff-changed-inline: color-mix(in oklch, var(--diff-changed) 35%, transparent);
+    --diff-added-row: color-mix(in oklch, var(--diff-added) 12%, transparent);
+    --diff-removed-row: color-mix(in oklch, var(--diff-removed) 12%, transparent);
+    --diff-changed-row: color-mix(in oklch, var(--diff-changed) 14%, transparent);
 
-    --diff-added-inline: oklch(0.75 0.17 150 / 0.42);
-    --diff-removed-inline: oklch(0.7 0.19 25 / 0.36);
-    --diff-changed-inline: oklch(0.82 0.15 80 / 0.5);
+    /* ── Sintaxis ────────────────────────────── */
+    --syntax-key: oklch(0.48 0.17 285);
+    --syntax-string: oklch(0.44 0.1 240);
+    --syntax-number: oklch(0.5 0.086 195);
+    --syntax-literal: oklch(0.52 0.17 345);
+    --syntax-punct: oklch(0.5 0.015 262);
 
-    --diff-added-row: oklch(0.75 0.17 150 / 0.08);
-    --diff-removed-row: oklch(0.7 0.19 25 / 0.07);
-    --diff-changed-row: oklch(0.82 0.15 80 / 0.1);
+    /* ── Superficies del shell ───────────────── */
+    --editor: oklch(1 0 0);
+    --gutter: oklch(0.975 0.004 262);
+    --gutter-foreground: oklch(0.54 0.014 262);
+    --titlebar: oklch(0.975 0.004 262);
 
-    /* ── Grafo ───────────────────────────────── */
-    --graph-background: oklch(0.975 0.004 256);
-    --graph-node-fill: oklch(1 0 0);
-    --graph-node-border: oklch(0.8 0.01 256);
-    --graph-node-selected: oklch(0.55 0.18 256);
-    --graph-node-match: oklch(0.62 0.14 65);
-    --graph-edge: oklch(0.72 0.012 256);
-    --graph-key: oklch(0.49 0.02 256);
-    --graph-string: oklch(0.5 0.13 150);
-    --graph-number: oklch(0.5 0.17 256);
-    --graph-boolean: oklch(0.5 0.17 310);
-    --graph-null: oklch(0.53 0.15 45);
-    --graph-reference: oklch(0.52 0.015 256);
-    --graph-text: oklch(0.25 0.02 256);
+    /* ── Editor (CodeMirror, `lib/editor-theme.ts`) ── */
+    --editor-selection: color-mix(in oklch, var(--primary) 16%, transparent);
+    --editor-active-line: color-mix(in oklch, var(--foreground) 4%, transparent);
+
+    /* ── Grafo (derivado de la paleta; el canvas lo convierte a hex) ── */
+    --graph-background: var(--gutter);
+    --graph-node-fill: var(--card);
+    --graph-node-border: oklch(0.82 0.01 262);
+    --graph-node-selected: var(--primary);
+    --graph-node-match: var(--diff-changed-foreground);
+    --graph-edge: oklch(0.74 0.012 262);
+    --graph-key: var(--muted-foreground);
+    --graph-string: var(--syntax-string);
+    --graph-number: var(--syntax-number);
+    --graph-boolean: var(--syntax-literal);
+    --graph-null: var(--syntax-key);
+    --graph-reference: var(--syntax-punct);
+    --graph-text: var(--foreground);
 }
 
 .dark {
-    --background: oklch(0.195 0.015 256);
-    --foreground: oklch(0.95 0.006 256);
-    --card: oklch(0.17 0.014 256);
-    --card-foreground: oklch(0.95 0.006 256);
-    --popover: oklch(0.235 0.017 256);
-    --popover-foreground: oklch(0.95 0.006 256);
-    --primary: oklch(0.75 0.14 55);
-    --primary-foreground: oklch(0.2 0.03 45);
-    --secondary: oklch(0.27 0.018 256);
-    --secondary-foreground: oklch(0.95 0.006 256);
-    --muted: oklch(0.26 0.018 256);
-    --muted-foreground: oklch(0.73 0.02 256);
-    --accent: oklch(0.3 0.022 256);
-    --accent-foreground: oklch(0.97 0.004 256);
-    --destructive: oklch(0.7 0.18 25);
-    --destructive-foreground: oklch(0.18 0.03 25);
-    --border: oklch(0.3 0.016 256);
-    --input: oklch(0.52 0.02 256);
-    --ring: oklch(0.75 0.14 55);
+    --background: oklch(0.155 0.008 265);
+    --foreground: oklch(0.95 0.005 262);
+    --card: oklch(0.185 0.009 265);
+    --card-foreground: oklch(0.95 0.005 262);
+    --popover: oklch(0.21 0.01 265);
+    --popover-foreground: oklch(0.95 0.005 262);
 
-    --editor-selection: oklch(0.65 0.13 256 / 0.3);
-    --editor-active-line: oklch(0.9 0.02 256 / 0.04);
+    --primary: oklch(0.67 0.16 262);
+    --primary-foreground: oklch(0.16 0.03 262);
 
-    --diff-added: oklch(0.78 0.15 150);
-    --diff-removed: oklch(0.75 0.15 25);
-    --diff-changed: oklch(0.83 0.13 82);
+    --secondary: oklch(0.245 0.01 265);
+    --secondary-foreground: oklch(0.95 0.005 262);
+    --muted: oklch(0.235 0.01 265);
+    --muted-foreground: oklch(0.68 0.015 262);
+    --accent: oklch(0.255 0.016 265);
+    --accent-foreground: oklch(0.96 0.005 262);
+    --destructive: oklch(0.68 0.19 22);
+    --destructive-foreground: oklch(0.16 0.03 22);
 
-    --diff-added-line: oklch(0.65 0.15 150 / 0.18);
-    --diff-removed-line: oklch(0.62 0.18 25 / 0.2);
-    --diff-changed-line: oklch(0.72 0.13 80 / 0.16);
+    --border: oklch(0.26 0.009 265);
+    --input: oklch(0.505 0.01 265);
+    --ring: oklch(0.62 0.15 262);
 
-    --diff-added-inline: oklch(0.65 0.15 150 / 0.38);
-    --diff-removed-inline: oklch(0.62 0.18 25 / 0.42);
-    --diff-changed-inline: oklch(0.72 0.13 80 / 0.36);
+    --diff-added: oklch(0.72 0.15 155);
+    --diff-added-foreground: oklch(0.8 0.13 155);
+    --diff-removed: oklch(0.69 0.18 22);
+    --diff-removed-foreground: oklch(0.8 0.114 22);
+    --diff-changed: oklch(0.8 0.14 78);
+    --diff-changed-foreground: oklch(0.86 0.12 85);
 
-    --diff-added-row: oklch(0.65 0.15 150 / 0.1);
-    --diff-removed-row: oklch(0.62 0.18 25 / 0.1);
-    --diff-changed-row: oklch(0.72 0.13 80 / 0.09);
+    --diff-added-line: color-mix(in oklch, var(--diff-added) 10%, transparent);
+    --diff-removed-line: color-mix(in oklch, var(--diff-removed) 10%, transparent);
+    --diff-changed-line: color-mix(in oklch, var(--diff-changed) 10%, transparent);
+    --diff-added-inline: color-mix(in oklch, var(--diff-added) 30%, transparent);
+    --diff-removed-inline: color-mix(in oklch, var(--diff-removed) 30%, transparent);
+    --diff-changed-inline: color-mix(in oklch, var(--diff-changed) 35%, transparent);
+    --diff-added-row: color-mix(in oklch, var(--diff-added) 12%, transparent);
+    --diff-removed-row: color-mix(in oklch, var(--diff-removed) 12%, transparent);
+    --diff-changed-row: color-mix(in oklch, var(--diff-changed) 14%, transparent);
 
-    --graph-background: oklch(0.17 0.014 256);
-    --graph-node-fill: oklch(0.235 0.017 256);
-    --graph-node-border: oklch(0.38 0.018 256);
-    --graph-node-selected: oklch(0.7 0.15 256);
-    --graph-node-match: oklch(0.8 0.15 80);
-    --graph-edge: oklch(0.45 0.018 256);
-    --graph-key: oklch(0.73 0.02 256);
-    --graph-string: oklch(0.82 0.14 150);
-    --graph-number: oklch(0.78 0.11 245);
-    --graph-boolean: oklch(0.78 0.12 320);
-    --graph-null: oklch(0.8 0.12 60);
-    --graph-reference: oklch(0.65 0.015 256);
-    --graph-text: oklch(0.93 0.006 256);
+    --syntax-key: oklch(0.79 0.1 290);
+    --syntax-string: oklch(0.81 0.075 230);
+    --syntax-number: oklch(0.8 0.09 190);
+    --syntax-literal: oklch(0.78 0.12 350);
+    --syntax-punct: oklch(0.66 0.012 262);
+
+    --editor: oklch(0.175 0.008 265);
+    --gutter: oklch(0.165 0.008 265);
+    --gutter-foreground: oklch(0.62 0.012 262);
+    --titlebar: oklch(0.135 0.008 265);
+
+    --editor-selection: color-mix(in oklch, var(--primary) 20%, transparent);
+    --editor-active-line: color-mix(in oklch, var(--foreground) 4%, transparent);
+
+    --graph-background: var(--editor);
+    --graph-node-fill: var(--popover);
+    --graph-node-border: oklch(0.36 0.012 265);
+    --graph-node-selected: var(--primary);
+    --graph-node-match: var(--diff-changed);
+    --graph-edge: oklch(0.42 0.012 265);
+    --graph-key: var(--muted-foreground);
+    --graph-string: var(--syntax-string);
+    --graph-number: var(--syntax-number);
+    --graph-boolean: var(--syntax-literal);
+    --graph-null: var(--syntax-key);
+    --graph-reference: var(--syntax-punct);
+    --graph-text: var(--foreground);
 }
 
 /* ─────────────────────────────────────────────
@@ -174,63 +220,79 @@
 .cm-diff-line-removed {
     background-color: var(--diff-removed-line);
 }
+.cm-diff-line-changed {
+    background-color: var(--diff-changed-line);
+}
+/* Énfasis de caracteres: fondo del tipo y texto legible del tipo (como el prototipo). */
+.cm-diff-added,
+.cm-diff-added * {
+    color: var(--diff-added-foreground) !important;
+}
+.cm-diff-removed,
+.cm-diff-removed * {
+    color: var(--diff-removed-foreground) !important;
+}
+.cm-diff-changed,
+.cm-diff-changed * {
+    color: var(--diff-changed-foreground) !important;
+}
 .cm-diff-added {
     background-color: var(--diff-added-inline);
-    border-radius: 2px;
+    border-radius: 3px;
 }
 .cm-diff-removed {
     background-color: var(--diff-removed-inline);
-    border-radius: 2px;
+    border-radius: 3px;
 }
 .cm-diff-changed {
     background-color: var(--diff-changed-inline);
-    border-radius: 2px;
+    border-radius: 3px;
 }
 
-/* Destello del rango al que salta un click en la tabla o la búsqueda. */
-@keyframes cm-diff-flash {
-    0%,
-    40% {
-        background-color: var(--diff-changed-inline);
-        outline: 2px solid var(--ring);
+/* Marcadores + − ~ en el margen del editor. */
+.cm-diff-gutter .cm-gutterElement {
+    width: 1.25rem;
+    text-align: center;
+    font-weight: 600;
+    user-select: none;
+}
+.cm-diff-marker-added {
+    color: var(--diff-added-foreground);
+}
+.cm-diff-marker-removed {
+    color: var(--diff-removed-foreground);
+}
+.cm-diff-marker-changed {
+    color: var(--diff-changed-foreground);
+}
+
+/*
+ * Llegada a una diferencia (click en la tabla o navegación): las líneas
+ * destellan y se asientan (`animate-arrive` del prototipo) y el rango exacto
+ * queda contorneado con el anillo de foco mientras dura el destello.
+ */
+@keyframes diff-arrive {
+    from {
+        box-shadow: inset 0 0 0 999px color-mix(in oklch, var(--foreground) 14%, transparent);
     }
-    100% {
-        background-color: transparent;
-        outline-color: transparent;
+    to {
+        box-shadow: inset 0 0 0 999px transparent;
     }
+}
+.cm-diff-arrive,
+.animate-arrive {
+    animation: diff-arrive var(--duration-arrive) var(--ease-arrive);
 }
 .cm-diff-flash {
-    border-radius: 2px;
-    animation: cm-diff-flash var(--duration-flash) ease-out;
-}
-
-/* Fragmentos resaltados dentro de las celdas Left/Right de la tabla
- * (`markup_with_ranges` de la GTK: fondo saturado y negrita). */
-.diff-cell-inline-removed {
-    background-color: var(--diff-removed-inline);
-    font-weight: 600;
-    border-radius: 2px;
-}
-.diff-cell-inline-added {
-    background-color: var(--diff-added-inline);
-    font-weight: 600;
-    border-radius: 2px;
-}
-/* Tinte por tipo en las filas de la tabla (`.diff-added` & co. de la GTK). */
-.diff-row-Added {
-    background-color: var(--diff-added-row);
-}
-.diff-row-Removed {
-    background-color: var(--diff-removed-row);
-}
-.diff-row-Changed {
-    background-color: var(--diff-changed-row);
+    border-radius: 3px;
+    outline: 1px solid var(--ring);
+    outline-offset: 1px;
 }
 
 /*
  * Movimiento reducido: sin animaciones ni transiciones. El salto sigue
- * marcando el rango (fondo + contorno estáticos) durante el mismo tiempo,
- * así que la información no depende de la animación.
+ * marcando el rango (contorno estático) durante el mismo tiempo, así que la
+ * información no depende de la animación.
  */
 @media (prefers-reduced-motion: reduce) {
     *,
@@ -241,9 +303,8 @@
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
-    .cm-diff-flash {
+    .cm-diff-arrive,
+    .animate-arrive {
         animation: none !important;
-        background-color: var(--diff-changed-inline);
-        outline: 2px solid var(--ring);
     }
 }

@@ -1,0 +1,15 @@
+<!-- @dsCard group="Controles" height=72 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Input — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  R.mount(root, h('div',{className:'flex items-center gap-3 p-4'},
+  h('div',{className:'relative'}, h('svg',{className:'text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2',viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2},h('circle',{cx:11,cy:11,r:8}),h('path',{d:'m21 21-4.3-4.3'})),
+    h(R.Input,{placeholder:'Buscar ruta…',className:'h-8 w-56 pl-8 text-xs md:text-xs'})),
+  h(R.Input,{defaultValue:'$.register.Final',className:'h-8 w-56 font-mono text-xs md:text-xs'})))
+</script>
+</body>
+</html>

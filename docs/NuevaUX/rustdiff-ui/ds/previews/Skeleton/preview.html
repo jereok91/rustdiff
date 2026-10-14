@@ -1,0 +1,13 @@
+<!-- @dsCard group="Estado" height=96 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Skeleton — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  R.mount(root, h('div',{className:'flex items-center gap-4 p-4'},
+    h(R.Skeleton,{className:'h-3 w-4'}), h(R.Skeleton,{className:'h-5 w-24'}), h(R.Skeleton,{className:'h-3 w-64'}), h(R.Skeleton,{className:'ml-auto h-5 w-28'})))
+</script>
+</body>
+</html>

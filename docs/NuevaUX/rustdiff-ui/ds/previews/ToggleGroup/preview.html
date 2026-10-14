@@ -1,0 +1,16 @@
+<!-- @dsCard group="Controles" height=72 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>ToggleGroup — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  function Demo(){ var s=R.React.useState('all'); var dot=function(k){return h(R.DiffDot,{kind:k})};
+  var item=function(v,label,n,k){return h(R.ToggleGroupItem,{key:v,value:v,className:'data-[state=on]:bg-background h-7 gap-1.5 rounded-md! px-2.5 text-xs data-[state=on]:shadow-xs'},k&&dot(k),label,h('span',{className:'text-muted-foreground tabular'},n))};
+  return h('div',{className:'p-4'}, h(R.ToggleGroup,{type:'single',size:'sm',value:s[0],onValueChange:function(v){v&&s[1](v)},className:'bg-muted/60 gap-0.5 rounded-lg p-0.5'},
+    item('all','Todas',5), item('added','Agregados',1,'added'), item('removed','Eliminados',1,'removed'), item('changed','Modificados',3,'changed'))) }
+R.mount(root, h(Demo))
+</script>
+</body>
+</html>

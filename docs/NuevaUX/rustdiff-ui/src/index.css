@@ -1,0 +1,214 @@
+/* ==========================================================================
+   RustDiff · Design tokens para shadcn/ui (Tailwind CSS v4)
+   --------------------------------------------------------------------------
+   1. Tokens estándar de shadcn  → todos los componentes de @/components/ui
+   2. Tokens de diff             → added / removed / changed
+   3. Tokens de sintaxis         → resaltado de JSON en los paneles
+   4. Tokens de superficie       → editor, gutter, barra de estado
+   Todos los colores en OKLCH. El tema oscuro es el predeterminado de la app.
+   ========================================================================== */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+/* .dark (app) o [data-theme="dark"] (guía visual) activan el tema oscuro */
+@custom-variant dark (&:is(.dark *, [data-theme="dark"] *));
+
+@theme inline {
+  /* Tipografía */
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* shadcn */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Diff */
+  --color-diff-added: var(--diff-added);
+  --color-diff-added-foreground: var(--diff-added-foreground);
+  --color-diff-removed: var(--diff-removed);
+  --color-diff-removed-foreground: var(--diff-removed-foreground);
+  --color-diff-changed: var(--diff-changed);
+  --color-diff-changed-foreground: var(--diff-changed-foreground);
+
+  /* Sintaxis */
+  --color-syntax-key: var(--syntax-key);
+  --color-syntax-string: var(--syntax-string);
+  --color-syntax-number: var(--syntax-number);
+  --color-syntax-literal: var(--syntax-literal);
+  --color-syntax-punct: var(--syntax-punct);
+
+  /* Superficies */
+  --color-editor: var(--editor);
+  --color-gutter: var(--gutter);
+  --color-gutter-foreground: var(--gutter-foreground);
+  --color-titlebar: var(--titlebar);
+
+  /* Radios (derivados de --radius) */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ---------------------------------------------------------------- CLARO -- */
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.985 0.002 260);
+  --foreground: oklch(0.21 0.015 262);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.015 262);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.015 262);
+
+  /* Azul cobalto: acción principal, foco, selección */
+  --primary: oklch(0.53 0.19 262);
+  --primary-foreground: oklch(0.985 0.005 260);
+
+  --secondary: oklch(0.955 0.006 262);
+  --secondary-foreground: oklch(0.26 0.02 262);
+  --muted: oklch(0.96 0.005 262);
+  --muted-foreground: oklch(0.52 0.018 262);
+  --accent: oklch(0.948 0.014 262);
+  --accent-foreground: oklch(0.26 0.04 262);
+  --destructive: oklch(0.577 0.215 25);
+
+  --border: oklch(0.915 0.007 262);
+  --input: oklch(0.885 0.009 262);
+  --ring: oklch(0.6 0.17 262);
+
+  /* Diff — color base (marcadores, puntos, énfasis con /opacidad) + texto legible */
+  --diff-added: oklch(0.63 0.15 155);
+  --diff-added-foreground: oklch(0.43 0.12 155);
+  --diff-removed: oklch(0.62 0.2 23);
+  --diff-removed-foreground: oklch(0.5 0.18 23);
+  --diff-changed: oklch(0.76 0.15 72);
+  --diff-changed-foreground: oklch(0.5 0.12 62);
+
+  /* Sintaxis — evita verde/rojo/ámbar para no confundirse con el diff */
+  --syntax-key: oklch(0.48 0.17 285);
+  --syntax-string: oklch(0.44 0.1 240);
+  --syntax-number: oklch(0.5 0.11 195);
+  --syntax-literal: oklch(0.52 0.17 345);
+  --syntax-punct: oklch(0.55 0.015 262);
+
+  --editor: oklch(1 0 0);
+  --gutter: oklch(0.975 0.004 262);
+  --gutter-foreground: oklch(0.54 0.014 262);
+  --titlebar: oklch(0.975 0.004 262);
+}
+
+/* --------------------------------------------------------------- OSCURO -- */
+.dark {
+  --background: oklch(0.155 0.008 265);
+  --foreground: oklch(0.95 0.005 262);
+  --card: oklch(0.185 0.009 265);
+  --card-foreground: oklch(0.95 0.005 262);
+  --popover: oklch(0.21 0.01 265);
+  --popover-foreground: oklch(0.95 0.005 262);
+
+  --primary: oklch(0.67 0.16 262);
+  --primary-foreground: oklch(0.16 0.03 262);
+
+  --secondary: oklch(0.245 0.01 265);
+  --secondary-foreground: oklch(0.95 0.005 262);
+  --muted: oklch(0.235 0.01 265);
+  --muted-foreground: oklch(0.68 0.015 262);
+  --accent: oklch(0.255 0.016 265);
+  --accent-foreground: oklch(0.96 0.005 262);
+  --destructive: oklch(0.68 0.19 22);
+
+  --border: oklch(0.26 0.009 265);
+  --input: oklch(0.3 0.01 265);
+  --ring: oklch(0.62 0.15 262);
+
+  --diff-added: oklch(0.72 0.15 155);
+  --diff-added-foreground: oklch(0.8 0.13 155);
+  --diff-removed: oklch(0.69 0.18 22);
+  --diff-removed-foreground: oklch(0.8 0.12 22);
+  --diff-changed: oklch(0.8 0.14 78);
+  --diff-changed-foreground: oklch(0.86 0.12 85);
+
+  --syntax-key: oklch(0.79 0.1 290);
+  --syntax-string: oklch(0.81 0.075 230);
+  --syntax-number: oklch(0.8 0.09 190);
+  --syntax-literal: oklch(0.78 0.12 350);
+  --syntax-punct: oklch(0.6 0.012 262);
+
+  --editor: oklch(0.175 0.008 265);
+  --gutter: oklch(0.165 0.008 265);
+  --gutter-foreground: oklch(0.62 0.012 262);
+  --titlebar: oklch(0.135 0.008 265);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  /* Scrollbars discretos, coherentes en ambos temas */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
+  }
+}
+
+/* Superficies del navegador: selección, caret, foco del editor */
+@layer base {
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 32%, transparent);
+  }
+  input,
+  textarea {
+    caret-color: var(--primary);
+  }
+}
+
+/* Momento de movimiento: la diferencia a la que se navega destella y se asienta */
+@keyframes diff-arrive {
+  from {
+    box-shadow: inset 0 0 0 999px color-mix(in oklch, var(--foreground) 14%, transparent);
+  }
+  to {
+    box-shadow: inset 0 0 0 999px transparent;
+  }
+}
+@utility animate-arrive {
+  animation: diff-arrive 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-arrive {
+    animation: none;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

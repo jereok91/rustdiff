@@ -1,0 +1,15 @@
+<!-- @dsCard group="Acciones" height=64 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Kbd — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  R.mount(root, h('div',{className:'flex items-center gap-4 p-4 text-sm text-muted-foreground'},
+  h('span',{className:'flex items-center gap-2'},'Comparar',h(R.KbdGroup,null,h(R.Kbd,null,'⌘'),h(R.Kbd,null,'↵'))),
+  h('span',{className:'flex items-center gap-2'},'Siguiente',h(R.KbdGroup,null,h(R.Kbd,null,'⌥'),h(R.Kbd,null,'↓'))),
+  h('span',{className:'flex items-center gap-2'},'Anterior',h(R.KbdGroup,null,h(R.Kbd,null,'⌥'),h(R.Kbd,null,'↑')))))
+</script>
+</body>
+</html>

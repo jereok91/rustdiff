@@ -1,0 +1,15 @@
+<!-- @dsCard group="Marco" height=64 width=1100 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>AppHeader — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  function Demo(){ var f=R.React.useState('auto'), v=R.React.useState('split'), o=R.React.useState({ignoreArrayOrder:false,ignoreWhitespace:false,syncScroll:true,wrap:false});
+  var t=document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';
+  return h(R.AppHeader,{format:f[0],onFormatChange:f[1],view:v[0],onViewChange:v[1],options:o[0],onOptionsChange:o[1],theme:t,onToggleTheme:function(){},onSwap:function(){},onCompare:function(){},canCompare:true}) }
+R.mount(root, h(Demo))
+</script>
+</body>
+</html>

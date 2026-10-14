@@ -55,32 +55,141 @@ function oklchToLinear(l: number, c: number, h: number): [number, number, number
 }
 
 /**
- * `true` si un `oklch(...)` cae dentro de sRGB (con una tolerancia mínima).
- * Fuera de gamut el navegador (o Lightning CSS al compilar) hace gamut
- * mapping y el color pintado ya no es el que mide el test de contraste.
+ * `true` si un color OKLCH (o un `color-mix()` en OKLCH) cae dentro de sRGB,
+ * con una tolerancia mínima. Fuera de gamut el navegador (o Lightning CSS al
+ * compilar) hace gamut mapping y el color pintado ya no es el que mide el
+ * test de contraste. Cualquier otra sintaxis se da por buena.
  */
 export function inSrgbGamut(value: string): boolean {
-    const m = /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)/.exec(value.trim().toLowerCase());
-    if (!m) {
+    const color = parseOklch(value);
+    if (!color) {
         return true;
     }
-    const channels = oklchToLinear(number(m[1], 1), parseFloat(m[2]), parseFloat(m[3]));
+    const channels = oklchToLinear(color.l, color.c, color.h ?? 0);
     return channels.every((v) => v >= -0.002 && v <= 1.002);
 }
 
 const number = (raw: string, percentScale: number): number =>
     raw.endsWith("%") ? (parseFloat(raw) / 100) * percentScale : parseFloat(raw);
 
+/** Color en OKLCH; `h` es `null` cuando el tono no existe (`transparent`). */
+export type Oklch = { l: number; c: number; h: number | null; a: number };
+
+/** Separa por comas de primer nivel (las de dentro de paréntesis no cuentan). */
+function splitTopLevel(text: string): string[] {
+    const parts: string[] = [];
+    let depth = 0;
+    let start = 0;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === "(") {
+            depth++;
+        } else if (ch === ")") {
+            depth--;
+        } else if (ch === "," && depth === 0) {
+            parts.push(text.slice(start, i).trim());
+            start = i + 1;
+        }
+    }
+    parts.push(text.slice(start).trim());
+    return parts;
+}
+
+/** `<color> [p%]` de un argumento de `color-mix()`. */
+function mixStop(text: string): { color: Oklch; weight: number | null } | null {
+    const m = /^(.*?)(?:\s+([\d.]+)%)?$/.exec(text.trim());
+    if (!m) {
+        return null;
+    }
+    const color = parseOklch(m[1]);
+    return color ? { color, weight: m[2] === undefined ? null : parseFloat(m[2]) / 100 } : null;
+}
+
 /**
- * Interpreta `oklch(L C H)`, `oklch(L C H / A)` (L y A también en %) y
- * `#rgb` / `#rrggbb`. Devuelve `null` con cualquier otra cosa.
+ * `color-mix(in oklch, A [p%], B [q%])` según CSS Color 5: interpolación con
+ * alpha premultiplicado y tono por el arco corto; un color sin tono
+ * (`transparent`) toma el del otro. Es la forma en que los tokens derivan
+ * tintes (`color-mix(in oklch, var(--diff-added) 10%, transparent)`).
  */
-export function parseColor(value: string): Rgba | null {
+function mixOklch(text: string): Oklch | null {
+    const inner = /^color-mix\((.*)\)$/.exec(text);
+    if (!inner) {
+        return null;
+    }
+    const [space, first, second, ...rest] = splitTopLevel(inner[1]);
+    if (space !== "in oklch" || !first || !second || rest.length > 0) {
+        return null;
+    }
+    const a = mixStop(first);
+    const b = mixStop(second);
+    if (!a || !b) {
+        return null;
+    }
+    let pa = a.weight ?? (b.weight === null ? 0.5 : 1 - b.weight);
+    let pb = b.weight ?? 1 - pa;
+    const sum = pa + pb;
+    if (!(sum > 0)) {
+        return null;
+    }
+    // Si los pesos suman menos de 100% el alpha resultante se escala.
+    const alphaScale = Math.min(1, sum);
+    pa /= sum;
+    pb /= sum;
+
+    const alpha = a.color.a * pa + b.color.a * pb;
+    if (alpha === 0) {
+        return { l: 0, c: 0, h: null, a: 0 };
+    }
+    const premul = (x: number, y: number) => (x * a.color.a * pa + y * b.color.a * pb) / alpha;
+    let h: number | null;
+    if (a.color.h === null || b.color.h === null) {
+        h = a.color.h ?? b.color.h;
+    } else {
+        let delta = b.color.h - a.color.h;
+        if (delta > 180) {
+            delta -= 360;
+        } else if (delta < -180) {
+            delta += 360;
+        }
+        h = (((a.color.h + delta * pb) % 360) + 360) % 360;
+    }
+    return {
+        l: premul(a.color.l, b.color.l),
+        c: premul(a.color.c, b.color.c),
+        h,
+        a: alpha * alphaScale,
+    };
+}
+
+/** `oklch(...)`, `transparent` o `color-mix(in oklch, ...)` → OKLCH. */
+export function parseOklch(value: string): Oklch | null {
     const text = value.trim().toLowerCase();
+    if (text === "transparent") {
+        return { l: 0, c: 0, h: null, a: 0 };
+    }
     const oklch = /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)\s*(?:\/\s*([\d.]+%?)\s*)?\)$/.exec(text);
     if (oklch) {
         const [, l, c, h, alpha] = oklch;
-        return oklchToRgb(number(l, 1), parseFloat(c), parseFloat(h), alpha === undefined ? 1 : number(alpha, 1));
+        return {
+            l: number(l, 1),
+            c: parseFloat(c),
+            h: parseFloat(h),
+            a: alpha === undefined ? 1 : clamp01(number(alpha, 1)),
+        };
+    }
+    return mixOklch(text);
+}
+
+/**
+ * Interpreta `oklch(L C H)`, `oklch(L C H / A)` (L y A también en %),
+ * `transparent`, `color-mix(in oklch, …)` y `#rgb` / `#rrggbb`. Devuelve
+ * `null` con cualquier otra cosa.
+ */
+export function parseColor(value: string): Rgba | null {
+    const text = value.trim().toLowerCase();
+    const oklch = parseOklch(text);
+    if (oklch) {
+        return oklchToRgb(oklch.l, oklch.c, oklch.h ?? 0, oklch.a);
     }
     const hex = /^#([\da-f]{3}|[\da-f]{6})$/.exec(text);
     if (hex) {
@@ -104,9 +213,10 @@ export function toHex(color: Rgba): string {
     return `#${channel(color.r)}${channel(color.g)}${channel(color.b)}`;
 }
 
-/** Convierte un valor CSS a hex si es OKLCH opaco; si no, lo devuelve igual. */
+/** Convierte un valor CSS a hex si es OKLCH (o `color-mix` en OKLCH) opaco; si no, lo devuelve igual. */
 export function cssColorToHex(value: string): string {
-    if (!value.trim().toLowerCase().startsWith("oklch(")) {
+    const lower = value.trim().toLowerCase();
+    if (!lower.startsWith("oklch(") && !lower.startsWith("color-mix(")) {
         return value;
     }
     const parsed = parseColor(value);

@@ -20,7 +20,10 @@
 
 export type TextRange = { from: number; to: number };
 
-/** Lo que se encontró de un item: su clave (último segmento) y su valor. */
+/**
+ * Lo que se encontró de un item: su clave (último segmento; si es un índice de
+ * array JSON, el token del elemento mismo) y su valor.
+ */
 export type ItemLocation = { key: TextRange | null; value: TextRange | null };
 
 /** Quita las comillas envolventes de un string JSON (`clean_search_value`). */
@@ -185,6 +188,29 @@ function jsonArrayElement(text: string, pos: number, index: number): number | nu
     return null;
 }
 
+/**
+ * Rango del token del elemento que empieza en `pos`: el string completo con
+ * comillas, el escalar (número, `true`, `null`...) o solo la llave/corchete de
+ * apertura de un objeto/array.
+ */
+function jsonElementToken(text: string, pos: number): TextRange | null {
+    const ch = text[pos];
+    if (ch === undefined) {
+        return null;
+    }
+    if (ch === '"') {
+        return { from: pos, to: skipJsonString(text, pos) };
+    }
+    if (ch === "{" || ch === "[") {
+        return { from: pos, to: pos + 1 };
+    }
+    let end = pos;
+    while (end < text.length && !/[\s,\]}]/.test(text[end])) {
+        end++;
+    }
+    return end > pos ? { from: pos, to: end } : null;
+}
+
 /** `<tag` seguido de espacio, `>` o `/`. */
 function findXmlTag(text: string, tag: string, from: number): TextRange | null {
     const needle = `<${tag}`;
@@ -228,6 +254,9 @@ function anchorFor(text: string, path: string, syntax: PathSyntax): { anchor: nu
                     break;
                 }
                 anchor = element;
+                // La "clave" de un elemento de array es el elemento mismo, no
+                // la clave del array que lo contiene (`$.tags[1]` no es `"tags"`).
+                key = jsonElementToken(text, element);
                 continue;
             }
         } else if (segment.type === "key") {

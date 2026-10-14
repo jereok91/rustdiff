@@ -1,0 +1,15 @@
+<!-- @dsCard group="Marco" height=220 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Empty — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  R.mount(root, h(R.Empty,{className:'h-[200px]'},
+  h(R.EmptyMedia,null,h('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'},h('path',{d:'m13.5 8.5-5 5'}),h('path',{d:'m8.5 8.5 5 5'}),h('circle',{cx:11,cy:11,r:8}),h('path',{d:'m21 21-4.3-4.3'}))),
+  h(R.EmptyTitle,{className:'text-sm'},'Sin resultados'),
+  h(R.EmptyDescription,{className:'text-xs'},'Ninguna diferencia coincide con el filtro o la búsqueda.')))
+</script>
+</body>
+</html>

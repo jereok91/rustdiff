@@ -113,7 +113,18 @@ export function GraphView({ text, format, uiScale, scheme, onTruncatedChange }: 
     const [query, setQuery] = useState("");
     const [detail, setDetail] = useState<Detail | null>(null);
 
-    const metrics = useMemo(() => measureMetrics(uiScale), [uiScale]);
+    // Geist Mono llega como fuente web: cuando termina de cargar se vuelve a
+    // medir (antes, el canvas mediría la fuente de respaldo).
+    const [fontsVersion, setFontsVersion] = useState(0);
+    useEffect(() => {
+        let alive = true;
+        document.fonts?.ready.then(() => alive && setFontsVersion((n) => n + 1)).catch(() => undefined);
+        return () => {
+            alive = false;
+        };
+    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const metrics = useMemo(() => measureMetrics(uiScale), [uiScale, fontsVersion]);
 
     // Estado del canvas: refs, para pintar sin pasar por React.
     const graph = useRef<GraphResponse | null>(null);
@@ -489,18 +500,23 @@ export function GraphView({ text, format, uiScale, scheme, onTruncatedChange }: 
     const hintId = "graph-keyboard-hint";
 
     return (
-        <div className="bg-card flex h-full min-h-0 flex-col" data-testid="graph-view">
-            <div className="bg-card text-card-foreground flex h-(--toolbar-height) shrink-0 items-center gap-1 border-b px-2">
-                <Search className="text-muted-foreground mr-0.5 size-4 shrink-0" aria-hidden />
-                <Input
-                    type="search"
-                    value={query}
-                    onChange={(event) => onQueryChange(event.target.value)}
-                    onKeyDown={onSearchKey}
-                    placeholder={t("graph.search_placeholder")}
-                    aria-label={t("graph.search_placeholder")}
-                    className="flex-1"
-                />
+        <div className="bg-editor flex h-full min-h-0 flex-col" data-testid="graph-view">
+            <div className="bg-card text-card-foreground flex h-(--toolbar-height) shrink-0 items-center gap-1 border-b px-3">
+                <div className="relative mr-1 min-w-0 flex-1">
+                    <Search
+                        className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2"
+                        aria-hidden
+                    />
+                    <Input
+                        type="search"
+                        value={query}
+                        onChange={(event) => onQueryChange(event.target.value)}
+                        onKeyDown={onSearchKey}
+                        placeholder={t("graph.search_placeholder")}
+                        aria-label={t("graph.search_placeholder")}
+                        className="pl-8 text-caption"
+                    />
+                </div>
                 <IconButton
                     label={t("graph.zoom_out_tooltip")}
                     tooltip={`${t("graph.zoom_out_tooltip")} (-)`}
@@ -527,7 +543,7 @@ export function GraphView({ text, format, uiScale, scheme, onTruncatedChange }: 
                 </IconButton>
             </div>
 
-            <div ref={containerRef} className="bg-background relative min-h-0 flex-1 overflow-hidden">
+            <div ref={containerRef} className="bg-editor relative min-h-0 flex-1 overflow-hidden">
                 <span id={hintId} className="sr-only">
                     {t("graph.keyboard_hint")}
                 </span>
@@ -555,11 +571,16 @@ export function GraphView({ text, format, uiScale, scheme, onTruncatedChange }: 
                         className="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center"
                         data-testid="graph-placeholder"
                     >
-                        <Network className="size-12 opacity-50" aria-hidden />
-                        <p className="text-foreground text-title font-semibold">
+                        <div
+                            aria-hidden
+                            className="bg-muted text-muted-foreground mb-1 grid size-11 place-items-center rounded-lg border"
+                        >
+                            <Network className="size-5" />
+                        </div>
+                        <p className="text-foreground text-body font-medium">
                             {t(mode === "unsupported" ? "graph.unsupported_title" : "graph.empty_title")}
                         </p>
-                        <p className="max-w-sm text-body">
+                        <p className="max-w-sm text-caption/5">
                             {t(mode === "unsupported" ? "graph.unsupported_desc" : "graph.empty_desc")}
                         </p>
                     </div>

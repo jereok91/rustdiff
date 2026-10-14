@@ -205,7 +205,13 @@ export function semanticMarks(text: string, result: DiffResult, side: Side): Mar
         // primera aparición cruda del texto.
         const found = locateItem(text, item.path, value);
         push(found.value, kind);
-        push(found.key, kind);
+        // En un elemento de array la "clave" es el elemento: si ya cae sobre el
+        // valor no se marca dos veces.
+        const key = found.key;
+        const overlaps = key && found.value && key.from < found.value.to && found.value.from < key.to;
+        if (!overlaps) {
+            push(key, kind);
+        }
     }
     return marks;
 }

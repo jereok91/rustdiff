@@ -1,0 +1,23 @@
+<!-- @dsCard group="Controles" height=280 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>DropdownMenu — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  function Demo(){ var o=R.React.useState({a:false,b:false,c:true,d:false}); var set=function(k){return function(v){var n=Object.assign({},o[0]);n[k]=v;o[1](n)}};
+  return h('div',{className:'flex justify-end p-4 pr-16'}, h(R.DropdownMenu,{defaultOpen:true,modal:false},
+    h(R.DropdownMenuTrigger,{asChild:true},h(R.Button,{variant:'outline',size:'sm'},'Opciones')),
+    h(R.DropdownMenuContent,{align:'end',className:'w-60'},
+      h(R.DropdownMenuLabel,{className:'text-muted-foreground text-xs font-normal'},'Comparación'),
+      h(R.DropdownMenuCheckboxItem,{checked:o[0].a,onCheckedChange:set('a')},'Ignorar orden de arreglos'),
+      h(R.DropdownMenuCheckboxItem,{checked:o[0].b,onCheckedChange:set('b')},'Ignorar espacios en valores'),
+      h(R.DropdownMenuSeparator),
+      h(R.DropdownMenuLabel,{className:'text-muted-foreground text-xs font-normal'},'Editor'),
+      h(R.DropdownMenuCheckboxItem,{checked:o[0].c,onCheckedChange:set('c')},'Sincronizar desplazamiento'),
+      h(R.DropdownMenuCheckboxItem,{checked:o[0].d,onCheckedChange:set('d')},'Ajustar líneas largas')))) }
+R.mount(root, h(Demo))
+</script>
+</body>
+</html>

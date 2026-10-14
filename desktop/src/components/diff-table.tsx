@@ -1,10 +1,13 @@
 /*
  * Panel de diferencias (F4): el `DiffPanel` de `src/ui/diff_panel.rs`.
  *
- *   - Barra superior con el resumen y tres toggles (Added / Removed /
- *     Changed) que filtran por tipo y muestran cuántas filas hay de cada uno.
- *   - Columnas Type / Path / Left / Right; las celdas se truncan con "…" y el
- *     valor completo va en el tooltip (`title`), como en la GTK.
+ *   - Barra superior (con el aspecto del `diff-panel.tsx` del prototipo):
+ *     tres toggles (Added / Removed / Changed) en un control segmentado que
+ *     filtran por tipo y muestran cuántas filas hay de cada uno, el resumen,
+ *     la posición y anterior / siguiente.
+ *   - Columnas # / Type (insignia) / Path (`JsonPath`) / Left / Right (chips
+ *     de valor); los valores se truncan con "…" y el completo va en el
+ *     tooltip (`title`), como en la GTK.
  *   - En las filas Changed, los caracteres que difieren se resaltan dentro de
  *     Left/Right con `commands.inlineCharRanges` (el mismo
  *     `inline_char_ranges` que usa `changed_value_markup`). Se piden solo
@@ -17,8 +20,14 @@
 
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ChevronDown, ChevronUp, CircleCheck, GitCompareArrows } from "lucide-react";
 
-import { commands, type DiffItem, type DiffKind, type DiffResult, type InlineRanges } from "@/bindings";
+import { commands, type DiffItem, type DiffResult, type InlineRanges } from "@/bindings";
+import { DiffDot, DiffKindBadge, JsonPath, KIND_META } from "@/components/diff-kind";
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { IconButton } from "@/components/ui/icon-button";
+import { segmentedGroup, segmentedItem, ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
     ALL_KINDS,
     DEFAULT_FILTERS,
@@ -26,40 +35,17 @@ import {
     filterRows,
     kindCounts,
     type KindFilters,
+    stepRow,
     valueSegments,
     visibleWindow,
 } from "@/lib/diff-rows";
 import { cn } from "@/lib/utils";
 
 /** Alto fijo de fila en px: la virtualización depende de que no varíe. */
-export const ROW_HEIGHT = 28;
+export const ROW_HEIGHT = 36;
 
 /** Alto supuesto del viewport cuando el DOM todavía no lo midió (jsdom, primer render). */
 const FALLBACK_VIEWPORT = 600;
-
-const KIND_LABEL: Record<DiffKind, string> = {
-    Added: "diff.added_label",
-    Removed: "diff.removed_label",
-    Changed: "diff.changed_label",
-};
-
-const FILTER_LABEL: Record<DiffKind, string> = {
-    Added: "panel.filter_added",
-    Removed: "panel.filter_removed",
-    Changed: "panel.filter_changed",
-};
-
-const KIND_COLOR: Record<DiffKind, string> = {
-    Added: "text-diff-added",
-    Removed: "text-diff-removed",
-    Changed: "text-diff-changed",
-};
-
-const FILTER_ACTIVE: Record<DiffKind, string> = {
-    Added: "border-diff-added/60 bg-(--diff-added-row)",
-    Removed: "border-diff-removed/60 bg-(--diff-removed-row)",
-    Changed: "border-diff-changed/60 bg-(--diff-changed-row)",
-};
 
 export type RangesFetcher = (left: string, right: string) => Promise<InlineRanges>;
 
@@ -210,10 +196,18 @@ export function DiffTable({
         ensureVisible(next);
     };
 
-    const toggle = (kind: DiffKind) => {
-        const next = { ...filters, [kind]: !filters[kind] };
+    const setFilters = (next: KindFilters) => {
         setOwnFilters(next);
         onFiltersChange?.(next);
+    };
+
+    /** Anterior / siguiente diferencia visible, con vuelta. */
+    const step = (direction: 1 | -1) => {
+        const next = stepRow(rows, selected, direction);
+        if (next >= 0) {
+            activate(rows[next]);
+            ensureVisible(next);
+        }
     };
 
     const total = counts.Added + counts.Removed + counts.Changed;
@@ -222,98 +216,168 @@ export function DiffTable({
         : total === 0
           ? t("diff.summary_identical")
           : t("diff.summary_counts", { total, added: counts.Added, removed: counts.Removed, changed: counts.Changed });
+    const position = selected ? rows.indexOf(selected) : -1;
 
-    return (
-        <div className="flex h-full min-h-0 flex-col" data-testid="diff-panel">
-            <div className="bg-card text-card-foreground flex h-(--toolbar-height) shrink-0 items-center gap-2 border-b px-2">
-                <span className="text-muted-foreground flex-1 truncate text-caption" data-testid="diff-summary">
-                    {summary}
-                </span>
-                {ALL_KINDS.map((kind) => (
-                    <button
-                        key={kind}
-                        type="button"
-                        aria-pressed={filters[kind]}
-                        data-testid={`filter-${kind}`}
-                        onClick={() => toggle(kind)}
-                        className={cn(
-                            "focus-ring inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-caption font-medium transition-colors",
-                            filters[kind]
-                                ? FILTER_ACTIVE[kind]
-                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground border-dashed",
-                        )}
-                    >
-                        <span className={cn(filters[kind] && KIND_COLOR[kind])}>{t(FILTER_LABEL[kind])}</span>
-                        <span className="bg-background text-foreground rounded px-1 tabular-nums">{counts[kind]}</span>
-                    </button>
-                ))}
+    let body;
+    if (allRows.length === 0) {
+        body = result ? (
+            <Empty className="h-full">
+                <EmptyMedia className="bg-(--diff-added-row) text-diff-added-foreground">
+                    <CircleCheck />
+                </EmptyMedia>
+                <EmptyTitle>{t("diff.summary_identical")}</EmptyTitle>
+                <EmptyDescription>{t("panel.identical_desc")}</EmptyDescription>
+            </Empty>
+        ) : (
+            <Empty className="h-full">
+                <EmptyMedia>
+                    <GitCompareArrows />
+                </EmptyMedia>
+                <EmptyTitle>{t("panel.summary_none")}</EmptyTitle>
+                <EmptyDescription>{t("panel.waiting_desc")}</EmptyDescription>
+            </Empty>
+        );
+    } else {
+        body = (
+            <div
+                ref={scrollRef}
+                className="focus-ring-inset min-h-0 flex-1 overflow-auto"
+                tabIndex={0}
+                role="grid"
+                aria-label={t("header.diff_panel")}
+                aria-rowcount={rows.length}
+                onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+                onKeyDown={onKeyDown}
+            >
+                <table className="w-full table-fixed border-collapse text-body" data-testid="diff-table">
+                    <colgroup>
+                        <col className="w-12" />
+                        <col className="w-32" />
+                        <col />
+                        <col className="w-[24%]" />
+                        <col className="w-[24%]" />
+                    </colgroup>
+                    <thead className="bg-card text-muted-foreground sticky top-0 z-10 text-left text-caption">
+                        <tr style={{ height: ROW_HEIGHT - 4 }}>
+                            <th className="border-b pl-4 font-medium">#</th>
+                            <th className="border-b px-2 font-medium">{t("panel.col_type")}</th>
+                            <th className="border-b px-2 font-medium">{t("panel.col_path")}</th>
+                            <th className="border-b px-2 font-medium">{t("panel.col_left")}</th>
+                            <th className="border-b px-2 pr-4 font-medium">{t("panel.col_right")}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {start > 0 && <tr aria-hidden style={{ height: start * ROW_HEIGHT }} />}
+                        {visible.map((item, offset) => (
+                            <DiffRow
+                                key={`${start + offset}-${item.kind}-${item.path}`}
+                                index={start + offset}
+                                item={item}
+                                selected={item === selected}
+                                ranges={
+                                    item.kind === "Changed" && item.left !== null && item.right !== null
+                                        ? ranges.current.get(rangesKey(item.left, item.right))
+                                        : undefined
+                                }
+                                onClick={() => activate(item)}
+                            />
+                        ))}
+                        {end < rows.length && <tr aria-hidden style={{ height: (rows.length - end) * ROW_HEIGHT }} />}
+                    </tbody>
+                </table>
             </div>
+        );
+    }
 
-            {allRows.length === 0 ? (
-                <div className="text-muted-foreground flex flex-1 items-center justify-center text-body">
-                    {t(result ? "diff.summary_identical" : "panel.summary_none")}
+    // Proveedor propio: el panel también se monta suelto (tests) y Radix anida bien.
+    return (
+        <TooltipProvider>
+            <section
+                className="bg-card text-card-foreground @container flex h-full min-h-0 flex-col"
+                aria-label={t("header.diff_panel")}
+                data-testid="diff-panel"
+            >
+                <div className="flex h-(--toolbar-height) shrink-0 items-center gap-3 border-b px-3">
+                    <h2 className="hidden shrink-0 text-body font-semibold @xl:block">{t("header.diff_panel")}</h2>
+
+                    <ToggleGroup
+                        type="multiple"
+                        size="sm"
+                        value={ALL_KINDS.filter((kind) => filters[kind])}
+                        onValueChange={(value) =>
+                            setFilters({
+                                Added: value.includes("Added"),
+                                Removed: value.includes("Removed"),
+                                Changed: value.includes("Changed"),
+                            })
+                        }
+                        className={segmentedGroup}
+                        aria-label={t("panel.filters")}
+                    >
+                        {ALL_KINDS.map((kind) => (
+                            <ToggleGroupItem
+                                key={kind}
+                                value={kind}
+                                data-testid={`filter-${kind}`}
+                                aria-label={`${t(KIND_META[kind].filter)}: ${counts[kind]}`}
+                                className={segmentedItem}
+                            >
+                                <DiffDot kind={kind} className={cn(!filters[kind] && "opacity-40")} />
+                                <span className="hidden @3xl:inline">{t(KIND_META[kind].filter)}</span>
+                                <span className="text-muted-foreground tabular">{counts[kind]}</span>
+                            </ToggleGroupItem>
+                        ))}
+                    </ToggleGroup>
+
+                    <span
+                        className="text-muted-foreground hidden min-w-0 flex-1 truncate text-caption @2xl:block"
+                        data-testid="diff-summary"
+                    >
+                        {summary}
+                    </span>
+
+                    <div className="ml-auto flex shrink-0 items-center gap-2">
+                        <span className="text-muted-foreground hidden min-w-10 text-right text-caption tabular @lg:inline">
+                            {rows.length > 0 ? `${position >= 0 ? position + 1 : "–"} / ${rows.length}` : ""}
+                        </span>
+                        <div className="flex">
+                            <IconButton
+                                variant="outline"
+                                className="rounded-r-none"
+                                label={t("panel.prev")}
+                                onClick={() => step(-1)}
+                                disabled={rows.length === 0}
+                            >
+                                <ChevronUp />
+                            </IconButton>
+                            <IconButton
+                                variant="outline"
+                                className="-ml-px rounded-l-none"
+                                label={t("panel.next")}
+                                onClick={() => step(1)}
+                                disabled={rows.length === 0}
+                            >
+                                <ChevronDown />
+                            </IconButton>
+                        </div>
+                    </div>
                 </div>
-            ) : (
-                <div
-                    ref={scrollRef}
-                    className="focus-ring-inset min-h-0 flex-1 overflow-auto"
-                    tabIndex={0}
-                    role="grid"
-                    aria-rowcount={rows.length}
-                    onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
-                    onKeyDown={onKeyDown}
-                >
-                    <table className="w-full table-fixed border-collapse text-body" data-testid="diff-table">
-                        <colgroup>
-                            <col className="w-32" />
-                            <col className="w-[30%]" />
-                            <col />
-                            <col />
-                        </colgroup>
-                        <thead className="bg-card text-muted-foreground sticky top-0 z-10 text-left text-caption">
-                            <tr style={{ height: ROW_HEIGHT }}>
-                                <th className="border-b px-2 font-medium">{t("panel.col_type")}</th>
-                                <th className="border-b border-l px-2 font-medium">{t("panel.col_path")}</th>
-                                <th className="border-b border-l px-2 font-medium">{t("panel.col_left")}</th>
-                                <th className="border-b border-l px-2 font-medium">{t("panel.col_right")}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {start > 0 && <tr aria-hidden style={{ height: start * ROW_HEIGHT }} />}
-                            {visible.map((item, offset) => (
-                                <DiffRow
-                                    key={`${start + offset}-${item.kind}-${item.path}`}
-                                    item={item}
-                                    selected={item === selected}
-                                    ranges={
-                                        item.kind === "Changed" && item.left !== null && item.right !== null
-                                            ? ranges.current.get(rangesKey(item.left, item.right))
-                                            : undefined
-                                    }
-                                    onClick={() => activate(item)}
-                                    label={t(KIND_LABEL[item.kind])}
-                                />
-                            ))}
-                            {end < rows.length && (
-                                <tr aria-hidden style={{ height: (rows.length - end) * ROW_HEIGHT }} />
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-        </div>
+
+                {body}
+            </section>
+        </TooltipProvider>
     );
 }
 
 type DiffRowProps = {
+    index: number;
     item: DiffItem;
     selected: boolean;
     ranges: InlineRanges | undefined;
     onClick: () => void;
-    label: string;
 };
 
-function DiffRow({ item, selected, ranges, onClick, label }: DiffRowProps) {
+function DiffRow({ index, item, selected, ranges, onClick }: DiffRowProps) {
     return (
         <tr
             data-kind={item.kind}
@@ -321,46 +385,67 @@ function DiffRow({ item, selected, ranges, onClick, label }: DiffRowProps) {
             onClick={onClick}
             style={{ height: ROW_HEIGHT }}
             className={cn(
-                "cursor-pointer",
-                selected ? "bg-accent text-accent-foreground" : cn(`diff-row-${item.kind}`, "hover:bg-accent"),
+                "border-border/60 cursor-pointer border-b transition-colors duration-(--duration-fast)",
+                selected ? "bg-accent" : "hover:bg-muted/60",
             )}
         >
-            <td className={cn("truncate border-b px-2 font-medium whitespace-nowrap", KIND_COLOR[item.kind])}>{label}</td>
-            <td className="truncate border-b border-l px-2 font-mono text-code whitespace-nowrap" title={item.path}>
-                {item.path}
+            <td
+                className={cn(
+                    "pl-4 text-caption tabular",
+                    selected ? "text-primary font-semibold" : "text-muted-foreground",
+                )}
+            >
+                {index + 1}
             </td>
-            <ValueCell value={item.left} ranges={ranges?.left} highlightClass="diff-cell-inline-removed" />
-            <ValueCell value={item.right} ranges={ranges?.right} highlightClass="diff-cell-inline-added" />
+            <td className="px-2">
+                <DiffKindBadge kind={item.kind} />
+            </td>
+            <td className="truncate px-2 whitespace-nowrap" title={item.path}>
+                <JsonPath path={item.path} />
+            </td>
+            <ValueCell value={item.left} ranges={ranges?.left} />
+            <ValueCell value={item.right} ranges={ranges?.right} last />
         </tr>
     );
 }
 
+/** Valor como chip (el `ValueChip` del prototipo), con los caracteres que difieren resaltados. */
 function ValueCell({
     value,
     ranges,
-    highlightClass,
+    last,
 }: {
     value: string | null;
     ranges: InlineRanges["left"] | undefined;
-    highlightClass: string;
+    last?: boolean;
 }) {
     if (value === null) {
-        return <td className="text-muted-foreground truncate border-b border-l px-2">—</td>;
+        return (
+            <td className={cn("text-muted-foreground px-2", last && "pr-4")}>
+                —
+            </td>
+        );
     }
     const segments = ranges && ranges.length > 0 ? valueSegments(value, ranges) : null;
     return (
-        <td className="truncate border-b border-l px-2 font-mono text-code whitespace-nowrap" title={value}>
-            {segments
-                ? segments.map((segment, index) =>
-                      segment.highlight ? (
-                          <mark key={index} className={cn("text-inherit", highlightClass)} data-inline>
-                              {segment.text}
-                          </mark>
-                      ) : (
-                          <span key={index}>{segment.text}</span>
-                      ),
-                  )
-                : value}
+        <td className={cn("px-2", last && "pr-4")} title={value}>
+            <span className="bg-muted text-foreground inline-block max-w-full truncate rounded-md border px-1.5 py-0.5 align-middle font-mono text-caption whitespace-nowrap">
+                {segments
+                    ? segments.map((segment, index) =>
+                          segment.highlight ? (
+                              <mark
+                                  key={index}
+                                  className="text-diff-changed-foreground rounded-[3px] bg-(--diff-changed-inline) px-px"
+                                  data-inline
+                              >
+                                  {segment.text}
+                              </mark>
+                          ) : (
+                              <span key={index}>{segment.text}</span>
+                          ),
+                      )
+                    : value}
+            </span>
         </td>
     );
 }

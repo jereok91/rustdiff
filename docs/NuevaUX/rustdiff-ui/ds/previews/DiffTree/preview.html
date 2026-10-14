@@ -1,0 +1,14 @@
+<!-- @dsCard group="Diff" height=420 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>DiffTree — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  function Demo(){ var s=R.React.useState('d4');
+    return h('div',{className:'h-[400px] border-y'}, h(R.DiffTree,{entries:R.demo.entries,selectedId:s[0],onSelect:s[1]})) }
+  R.mount(root, h(Demo))
+</script>
+</body>
+</html>

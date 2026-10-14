@@ -1,0 +1,22 @@
+<!-- @dsCard group="Diff" height=780 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>CodePane — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  var bad = '{\n  "adjustments": {\n    "type": "dataphonesSales"\n  }\n  "register": {}\n}';
+  var err = R.parseDocument(bad);
+  function Demo(){ var s=R.React.useState('d1');
+    return h('div',{className:'grid h-[760px] grid-rows-[400px_1fr] border-y'},
+      h('div',{className:'grid grid-cols-2 divide-x border-b'},
+        h(R.CodePane,{side:'left',fileName:'ajuste_original.json',state:{kind:'ready',lines:R.demo.left},selectedId:s[0],onSelectEntry:s[1],onRevealEntry:s[1]}),
+        h(R.CodePane,{side:'right',fileName:'ajuste_corregido.json',state:{kind:'ready',lines:R.demo.right},selectedId:s[0],onSelectEntry:s[1],onRevealEntry:s[1]})),
+      h('div',{className:'grid grid-cols-2 divide-x'},
+        h(R.CodePane,{side:'left',state:{kind:'empty'},onOpenFile:function(){},onPasteText:function(){}}),
+        h(R.CodePane,{side:'right',fileName:'roto.json',state:{kind:'error',text:bad,message:err.message,line:err.line,column:err.column}}))) }
+  R.mount(root, h(Demo))
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<!-- @dsCard group="Estado" height=64 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>DiffKindBadge — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  R.mount(root, h('div',{className:'flex items-center gap-2 p-4'},
+  h(R.DiffKindBadge,{kind:'added'}), h(R.DiffKindBadge,{kind:'removed'}), h(R.DiffKindBadge,{kind:'changed'})))
+</script>
+</body>
+</html>

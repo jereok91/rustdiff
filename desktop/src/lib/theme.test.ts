@@ -11,6 +11,7 @@ import { useTheme } from "@/hooks/use-color-scheme";
 import {
     applySavedTheme,
     applyScheme,
+    DEFAULT_THEME_SETTING,
     normalizeThemeSetting,
     readThemeSetting,
     resolveScheme,
@@ -54,21 +55,23 @@ afterEach(() => {
 });
 
 describe("lib/theme", () => {
-    it("normaliza lo guardado: cualquier cosa desconocida es 'system'", () => {
+    it("normaliza lo guardado: cualquier cosa desconocida es el predeterminado, 'dark'", () => {
+        expect(DEFAULT_THEME_SETTING).toBe("dark");
         expect(normalizeThemeSetting("dark")).toBe("dark");
         expect(normalizeThemeSetting("light")).toBe("light");
-        expect(normalizeThemeSetting("purple")).toBe("system");
-        expect(normalizeThemeSetting(null)).toBe("system");
+        expect(normalizeThemeSetting("system")).toBe("system");
+        expect(normalizeThemeSetting("purple")).toBe("dark");
+        expect(normalizeThemeSetting(null)).toBe("dark");
     });
 
     it("persiste y relee la elección", () => {
-        expect(readThemeSetting()).toBe("system");
+        expect(readThemeSetting()).toBe("dark");
         writeThemeSetting("dark");
         expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
         expect(readThemeSetting()).toBe("dark");
     });
 
-    it("sin almacenamiento usable cae a 'system' sin lanzar", () => {
+    it("sin almacenamiento usable cae al predeterminado sin lanzar", () => {
         const broken = {
             getItem: () => {
                 throw new Error("denied");
@@ -77,7 +80,7 @@ describe("lib/theme", () => {
                 throw new Error("denied");
             },
         };
-        expect(readThemeSetting(broken)).toBe("system");
+        expect(readThemeSetting(broken)).toBe("dark");
         expect(() => writeThemeSetting("dark", broken)).not.toThrow();
     });
 
@@ -97,6 +100,13 @@ describe("lib/theme", () => {
         expect(root().style.colorScheme).toBe("light");
     });
 
+    it("sin nada guardado arranca en oscuro aunque el sistema sea claro", () => {
+        mockSystem(false);
+        expect(applySavedTheme()).toBe("dark");
+        expect(root().classList.contains("dark")).toBe(true);
+        expect(root().style.colorScheme).toBe("dark");
+    });
+
     it("al arrancar aplica lo guardado por encima del sistema", () => {
         mockSystem(false);
         localStorage.setItem(THEME_STORAGE_KEY, "dark");
@@ -106,8 +116,19 @@ describe("lib/theme", () => {
 });
 
 describe("useTheme", () => {
-    it("por defecto sigue al sistema, también cuando cambia en vivo", () => {
+    it("por defecto es oscuro e ignora al sistema", () => {
         const system = mockSystem(false);
+        const { result } = renderHook(() => useTheme());
+        expect(result.current.setting).toBe("dark");
+        expect(result.current.scheme).toBe("dark");
+        act(() => system.set(true));
+        act(() => system.set(false));
+        expect(result.current.scheme).toBe("dark");
+    });
+
+    it("'system' sigue al sistema, también cuando cambia en vivo", () => {
+        const system = mockSystem(false);
+        localStorage.setItem(THEME_STORAGE_KEY, "system");
         const { result } = renderHook(() => useTheme());
         expect(result.current.setting).toBe("system");
         expect(result.current.scheme).toBe("light");

@@ -1,0 +1,14 @@
+<!-- @dsCard group="Controles" height=72 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Select — vista previa</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var R = window.RustDiffUI, h = R.h, root = document.getElementById('root');
+  R.mount(root, h('div',{className:'p-4'}, h(R.Select,{defaultValue:'auto'},
+  h(R.SelectTrigger,{size:'sm',className:'h-8 w-40 text-xs'},h('span',{className:'text-muted-foreground'},'Formato'),h(R.SelectValue)),
+  h(R.SelectContent,null, ['auto','json','yaml','xml','toml'].map(function(v){return h(R.SelectItem,{key:v,value:v},v==='auto'?'Auto':v.toUpperCase())})))))
+</script>
+</body>
+</html>
