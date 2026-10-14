@@ -71,10 +71,10 @@ Fase F0 — congelar el núcleo (S1, S6, S7).
 
 | ID | Tarea | Spec | Ruta | Commit |
 |----|-------|------|------|--------|
-| T1 | Documento ODD de la feature | S1, S5 | inline | |
-| T2 | Workspace Cargo + `rustdiff-core` (parser, diff_engine, graph, export), tests de integración movidos, test de invariante sin-UI | S6, S7 | inline | |
-| T3 | `rustdiff-persist` (storage, settings) y poda de dependencias muertas del paquete raíz | S6, S7 | inline | |
-| T4 | CI y CLAUDE.md a workspace | S6 | inline | |
+| T1 | Documento ODD de la feature | S1, S5 | inline | `74caca2` |
+| T2 | Workspace Cargo + `rustdiff-core` (parser, diff_engine, graph, export), tests de integración movidos, test de invariante sin-UI | S6, S7 | inline | `c05f320` |
+| T3 | `rustdiff-persist` (storage, settings) y poda de dependencias muertas del paquete raíz | S6, S7 | inline | `c05f320` |
+| T4 | CI, CLAUDE.md y RELEASING.md a workspace | S6 | inline | `9b5c609` |
 
 Fases posteriores (no autorizadas aún): F1 spike Tauri, F2 contrato IPC, F3 shell + editores,
 F4 tabla de diff, F5 historial + export con golden files, F6 grafo, F7 sistema de diseño,
@@ -110,3 +110,30 @@ API); la deuda se salda en F5 moviendo las cadenas de usuario al front (D3).
 principal en Linux (viabilidad de `webkit2gtk-4.1` a verificar en F1); **D7** se retira
 crates.io, ejecutado en F8 junto con `install.sh`. D3, D4 y D6 las tomo con la
 recomendación y se revisan en su fase.
+
+**L7** (evidencia de F0, 2026-07-27):
+
+- **151 tests verdes** en `cargo test --workspace --all-targets`: 150 preexistentes + 1
+  nuevo (`no_ui_dependencies`). Reparto: raíz 5, `rustdiff-core` 126 (84 unitarios +
+  41 de integración + 1 de invariante), `rustdiff-persist` 20.
+- `cargo fmt --all --check` limpio y `cargo clippy --workspace --all-targets -- -D warnings`
+  sin warnings.
+- `Cargo.lock`: **-1.106 líneas** al caer `tokio`, `notify-rust` y su árbol.
+- Smoke del binario GTK con dos JSON: abre, carga y compara; `timeout` lo mató a los 8 s
+  (exit 124 = seguía vivo), **0 panics y 0 criticals**. La ventana se abrió en el
+escritorio del usuario porque no hay `xvfb` en esta máquina.
+- **Agujero de verificación encontrado y cerrado**: `cargo test` pelado en la raíz corría
+  **5 tests** (solo el paquete del directorio actual), no 150. Se agregó `default-members`
+  al workspace; sin eso, la extracción habría dejado 145 tests fuera de juego en silencio.
+- **Hallazgo nuevo (preexistente, no lo introduce F0)**: al abrir archivos, GTK emite
+  `Unknown tag 'rustdiff-*'` cinco veces por buffer porque `clear_highlights`
+  (`src/ui/highlighter.rs:95`) llama a `remove_tag_by_name` antes de que `ensure_tags`
+  cree los tags. Es cosmético y muere con el front GTK en F8; no se toca en F0 porque
+  S6 prohíbe cambios de comportamiento.
+- **D7 confirmado con el comando, no supuesto**: `cargo package -p rustdiff --no-verify`
+  falla con `all dependencies must have a version requirement specified when packaging.
+  dependency rustdiff-core does not specify a version`. El canal crates.io queda roto
+  hasta F8; los tags `v*` se cortan desde `main` hasta entonces.
+- Nota de higiene: `cargo package` sin `--allow-dirty` se queja del `build-dir/` de
+  Flatpak que vive en el árbol (git lo ignora bien; es cargo quien lo ve a través de un
+  enlace simbólico). Es preexistente, no de F0.
