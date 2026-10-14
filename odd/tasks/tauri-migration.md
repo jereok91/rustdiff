@@ -52,7 +52,7 @@ Todo acceso a disco, parseo y validación pasa por comandos Rust, para conservar
 | D2 | Render de la vista de grafo | **Canvas 2D con el layout de `graph.rs`** (elegido) | F6 |
 | D3 | i18n | i18next en el front (saca `rust-i18n` del core) | F2/F5 |
 | D4 | Retirar la app GTK al final | Sí | F8 |
-| D5 | Flatpak como canal principal en Linux | **Sí** (elegido); su viabilidad se mide en F1 | F1 |
+| D5 | Flatpak como canal principal en Linux | **Sí** (elegido); viabilidad ya confirmada, ver L9 | F1 |
 | D6 | Generación de tipos TS | `tauri-specta` | F2 |
 | D7 | crates.io | **Retirar** (elegido); se ejecuta en F8 junto con `install.sh` | antes del próximo tag `v*` |
 
@@ -162,3 +162,20 @@ escritorio del usuario porque no hay `xvfb` en esta máquina.
   comentarios es por prefijo de línea.
 - **Estado final de F0**: 151 tests verdes, `cargo fmt --all --check` limpio y
   `cargo clippy --workspace --all-targets -- -D warnings` sin warnings.
+
+**L9** (riesgo de F1 despejado con evidencia local, sin spike): el miedo era de dónde
+sacaría `webkit2gtk-4.1` el Flatpak de Tauri, porque compilar WebKitGTK es carísimo. Los
+runtimes ya instalados en esta máquina lo responden:
+
+- `org.gnome.Platform//50` trae `files/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0`
+  (2.54.1) y sus procesos (`WebKitWebProcess`, `WebKitNetworkProcess`, `WebKitGPUProcess`)
+  en `files/libexec/webkit2gtk-4.1/` → el runtime ya sirve para ejecutar.
+- `org.gnome.Sdk//50` trae `webkit2gtk-4.1.pc` y
+  `files/lib/x86_64-linux-gnu/webkit2gtk-4.1/include/` → el SDK ya sirve para compilar.
+
+Conclusión: **el manifest Flatpak actual no necesita ningún módulo extra ni compilar
+WebKit**, y el gate de D5 deja de ser el punto de no-go de F1. Los prerequisitos locales
+también están: `webkit2gtk-4.1` 2.54.1, `javascriptcoregtk-4.1` 2.54.1, `libsoup-3.0`
+3.8.0, node v24.13.0, npm 11.6.2, pnpm 10.32.1, cargo 1.99.0 (CachyOS).
+Queda en F1 lo barato: `src-tauri` + front mínimo, medir bundle y arranque, y regenerar
+`cargo-sources.json` (punto diferido de L8).
