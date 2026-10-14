@@ -16,7 +16,7 @@ use gtk4 as gtk;
 use similar::{DiffTag, TextDiff};
 use sourceview5 as sv;
 
-use crate::diff_engine::{DiffItem, DiffKind, DiffResult, inline_char_ranges};
+use rustdiff_core::diff_engine::{DiffItem, DiffKind, DiffResult, inline_char_ranges};
 
 // ─────────────────────────────────────────────
 // Nombres de los TextTags

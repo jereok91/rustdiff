@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-use crate::parser::Format;
+use rustdiff_core::parser::Format;
 
 // ─────────────────────────────────────────────
 // Errores
@@ -348,7 +348,7 @@ fn default_db_path() -> Result<PathBuf, StorageError> {
 
 impl DiffSummary {
     /// Crea un resumen desde un `DiffResult`.
-    pub fn from_diff_result(result: &crate::diff_engine::DiffResult) -> Self {
+    pub fn from_diff_result(result: &rustdiff_core::diff_engine::DiffResult) -> Self {
         Self {
             added: result.added.len(),
             removed: result.removed.len(),

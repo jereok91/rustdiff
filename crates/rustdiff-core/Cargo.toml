@@ -1,0 +1,60 @@
+# Copyright 2026 the rustdiff authors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# ─────────────────────────────────────────────
+# NUCLEO SIN UI
+# ─────────────────────────────────────────────
+# Formato, parseo, diff semantico, grafo y export. No conoce GTK ni Tauri:
+# la invariante la sostiene `tests/no_ui_dependencies.rs`. Es la parte de la
+# aplicacion que sobrevive a cualquier cambio de toolkit.
+[package]
+name    = "rustdiff-core"
+version.workspace     = true
+edition.workspace     = true
+rust-version.workspace = true
+authors.workspace     = true
+license.workspace     = true
+repository.workspace  = true
+homepage.workspace    = true
+description = "Motor semantico de comparacion (JSON, XML, SQL y texto) de RustDiff, sin UI"
+
+# Interno del workspace por ahora: publicar en crates.io exige decidir el
+# orden de publicacion de los miembros (ver odd/tasks/tauri-migration.md, D7).
+publish = false
+
+# ── SERIALIZACION / PARSEO ───────────────────
+[dependencies]
+serde_json = "1"
+quick-xml  = { version = "0.36", features = ["serialize"] }
+sqlformat  = "0.3"
+
+# ── DIFF DE TEXTO ────────────────────────────
+similar    = { version = "2", features = ["text", "unicode"] }
+
+# ── UTILIDADES ───────────────────────────────
+thiserror  = "1"
+
+# ── I18N ─────────────────────────────────────
+# Las cadenas de usuario que el nucleo genera (export, sesiones guardadas)
+# salen de los mismos locales/*.yml que la app GTK.
+rust-i18n  = "3"
+
+# ─────────────────────────────────────────────
+# DEPENDENCIAS DE TEST
+# ─────────────────────────────────────────────
+[dev-dependencies]
+pretty_assertions = "1"

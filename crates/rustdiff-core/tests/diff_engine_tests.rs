@@ -3,8 +3,8 @@
 //! Estos tests simulan escenarios realistas: comparar documentos JSON
 //! y XML completos como los que un usuario pegaría en la aplicación.
 
-use rustdiff::diff_engine::*;
-use rustdiff::parser::{parse_json, parse_xml};
+use rustdiff_core::diff_engine::*;
+use rustdiff_core::parser::{parse_json, parse_xml};
 
 // ═══════════════════════════════════════════════
 // JSON: escenario API REST — respuesta de usuario
@@ -362,7 +362,7 @@ fn xml_lista_items_multiples() {
 // Integración: flujo completo detect → parse → diff
 // ═══════════════════════════════════════════════
 
-use rustdiff::parser::{Format, auto_detect_format};
+use rustdiff_core::parser::{Format, auto_detect_format};
 
 #[test]
 fn flujo_completo_json() {

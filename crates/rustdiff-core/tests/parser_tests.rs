@@ -3,7 +3,7 @@
 //! Estos tests validan escenarios más complejos y realistas
 //! que los tests unitarios dentro del módulo.
 
-use rustdiff::parser::*;
+use rustdiff_core::parser::*;
 
 // ─────────────────────────────────────────────
 // Escenario: documento JSON complejo (API REST típica)

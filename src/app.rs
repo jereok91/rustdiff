@@ -58,7 +58,7 @@ pub fn run() -> gtk::glib::ExitCode {
 /// El valor se propaga a `rust_i18n` para que `t!()` resuelva contra el
 /// idioma correcto en toda la aplicacion.
 fn setup_locale() {
-    use crate::settings::{SUPPORTED_LANGUAGES, Settings};
+    use rustdiff_persist::settings::{SUPPORTED_LANGUAGES, Settings};
 
     let settings = Settings::load();
 

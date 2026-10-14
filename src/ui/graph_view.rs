@@ -1,7 +1,7 @@
 //! Vista de grafo estilo JSON Crack, renderizada nativamente con cairo.
 //!
 //! Muestra el documento del editor izquierdo como un árbol de tarjetas
-//! `clave: valor` conectadas por curvas bezier (ver `crate::graph` para el
+//! `clave: valor` conectadas por curvas bezier (ver `rustdiff_core::graph` para el
 //! modelo y el layout, que son lógica pura). Este módulo solo dibuja e
 //! interactúa: pan (arrastre), zoom (Ctrl+rueda y botones), zoom-to-fit,
 //! búsqueda de nodos y selección con popover de detalle.
@@ -15,7 +15,7 @@ use rust_i18n::t;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::graph::{Graph, GraphNode, LayoutConfig, NodeId, ValueKind, bounds};
+use rustdiff_core::graph::{Graph, GraphNode, LayoutConfig, NodeId, ValueKind, bounds};
 
 // ─────────────────────────────────────────────
 // Constantes de renderizado
@@ -557,8 +557,8 @@ impl GraphView {
 
 /// Mide el ancho de carácter y alto de fila de la fuente monoespaciada
 /// usando una superficie cairo de 1×1 (fuera del draw path).
-fn measure_font_metrics() -> crate::graph::FontMetrics {
-    let fallback = crate::graph::FontMetrics {
+fn measure_font_metrics() -> rustdiff_core::graph::FontMetrics {
+    let fallback = rustdiff_core::graph::FontMetrics {
         char_width: 7.2,
         row_height: FONT_SIZE + ROW_EXTRA,
     };
@@ -577,7 +577,7 @@ fn measure_font_metrics() -> crate::graph::FontMetrics {
         .font_extents()
         .map(|e| e.height() + ROW_EXTRA)
         .unwrap_or(fallback.row_height);
-    crate::graph::FontMetrics { char_width, row_height }
+    rustdiff_core::graph::FontMetrics { char_width, row_height }
 }
 
 fn select_node_font(cr: &cairo::Context) {

@@ -24,13 +24,13 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::Duration;
 
-use crate::diff_engine::{DiffResult, diff_json, diff_sql, diff_text, diff_xml};
-use crate::export;
-use crate::parser::{Format, auto_detect_format, format_pretty, parse_json, parse_sql, parse_text, parse_xml};
-use crate::storage::{DiffSummary, Storage};
 use crate::ui::diff_panel::{DiffItemObject, DiffPanel, diff_css};
 use crate::ui::graph_view::{GraphView, graph_css};
 use crate::ui::highlighter;
+use rustdiff_core::diff_engine::{DiffResult, diff_json, diff_sql, diff_text, diff_xml};
+use rustdiff_core::export;
+use rustdiff_core::parser::{Format, auto_detect_format, format_pretty, parse_json, parse_sql, parse_text, parse_xml};
+use rustdiff_persist::storage::{DiffSummary, Storage};
 
 /// Devuelve un `LanguageManager` configurado para incluir los language-specs
 /// empaquetados con la aplicación (funciona tanto en desarrollo como en Flatpak).
@@ -210,7 +210,7 @@ impl MainWindow {
     pub fn new(app: &adw::Application) -> Self {
         load_css();
         register_bundled_icons();
-        apply_ui_scale(crate::settings::Settings::load().clamped_ui_scale());
+        apply_ui_scale(rustdiff_persist::settings::Settings::load().clamped_ui_scale());
 
         // ── Inicializar storage ─────────────────
         let storage = match Storage::open_default() {
@@ -872,7 +872,7 @@ impl MainWindow {
     fn setup_language_action(&self) {
         use gtk::glib::{Variant, VariantTy, variant::ToVariant};
 
-        let initial = crate::settings::Settings::load().language;
+        let initial = rustdiff_persist::settings::Settings::load().language;
         let action = gtk::gio::SimpleAction::new_stateful("language", Some(VariantTy::STRING), &initial.to_variant());
 
         let toast_overlay = self.toast_overlay.clone();
@@ -882,7 +882,7 @@ impl MainWindow {
             };
             action.set_state(&new_lang.to_variant());
 
-            let mut settings = crate::settings::Settings::load();
+            let mut settings = rustdiff_persist::settings::Settings::load();
             if settings.language == new_lang {
                 return;
             }
@@ -901,7 +901,7 @@ impl MainWindow {
     /// settings.json, la aplica en caliente via `apply_ui_scale` y muestra
     /// un toast con el porcentaje resultante.
     fn setup_font_scale_actions(&self) {
-        use crate::settings::{Settings, UI_SCALE_DEFAULT, UI_SCALE_MAX, UI_SCALE_MIN};
+        use rustdiff_persist::settings::{Settings, UI_SCALE_DEFAULT, UI_SCALE_MAX, UI_SCALE_MIN};
 
         let entries: [(&str, Option<f64>); 3] = [
             ("font-increase", Some(UI_SCALE_STEP)),
@@ -1736,7 +1736,7 @@ fn refresh_graph(
     toast_overlay: &adw::ToastOverlay,
     was_truncated: &Rc<Cell<bool>>,
 ) {
-    use crate::graph::{MAX_GRAPH_NODES, build_json_graph, build_xml_graph, layout};
+    use rustdiff_core::graph::{MAX_GRAPH_NODES, build_json_graph, build_xml_graph, layout};
 
     let text = get_buffer_text(left_view);
     if text.trim().is_empty() {
@@ -1924,7 +1924,7 @@ fn load_history_page_widget(
 
 /// Construye una fila del historial con etiqueta + botón de borrado individual.
 fn build_history_row(
-    session: &crate::storage::Session,
+    session: &rustdiff_persist::storage::Session,
     history_list: &gtk::ListBox,
     storage: &Rc<RefCell<Option<Storage>>>,
 ) -> gtk::ListBoxRow {

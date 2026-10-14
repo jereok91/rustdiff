@@ -14,7 +14,7 @@ use rust_i18n::t;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::diff_engine::{DiffItem, DiffKind, DiffResult, inline_char_ranges};
+use rustdiff_core::diff_engine::{DiffItem, DiffKind, DiffResult, inline_char_ranges};
 
 // ─────────────────────────────────────────────
 // Colores para las diferencias (RGBA)

@@ -7,8 +7,8 @@
 //! alfabéticamente; los tests asumen ese orden en las filas.
 
 use pretty_assertions::assert_eq;
-use rustdiff::graph::*;
-use rustdiff::parser::{parse_json, parse_xml};
+use rustdiff_core::graph::*;
+use rustdiff_core::parser::{parse_json, parse_xml};
 
 fn cfg_fijo() -> LayoutConfig {
     LayoutConfig {
