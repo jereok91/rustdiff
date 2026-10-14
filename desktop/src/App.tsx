@@ -16,6 +16,10 @@
  *   - Export .txt/.html (Ctrl+E) por diálogo de guardado y el backend.
  *   - Menú principal: idioma en caliente y escala del texto (Ctrl++/-/0).
  *   - Diálogo de salida si hay contenido sin guardar (`connect_close_request`).
+ *   - Vista de grafo del documento izquierdo (F6, Ctrl+G): ocupa el hueco del
+ *     editor derecho, así que grafo y comparación se excluyen
+ *     (`connect_graph_toggle`); abrirla oculta el panel de diferencias y
+ *     cerrarla lo restaura si estaba visible.
  *
  * Todo el parseo, la detección y el disco pasan por `commands.*` (S8).
  */
@@ -29,6 +33,7 @@ import { AppHeader } from "@/components/app-header";
 import { CodeEditor, type CodeEditorHandle } from "@/components/code-editor";
 import { DiffTable } from "@/components/diff-table";
 import { type ExitChoice, ExitDialog } from "@/components/exit-dialog";
+import { GraphView } from "@/components/graph-view";
 import { HistorySidebar } from "@/components/history-sidebar";
 import { SearchBar, type SearchBarHandle } from "@/components/search-bar";
 import { ShortcutsDialog } from "@/components/shortcuts-dialog";
@@ -53,6 +58,7 @@ import {
 } from "@/lib/errors";
 import { defaultReportName, type ExportKind, exportReport, exportStatus } from "@/lib/export";
 import { editorLanguage, formatArg, formatDisplayName, type FormatChoice } from "@/lib/formats";
+import { MAX_GRAPH_NODES, truncationToastNeeded } from "@/lib/graph-view";
 import { historyErrorStatus, restoredStatus } from "@/lib/history";
 import { buildDiffDecorations, type DiffDecorations, EMPTY_DECORATIONS } from "@/lib/line-diff";
 import { itemJumpTargets } from "@/lib/locate";
@@ -85,6 +91,7 @@ export default function App() {
     const [historyOpen, setHistoryOpen] = useState(false);
     const [historyRefresh, setHistoryRefresh] = useState(0);
     const [exitOpen, setExitOpen] = useState(false);
+    const [graphOpen, setGraphOpen] = useState(false);
     const preferences = usePreferences();
 
     const leftEditor = useRef<CodeEditorHandle>(null);
@@ -101,6 +108,15 @@ export default function App() {
     responseRef.current = response;
     // Texto de los editores la última vez que se guardó o restauró del historial.
     const savedSnapshot = useRef<EditorSnapshot | null>(null);
+    // Vista de grafo: espejos síncronos y la preferencia del panel de
+    // diferencias que se restaura al cerrarla (`diff_panel_pref` de la GTK).
+    const graphOpenRef = useRef(graphOpen);
+    graphOpenRef.current = graphOpen;
+    const diffPanelVisibleRef = useRef(diffPanelVisible);
+    diffPanelVisibleRef.current = diffPanelVisible;
+    const diffPanelPref = useRef(diffPanelVisible);
+    // Si el último grafo construido estaba truncado (el aviso sale solo en la transición).
+    const graphTruncated = useRef(false);
 
     const clearDiff = useCallback(() => {
         setResponse(null);
@@ -160,6 +176,64 @@ export default function App() {
 
     const scheduleCompare = useDebouncedCallback(() => void runCompare());
 
+    /** Muestra u oculta el panel de diferencias (Ctrl+D). */
+    const toggleDiffPanel = useCallback(() => {
+        const next = !diffPanelVisibleRef.current;
+        diffPanelVisibleRef.current = next;
+        // Con el grafo abierto el panel está oculto a la fuerza: solo cuenta
+        // como preferencia si el usuario lo vuelve a mostrar.
+        if (!graphOpenRef.current || next) {
+            diffPanelPref.current = next;
+        }
+        setDiffPanelVisible(next);
+    }, []);
+
+    const closeGraph = useCallback(() => {
+        if (!graphOpenRef.current) {
+            return;
+        }
+        graphOpenRef.current = false;
+        setGraphOpen(false);
+        if (diffPanelPref.current) {
+            diffPanelVisibleRef.current = true;
+            setDiffPanelVisible(true);
+        }
+    }, []);
+
+    /** Abre el grafo en el hueco del editor derecho (desactiva la comparación). */
+    const openGraph = useCallback(() => {
+        if (graphOpenRef.current) {
+            return;
+        }
+        graphOpenRef.current = true;
+        diffPanelPref.current = diffPanelVisibleRef.current;
+        diffPanelVisibleRef.current = false;
+        setDiffPanelVisible(false);
+        if (latest.current.comparing) {
+            // El texto derecho se conserva: "Enable comparison" lo vuelve a mostrar.
+            latest.current.comparing = false;
+            setComparing(false);
+            scheduleCompare();
+        }
+        setView("editors");
+        setGraphOpen(true);
+    }, [scheduleCompare]);
+
+    const toggleGraph = useCallback(() => {
+        if (graphOpenRef.current) {
+            closeGraph();
+        } else {
+            openGraph();
+        }
+    }, [closeGraph, openGraph]);
+
+    const onGraphTruncated = useCallback((truncated: boolean) => {
+        if (truncationToastNeeded(graphTruncated.current, truncated)) {
+            toast({ key: "graph.truncated_toast", params: { max: MAX_GRAPH_NODES } });
+        }
+        graphTruncated.current = truncated;
+    }, []);
+
     const compareNow = useCallback(() => {
         scheduleCompare.cancel();
         void runCompare();
@@ -188,12 +262,13 @@ export default function App() {
     );
 
     const enableComparison = useCallback(() => {
+        closeGraph();
         latest.current.comparing = true;
         setComparing(true);
         setView("editors");
         setStatus({ key: "compare.need_input" });
         scheduleCompare();
-    }, [scheduleCompare]);
+    }, [closeGraph, scheduleCompare]);
 
     /** Carga un documento ya leído por el backend en un panel. */
     const loadFile = useCallback(
@@ -205,6 +280,7 @@ export default function App() {
             } else {
                 latest.current.right = file.content;
                 setRight(file.content);
+                closeGraph();
                 latest.current.comparing = true;
                 setComparing(true);
             }
@@ -213,7 +289,7 @@ export default function App() {
             }
             scheduleCompare();
         },
-        [scheduleCompare],
+        [closeGraph, scheduleCompare],
     );
 
     const openInto = useCallback(
@@ -326,6 +402,7 @@ export default function App() {
             try {
                 const session = await commands.historyGet(id);
                 setView("editors");
+                closeGraph();
                 latest.current.comparing = true;
                 setComparing(true);
                 latest.current.left = session.left_content;
@@ -346,7 +423,7 @@ export default function App() {
                 );
             }
         },
-        [notify, scheduleCompare],
+        [closeGraph, notify, scheduleCompare],
     );
 
     /** `export_to_file` de la GTK. `true` si el reporte quedó escrito. */
@@ -466,7 +543,10 @@ export default function App() {
                     }
                     break;
                 case "toggleDiffPanel":
-                    setDiffPanelVisible((visible) => !visible);
+                    toggleDiffPanel();
+                    break;
+                case "toggleGraph":
+                    toggleGraph();
                     break;
                 case "showShortcuts":
                     setShortcutsOpen(true);
@@ -507,7 +587,19 @@ export default function App() {
                     break;
             }
         },
-        [compareNow, exportTo, formatDocuments, openInto, openSearch, preferences, saveSession, searchOpen, view],
+        [
+            compareNow,
+            exportTo,
+            formatDocuments,
+            openInto,
+            openSearch,
+            preferences,
+            saveSession,
+            searchOpen,
+            toggleDiffPanel,
+            toggleGraph,
+            view,
+        ],
     );
     useShortcuts(onShortcut);
 
@@ -521,6 +613,7 @@ export default function App() {
                     return;
                 }
                 if (files.length >= 2) {
+                    closeGraph();
                     latest.current.comparing = true;
                     setComparing(true);
                     loadFile("right", files[1]);
@@ -536,7 +629,7 @@ export default function App() {
         return () => {
             cancelled = true;
         };
-    }, [loadFile]);
+    }, [closeGraph, loadFile]);
 
     const language = useMemo(() => editorLanguage(formatChoice, detected), [formatChoice, detected]);
 
@@ -554,9 +647,11 @@ export default function App() {
                     onCompare={compareNow}
                     onFormat={() => void formatDocuments()}
                     diffPanelVisible={diffPanelVisible}
-                    onToggleDiffPanel={() => setDiffPanelVisible((visible) => !visible)}
+                    onToggleDiffPanel={toggleDiffPanel}
                     historyVisible={historyOpen}
                     onToggleHistory={() => setHistoryOpen((open) => !open)}
+                    graphVisible={graphOpen}
+                    onToggleGraph={toggleGraph}
                     menu={{
                         onExport: (kind) => void exportTo(kind),
                         onShowShortcuts: () => setShortcutsOpen(true),
@@ -630,6 +725,20 @@ export default function App() {
                                                                     ariaLabel={t("editor.right_label")}
                                                                 />
                                                             </EditorPane>
+                                                        </ResizablePanel>
+                                                    </>
+                                                )}
+                                                {!comparing && graphOpen && (
+                                                    <>
+                                                        <ResizableHandle />
+                                                        <ResizablePanel id="graph" defaultSize="50" minSize="15">
+                                                            <GraphView
+                                                                text={left}
+                                                                format={formatArg(formatChoice)}
+                                                                uiScale={preferences.uiScale}
+                                                                scheme={scheme}
+                                                                onTruncatedChange={onGraphTruncated}
+                                                            />
                                                         </ResizablePanel>
                                                     </>
                                                 )}

@@ -82,3 +82,40 @@
 .diff-row-Changed {
     background-color: rgba(210, 153, 34, 0.08);
 }
+
+/*
+ * Paleta del canvas de grafo (`lib/graph-view.ts` la lee con
+ * `getComputedStyle`). Mismos colores GNOME que `palette()` en
+ * `src/ui/graph_view.rs`; F7 los ajusta acá sin tocar el renderer.
+ */
+:root {
+    --graph-background: #fafafa;
+    --graph-node-fill: #ffffff;
+    --graph-node-border: #d3d2d4;
+    --graph-node-selected: #3584e4;
+    --graph-node-match: #e5a50a;
+    --graph-edge: #b8b6bc;
+    --graph-key: #77767b;
+    --graph-string: #26a269;
+    --graph-number: #1c71d8;
+    --graph-boolean: #813d9c;
+    --graph-null: #e66100;
+    --graph-reference: #9a9996;
+    --graph-text: #3d3846;
+}
+
+.dark {
+    --graph-background: #242424;
+    --graph-node-fill: #303030;
+    --graph-node-border: #4a4a4a;
+    --graph-node-selected: #3584e4;
+    --graph-node-match: #e5a50a;
+    --graph-edge: #5e5c64;
+    --graph-key: #9a9996;
+    --graph-string: #8ff0a4;
+    --graph-number: #99c1f1;
+    --graph-boolean: #dc8add;
+    --graph-null: #ffbe6f;
+    --graph-reference: #77767b;
+    --graph-text: #deddda;
+}

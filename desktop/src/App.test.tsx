@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
     exportTxt: vi.fn(),
     exportHtml: vi.fn(),
     writeTextFile: vi.fn(),
+    buildGraph: vi.fn(),
 }));
 const dialog = vi.hoisted(() => ({ open: vi.fn(), save: vi.fn() }));
 // La ventana de Tauri: se captura el handler de `onCloseRequested`.
@@ -159,6 +160,70 @@ describe("App", () => {
         await waitFor(() => expect(counter.textContent).toBe("No results"));
         fireEvent.keyDown(input, { key: "Escape" });
         expect(screen.queryByTestId("search-bar")).toBeNull();
+    });
+
+    it("Ctrl+G abre el grafo del izquierdo en lugar del derecho y cerrarlo restaura el panel", async () => {
+        // jsdom no implementa canvas: sin contexto el grafo no pinta, pero se cablea igual.
+        vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+        mocks.buildGraph.mockResolvedValue({
+            format: "Json",
+            graph: { nodes: [], edges: [], truncated: false },
+            bounds: { min_x: 0, min_y: 0, max_x: 0, max_y: 0 },
+            truncated: false,
+        });
+        await startWithTwoDocs();
+
+        fireEvent.keyDown(window, { key: "g", ctrlKey: true });
+        expect(await screen.findByTestId("graph-view")).toBeTruthy();
+        // Grafo y comparación se excluyen; el panel de diferencias se oculta.
+        expect(screen.queryByTestId("diff-table")).toBeNull();
+        expect(screen.getAllByTestId("code-editor")).toHaveLength(1);
+        expect(screen.getByText("Enable comparison")).toBeTruthy();
+        await waitFor(() =>
+            expect(mocks.buildGraph).toHaveBeenCalledWith(
+                '{"usuario":{"nombre":"ana","edad":30},"tags":["a","b"]}',
+                null,
+                expect.any(Number),
+                expect.any(Number),
+            ),
+        );
+        expect(screen.getByRole("button", { name: "Graph" }).getAttribute("aria-pressed")).toBe("true");
+
+        fireEvent.keyDown(window, { key: "g", ctrlKey: true });
+        await waitFor(() => expect(screen.queryByTestId("graph-view")).toBeNull());
+        expect(screen.getByTestId("diff-table")).toBeTruthy();
+
+        // "Enable comparison" con el grafo abierto lo cierra y vuelve el derecho.
+        fireEvent.keyDown(window, { key: "g", ctrlKey: true });
+        await screen.findByTestId("graph-view");
+        fireEvent.click(screen.getByText("Enable comparison"));
+        await waitFor(() => expect(screen.queryByTestId("graph-view")).toBeNull());
+        expect(screen.getAllByTestId("code-editor")).toHaveLength(2);
+        expect(screen.getByTestId("diff-table")).toBeTruthy();
+    });
+
+    it("el aviso de truncado sale una sola vez mientras el grafo siga truncado", async () => {
+        vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+        mocks.startupFiles.mockResolvedValue([{ path: "/a.json", name: "a.json", content: '{"a":1}' }]);
+        mocks.buildGraph.mockResolvedValue({
+            format: "Json",
+            graph: { nodes: [], edges: [], truncated: true },
+            bounds: { min_x: 0, min_y: 0, max_x: 0, max_y: 0 },
+            truncated: true,
+        });
+        render(<App />);
+        await screen.findByText("Enable comparison");
+        fireEvent.keyDown(window, { key: "g", ctrlKey: true });
+        await waitFor(() =>
+            expect(screen.getByTestId("toaster").textContent).toContain(
+                "Large document: graph truncated to 3000 nodes",
+            ),
+        );
+        // Cerrar y reabrir con el mismo documento no repite el aviso.
+        fireEvent.keyDown(window, { key: "g", ctrlKey: true });
+        fireEvent.keyDown(window, { key: "g", ctrlKey: true });
+        await waitFor(() => expect(mocks.buildGraph).toHaveBeenCalledTimes(2));
+        expect(screen.getAllByText("Large document: graph truncated to 3000 nodes")).toHaveLength(1);
     });
 
     const SESSION = {

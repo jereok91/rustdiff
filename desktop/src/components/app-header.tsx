@@ -1,8 +1,8 @@
 /*
  * Barra de cabecera: mismas acciones y el mismo orden que la HeaderBar de la GTK.
  *
- * Export (txt/html), History y el menú principal llegan en F5; Graph queda
- * como hueco deshabilitado hasta F6.
+ * Export (txt/html), History y el menú principal llegan en F5; el toggle de
+ * la vista de grafo (Ctrl+G), en F6.
  */
 
 import type { ReactNode } from "react";
@@ -49,6 +49,8 @@ export type AppHeaderProps = {
     onToggleDiffPanel: () => void;
     historyVisible: boolean;
     onToggleHistory: () => void;
+    graphVisible: boolean;
+    onToggleGraph: () => void;
     /** Menú principal (formatear, exportar, atajos, idioma, tamaño de texto). */
     menu: Omit<MainMenuProps, "editorsVisible" | "onFormat">;
 };
@@ -158,13 +160,17 @@ export function AppHeader(props: AppHeaderProps) {
                     <History />
                 </Button>
             </WithTooltip>
-            {/* Hueco de F6 (grafo). */}
             <WithTooltip label={t("graph.toggle_tooltip")}>
-                <span>
-                    <Button variant="ghost" size="icon-sm" aria-label={t("header.graph")} disabled>
-                        <Network />
-                    </Button>
-                </span>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t("header.graph")}
+                    aria-pressed={props.graphVisible}
+                    onClick={props.onToggleGraph}
+                    className={cn(props.graphVisible && "bg-accent text-accent-foreground")}
+                >
+                    <Network />
+                </Button>
             </WithTooltip>
             <WithTooltip label={t("header.diff_panel_tooltip")}>
                 <Button

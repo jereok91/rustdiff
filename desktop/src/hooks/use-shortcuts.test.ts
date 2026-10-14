@@ -17,6 +17,8 @@ describe("matchShortcut", () => {
         expect(matchShortcut(key("Enter"))).toBe("compare");
         expect(matchShortcut(key("F", { shift: true }))).toBe("format");
         expect(matchShortcut(key("d"))).toBe("toggleDiffPanel");
+        expect(matchShortcut(key("g"))).toBe("toggleGraph");
+        expect(matchShortcut(key("G", { shift: true }))).toBeNull();
         expect(matchShortcut(key("?", { shift: true }))).toBe("showShortcuts");
         expect(matchShortcut(key("/", { shift: true }))).toBe("showShortcuts");
     });
@@ -39,8 +41,7 @@ describe("matchShortcut", () => {
         // Sin Ctrl son teclas normales del editor.
         expect(matchShortcut(key("s", { ctrl: false }))).toBeNull();
         expect(matchShortcut(key("+", { ctrl: false }))).toBeNull();
-        // El grafo (Ctrl+G) todavía no tiene acción: lo conecta F6.
-        expect(matchShortcut(key("g"))).toBeNull();
+        expect(matchShortcut(key("g", { ctrl: false }))).toBeNull();
     });
 
     it("acepta Cmd en macOS", () => {

@@ -14,6 +14,7 @@ export type ShortcutAction =
     | "compare"
     | "format"
     | "toggleDiffPanel"
+    | "toggleGraph"
     | "showShortcuts"
     | "search"
     | "findNext"
@@ -50,6 +51,9 @@ export function matchShortcut(event: KeyLike): ShortcutAction | null {
     }
     if (key === "d" && !event.shiftKey) {
         return "toggleDiffPanel";
+    }
+    if (key === "g" && !event.shiftKey) {
+        return "toggleGraph";
     }
     if (key === "s" && !event.shiftKey) {
         return "saveSession";
