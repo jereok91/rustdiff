@@ -31,6 +31,17 @@ migration: your history and preferences are picked up as they are.
   It never worked in 0.4.x either: the flag was declared in the `.desktop`
   file but not implemented.
 
+### Fixed
+
+- **The app could die right after launch on NVIDIA + Wayland** with
+  `Error 71 (Error de protocolo) dispatching to Wayland display`, before any
+  window appeared. WebKitGTK defaults to its DMABUF renderer and the
+  proprietary NVIDIA driver breaks that path over Wayland. The shell now
+  disables that renderer only for that combination (Wayland session plus the
+  NVIDIA module loaded) and never overriding a value you set yourself. There
+  is no switch to force it back on: the detection only fires on that specific
+  combination, and only when `WEBKIT_DISABLE_DMABUF_RENDERER` is unset.
+
 ## What changed for packagers and installers
 
 | Channel | 0.4.x | 0.5.0 |

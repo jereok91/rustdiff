@@ -19,6 +19,43 @@ use tauri_specta::{Builder, ErrorHandlingMode, collect_commands};
 
 use state::AppState;
 
+// ─────────────────────────────────────────────
+// Parche de arranque para WebKitGTK
+// ─────────────────────────────────────────────
+
+/// Decide si hay que desactivar el renderer DMABUF de WebKitGTK.
+///
+/// Con el driver propietario de NVIDIA sobre Wayland, la ruta DMABUF rompe la
+/// conexión y la app muere al arrancar con `Error 71 (Error de protocolo)
+/// dispatching to Wayland display`, antes de que se vea la ventana (visto en
+/// una RTX 3060 con driver 615). Desactivarlo cuesta composición por GPU, así
+/// que se aplica **solo** a esa combinación y **nunca** encima de una decisión
+/// del usuario.
+///
+/// Pura a propósito: la tabla de verdad se testea sin tocar el entorno.
+pub fn needs_dmabuf_workaround(wayland: bool, nvidia: bool, already_set: bool) -> bool {
+    !already_set && wayland && nvidia
+}
+
+/// Aplica el parche si corresponde. Se llama antes de construir la ventana:
+/// WebKit lee esta variable al inicializarse, y después ya es tarde.
+pub fn apply_webkit_workarounds() {
+    let wayland = std::env::var_os("WAYLAND_DISPLAY").is_some_and(|v| !v.is_empty());
+    let nvidia = Path::new("/proc/driver/nvidia/version").exists();
+    let already_set = std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_some();
+
+    if !needs_dmabuf_workaround(wayland, nvidia, already_set) {
+        return;
+    }
+
+    // SAFETY: se ejecuta al principio de `main`, antes de crear hilos o el
+    // webview, que es la única condición que `set_var` exige en edition 2024.
+    unsafe {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+    tracing::info!(target: "rustdiff::startup", "NVIDIA + Wayland: se desactiva el renderer DMABUF de WebKit");
+}
+
 /// Definición única del contrato IPC.
 ///
 /// De acá salen los bindings TypeScript y el `invoke_handler`: el frontend y el

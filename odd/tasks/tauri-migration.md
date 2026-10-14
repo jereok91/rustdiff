@@ -325,3 +325,25 @@ Queda en F1 lo barato: `src-tauri` + front mínimo, medir bundle y arranque, y r
 Lectura: F2–F8 autorizadas de punta a punta; la review nativa por candidato se omite por
 decisión explícita del usuario, que revisa la app completa al final. D3 (i18next), D4
 (retirar la app GTK en F8) y D6 (tipos generados) se toman con la recomendación.
+
+**L14** (bug real de la migración, encontrado por el usuario al correr `pnpm tauri dev`):
+
+- **Síntoma**: la app moría al arrancar con `Gdk-Message: Error 71 (Error de protocolo)
+  dispatching to Wayland display` y `exit code 1`, sin llegar a mostrar la ventana.
+- **Causa**: WebKitGTK usa por defecto su renderer DMABUF y con el driver propietario de
+  NVIDIA sobre Wayland esa ruta rompe la conexión. Máquina afectada: RTX 3060, driver 615,
+  sesión sway/Wayland.
+- **Por qué se me escapó**: la app GTK nunca usó WebKit, así que este modo de falla lo
+  introdujo la migración. Mi harness de smoke lo esquivaba con
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1` en el entorno, así que **nunca vi el bug en la app**:
+  el parche estaba en el andamio de pruebas y no en el producto. Eso es un fallo de mi
+  verificación, no del worker que escribió el código.
+- **Evidencia**: sin variables la app muere (`exit=1`) con el error; con
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1` y sin `WEBKIT_DISABLE_COMPOSITING_MODE` se mantiene
+  viva (`exit=124` a los 8 s). El compositing no era el problema.
+- **Arreglo**: `apply_webkit_workarounds()` en `desktop/src-tauri/src/lib.rs`, llamado al
+  principio de `main()` antes de `run()`. Aplica el interruptor **solo** si es Wayland
+  (`WAYLAND_DISPLAY`), hay driver NVIDIA (`/proc/driver/nvidia/version`) y el usuario no
+  fijó la variable. Función pura `needs_dmabuf_workaround` con su tabla de verdad en
+  `desktop/src-tauri/tests/webkit_workaround.rs`. Se sacaron los exports del harness de
+  smoke: ahora el smoke prueba el arreglo de la app en lugar de taparlo.

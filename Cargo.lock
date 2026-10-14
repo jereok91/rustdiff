@@ -2794,6 +2794,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-specta",
+ "tracing",
 ]
 
 [[package]]

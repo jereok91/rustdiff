@@ -7,5 +7,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    // Antes de `run()`: WebKit lee las variables de entorno al inicializarse.
+    rustdiff_desktop::apply_webkit_workarounds();
     rustdiff_desktop::run();
 }

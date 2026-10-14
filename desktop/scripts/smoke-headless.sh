@@ -74,12 +74,10 @@ unset WAYLAND_DISPLAY
 unset WAYLAND_SOCKET
 unset SWAYSOCK
 
-# El backend headless de wlroots no tiene GPU ni dmabuf: sin estos dos switches
-# WebKitGTK muere con "Error 71 (Error de protocolo) dispatching to Wayland
-# display" justo despues de mapear la ventana. No son un parche del codigo de
-# la app, son parte del entorno sintetico (en un escritorio real no hacen falta).
-export WEBKIT_DISABLE_DMABUF_RENDERER=1
-export WEBKIT_DISABLE_COMPOSITING_MODE=1
+# Ojo: aca NO se desactiva el renderer DMABUF de WebKit. Eso lo decide la
+# propia app al arrancar (deteccion NVIDIA + Wayland en `apply_webkit_workarounds`),
+# asi que este smoke es tambien la prueba de que ese parche funciona: si se
+# rompiera, la ventana no llegaria a mapearse y el harness fallaria.
 export GDK_BACKEND=wayland
 
 printf 'output HEADLESS-1 resolution 1280x800\n' >"$RUNTIME/sway.conf"
