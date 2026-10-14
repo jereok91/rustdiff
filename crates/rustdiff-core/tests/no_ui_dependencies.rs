@@ -28,9 +28,10 @@ const PROHIBIDO_EN_CODIGO: &[&str] = &[
 /// Lo mismo, aplicado al manifiesto: una dependencia prohibida basta.
 const PROHIBIDO_EN_MANIFIESTO: &[&str] = &["gtk4", "libadwaita", "sourceview", "cairo", "tauri"];
 
-/// Cantidad de modulos del nucleo. Si baja de aca, el test avisa en vez de
-/// recorrer una carpeta vacia y pasar sin revisar nada.
-const MODULOS_ESPERADOS: usize = 4;
+/// Cantidad de modulos del nucleo: diff_engine, export, graph, lib y parser.
+/// Si baja de aca, el test avisa en vez de recorrer una carpeta incompleta y
+/// pasar sin revisar lo que falta.
+const MODULOS_ESPERADOS: usize = 5;
 
 /// Una linea de comentario Rust no acopla nada: se ignora.
 fn es_comentario_rust(linea: &str) -> bool {
