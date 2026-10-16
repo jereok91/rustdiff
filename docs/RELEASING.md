@@ -15,7 +15,7 @@ Homebrew source formula are retired (see the bottom of this page).
 | --- | --- | --- |
 | `release-deb-apt.yml` | Debian / APT | `.deb` for amd64 + arm64 (`pnpm tauri build --bundles deb` via `scripts/packaging/build-deb.sh`), attached to the GitHub release and pushed to the signed APT repo on `gh-pages` |
 | `release-flathub.yml` | Flathub | Builds and attaches `rustdiff-frontend-<version>.tar.gz` (the frontend bundle), regenerates `cargo-sources.json`, bumps `tag`/`commit` and the frontend `url`/`sha256` in the **upstream** `flathub/com.digitalgex.RustDiff` repo and opens a PR there |
-| `release-macos.yml` | macOS DMG + `rustdiff-app` cask | Per-arch DMGs (`pnpm tauri build --bundles dmg` on macOS runners), renamed to `RustDiff-<version>-macos-<arch>.dmg`, cask updated in the tap |
+| `release-macos.yml` | macOS DMG + `rustdiff-app` cask | Per-arch DMGs (`pnpm tauri build --bundles app` on macOS runners, then `hdiutil create`: Tauri's `bundle_dmg.sh` needs Finder/AppleScript, which headless runners lack), renamed to `RustDiff-<version>-macos-<arch>.dmg`, cask updated in the tap |
 
 `install.sh` is not a workflow: on Debian/Ubuntu it downloads the `.deb` of
 the latest release, elsewhere it builds the checkout/`main` from source.

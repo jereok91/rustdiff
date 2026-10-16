@@ -1,9 +1,9 @@
 name: macOS DMG release
 
 # Compila RustDiff (shell Tauri v2) en runners macOS nativos (Intel y Apple
-# Silicon) con `pnpm tauri build --bundles dmg`, adjunta ambos DMG al release
-# del tag y actualiza el Cask `rustdiff-app` en el tap
-# jereok91/homebrew-rustdiff.
+# Silicon) con `pnpm tauri build --bundles app` + `hdiutil` para el DMG,
+# adjunta ambos DMG al release del tag y actualiza el Cask `rustdiff-app` en
+# el tap jereok91/homebrew-rustdiff.
 #
 # La app usa el WebKit del sistema (WKWebView): el .app ya no
 # empaqueta ninguna lib de Homebrew, asi que no hace falta reubicar dylibs.
@@ -91,9 +91,54 @@ jobs:
 
       # Firma ad-hoc (`bundle.macOS.signingIdentity: "-"` en tauri.conf.json):
       # no hay certificado de Apple Developer.
-      - name: Build RustDiff.app and DMG
+      - name: Build RustDiff.app
         working-directory: desktop
-        run: pnpm tauri build --bundles dmg
+        run: |
+          set -euo pipefail
+          pnpm tauri build --bundles app
+
+      # El DMG se arma con hdiutil y no con `--bundles dmg`: el bundle_dmg.sh
+      # de Tauri maneja Finder vía AppleScript/osascript para maquetar la
+      # ventana del disco, y eso falla en un runner sin sesión gráfica.
+      # Resultado equivalente: DMG comprimido (UDZO), de solo lectura, con
+      # RustDiff.app y el enlace a /Applications.
+      - name: Create DMG with hdiutil
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          APP="target/release/bundle/macos/RustDiff.app"
+          if [ ! -d "$APP" ] || [ ! -f "$APP/Contents/Info.plist" ]; then
+            echo "ERROR: app bundle not found at $APP."
+            exit 1
+          fi
+
+          # `target/` viene de la caché: se descartan DMG viejos para que el
+          # paso siguiente encuentre exactamente uno.
+          DMG_DIR="target/release/bundle/dmg"
+          rm -rf "$DMG_DIR"
+          mkdir -p "$DMG_DIR"
+          DMG="$DMG_DIR/RustDiff_${VERSION}_${ARCH}.dmg"
+
+          STAGE="$(mktemp -d)"
+          # ditto conserva la firma ad-hoc, los symlinks y los atributos.
+          ditto "$APP" "$STAGE/RustDiff.app"
+          ln -s /Applications "$STAGE/Applications"
+
+          # hdiutil a veces falla con "Resource busy" en los runners: reintento.
+          for attempt in 1 2 3; do
+            if hdiutil create -volname "RustDiff" -srcfolder "$STAGE" \
+                -fs HFS+ -format UDZO -ov "$DMG"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "ERROR: hdiutil create failed after ${attempt} attempts."
+              exit 1
+            fi
+            sleep 5
+          done
+          hdiutil verify "$DMG"
 
       - name: Smoke-test bundle and rename DMG
         env:
