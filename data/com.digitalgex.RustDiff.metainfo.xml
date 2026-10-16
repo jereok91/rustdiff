@@ -104,16 +104,20 @@
   </branding>
 
   <releases>
-    <release version="0.5.0" date="2026-10-14">
+    <release version="1.0.0" date="2026-10-14">
       <description>
-        <p>RustDiff moves from GTK4 to a new Tauri interface. The diff engine, the history database and the settings file are unchanged, so upgrading needs no migration.</p>
+        <p>The first stable release: a full rewrite of the interface on a modern stack. The diff engine, the parsers, the history database and the settings file are the same code as in 0.4.0, so upgrading needs no migration and your history and preferences carry over.</p>
         <ul>
-          <li>New interface built with Tauri and React: CodeMirror editors with diff highlighting, a resizable differences panel, and a redesigned welcome screen.</li>
-          <li>The graph view is redrawn on a 2D canvas on top of the same layout engine, with pan, zoom, zoom-to-fit and node search.</li>
-          <li>A design system with light and dark themes that follow the system, consistent diff colors and keyboard-accessible controls.</li>
-          <li>History, export to .txt/.html, the exit dialog, the language picker and the text size setting work as before.</li>
+          <li>A Tauri v2 shell in Rust with a React 19 and TypeScript interface, styled with Tailwind CSS v4 and shadcn/ui components on Radix, and the self-hosted Geist and Geist Mono fonts.</li>
+          <li>CodeMirror 6 editors with syntax highlighting, line and character-level diff highlighting, pretty-print and search.</li>
+          <li>A design system built on OKLCH tokens, with light and dark themes (dark by default, or follow the system) and WCAG AA contrast checked by tests.</li>
+          <li>The graph view is drawn on a 2D canvas over a layout computed in Rust, with pan, zoom, zoom-to-fit, node search and node inspection.</li>
+          <li>The language switches between English and Spanish on the spot, without a restart.</li>
+          <li>Typed communication between the interface and the Rust core: the interface never touches the filesystem.</li>
+          <li>History, filters, export to .txt and .html, keyboard shortcuts and the text size setting work as before.</li>
+          <li>Fixed a crash at launch on NVIDIA graphics under Wayland.</li>
+          <li>Removed the "Open History" desktop action, which never worked.</li>
           <li>RustDiff is no longer published on crates.io, and the Homebrew source formula is retired in favour of the prebuilt rustdiff-app cask.</li>
-          <li>The "Open History" desktop action was removed.</li>
         </ul>
       </description>
     </release>

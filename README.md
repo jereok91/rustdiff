@@ -7,7 +7,21 @@ Semantic JSON, XML & SQL diff tool for the desktop. It compares document
 not raw text lines. The diff engine is written in Rust; the app is a
 [Tauri v2](https://v2.tauri.app/) shell with a React interface.
 
+**1.0.0 is the first stable release**: a full rewrite of the interface on a
+modern stack, on top of the same diff engine, history and settings as 0.4.0.
+See [the 1.0.0 release notes](docs/RELEASE_NOTES_1.0.0.md).
+
 Language: **English** | [Español](README.es.md)
+
+## Built with
+
+- **Tauri v2** shell in Rust, using the system WebView (WebKitGTK 4.1 on Linux, WKWebView on macOS)
+- **React 19 + TypeScript** frontend, built with Vite
+- **Tailwind CSS v4** and **shadcn/ui** components on **Radix** primitives
+- **CodeMirror 6** editors, **Geist** and **Geist Mono** fonts (self-hosted, never fetched from the network)
+- An **OKLCH design system** with light and dark themes and **WCAG AA contrast enforced by tests** ([`docs/design-system.md`](docs/design-system.md))
+- **Typed IPC generated with tauri-specta**: the interface calls Rust commands only; it never touches the filesystem
+- **i18next** for the interface, English and Spanish
 
 ## Features
 
@@ -15,9 +29,12 @@ Language: **English** | [Español](README.es.md)
 - Side-by-side CodeMirror editors with syntax highlighting, inline (character-level) diff highlighting and pretty-print (`Ctrl+Shift+F`)
 - Search inside the editors (`Ctrl+F`) with next/previous navigation and wrap-around
 - Auto compare while typing (debounced) and manual compare (`Ctrl+Enter`)
-- Difference table with type filters and click-to-jump navigation, collapsible with `Ctrl+D`
-- Graph view (`Ctrl+G`): the left document as an interactive node graph (pan, zoom, fit, node search), JSON Crack style
-- Light and dark themes (follow the system or pick one), adjustable UI text size, English and Spanish UI
+- Difference table with type filters and click-to-jump navigation, resizable and collapsible with `Ctrl+D`
+- Graph view (`Ctrl+G`): the left document as an interactive node graph drawn on a canvas over a layout computed in Rust (pan, zoom, fit, node search, node inspection), JSON Crack style
+- Light and dark themes, dark by default (or follow the system)
+- UI text size from 60 % to 200 % (`Ctrl++`, `Ctrl+-`, `Ctrl+0`), remembered across sessions
+- English and Spanish interface, switched live without a restart
+- Keyboard shortcuts for every main action, listed in-app with `Ctrl+?`
 - Export to `.txt` and styled `.html`
 - Session history stored in SQLite (paginated, searchable, per-entry and bulk deletion)
 
@@ -40,7 +57,7 @@ Language: **English** | [Español](README.es.md)
 | [From source](#build-from-source) | Linux, macOS | `git pull` + rebuild |
 
 RustDiff is no longer published on crates.io (`cargo install rustdiff` installs
-the last GTK release, 0.4.x). See [the 0.5.0 release notes](docs/RELEASE_NOTES_0.5.0.md).
+the last GTK release, 0.4.x). See [the 1.0.0 release notes](docs/RELEASE_NOTES_1.0.0.md).
 
 ### 1) Flatpak + Flathub (recommended on Linux)
 
@@ -240,7 +257,7 @@ cd desktop && pnpm test
 - Flathub submission files and workflow: `flathub/README.md`
 - Screenshot requirements (AppStream/Flathub): `data/screenshots/README.md`
 - Design system of the interface: `docs/design-system.md`
-- Release notes: `docs/RELEASE_NOTES_0.5.0.md`
+- Release notes: `docs/RELEASE_NOTES_1.0.0.md`
 
 ## License
 

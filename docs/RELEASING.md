@@ -5,9 +5,9 @@ workflows fire on it in parallel, each publishing to a different channel.
 This document is the checklist for getting the repository into a state
 where that tag is correct.
 
-Since 0.5.0 the app is the Tauri shell in `desktop/` + `desktop/src-tauri/`.
-crates.io and the Homebrew source formula are retired (see the bottom of this
-page).
+**Current version: 1.0.0**, the first stable release. Since 1.0.0 the app is
+the Tauri shell in `desktop/` + `desktop/src-tauri/`. crates.io and the
+Homebrew source formula are retired (see the bottom of this page).
 
 ## What a `v*` tag triggers
 
@@ -29,10 +29,13 @@ the latest release, elsewhere it builds the checkout/`main` from source.
    - `Cargo.lock` → refresh with any `cargo build`
 2. **Add the AppStream release entry** in
    `data/com.digitalgex.RustDiff.metainfo.xml` (`<release version=… date=…>`,
-   newest first). Flathub rejects builds whose metainfo has no entry for
-   the version being published.
+   newest first, with a `<description>` that mirrors the release notes).
+   Flathub rejects builds whose metainfo has no entry for the version being
+   published.
 3. **Update the user-facing docs**: `README.md` and `README.es.md`
-   (features, shortcut table), plus `docs/RELEASE_NOTES_<version>.md`.
+   (features, shortcut table, release-notes link), plus
+   `docs/RELEASE_NOTES_<version>.md` (Keep a Changelog sections: Added,
+   Changed, Fixed, Removed, Breaking, Notes).
 4. **Check the packaging file lists** if you added an installed file (icon,
    metainfo, desktop entry). Four places install files and they do *not*
    share a single list:
@@ -40,8 +43,10 @@ the latest release, elsewhere it builds the checkout/`main` from source.
    - `com.digitalgex.RustDiff.yaml` and `flathub/com.digitalgex.RustDiff.yaml` → `build-commands`
    - `install.sh` → `install_user_files` (per-user source build)
    - the DMG needs nothing: the frontend is embedded in the binary
-5. **Regenerate `cargo-sources.json`** if `Cargo.lock` changed (see
-   [Flatpak](#flatpak-sources)), and copy it to `flathub/cargo-sources.json`.
+5. **Regenerate `cargo-sources.json`** if `Cargo.lock` changed in its
+   registry crates (see [Flatpak](#flatpak-sources)), and copy it to
+   `flathub/cargo-sources.json`. A version bump alone only rewrites the
+   workspace crates, which are path dependencies and not vendored.
 6. **Validate locally** (see next section).
 7. **Commit, tag, push**:
 
@@ -52,7 +57,15 @@ the latest release, elsewhere it builds the checkout/`main` from source.
    git push origin vX.Y.Z       # this is what starts every publish
    ```
 
-8. **Sync the local Flathub mirror** afterwards and commit it separately:
+8. **Review and merge the Flathub PR** that `release-flathub.yml` opens in
+   `flathub/com.digitalgex.RustDiff` once Flathub's own build bot is green.
+   That merge is what publishes the Flathub build; nothing reaches Flathub
+   users before it.
+9. **Check the Homebrew tap**: `release-macos.yml` rewrites
+   `Casks/rustdiff-app.rb` in `jereok91/homebrew-rustdiff`; confirm the commit
+   landed (see [Homebrew tap](#homebrew-tap-separate-repository) for the
+   one-time manual change).
+10. **Sync the local Flathub mirror** afterwards and commit it separately:
    `tag`, `commit` (what the tag points at), and the frontend `url`/`sha256`
    from the release asset (`sha256sum rustdiff-frontend-X.Y.Z.tar.gz`).
 
@@ -114,7 +127,7 @@ for why and for the from-source alternative.
 
 `jereok91/homebrew-rustdiff` is a separate repository. `release-macos.yml`
 rewrites `Casks/rustdiff-app.rb` on every tag. Two one-time manual changes for
-0.5.0, in the tap:
+1.0.0 (the first Tauri release), in the tap:
 
 1. **Retire `Formula/rustdiff.rb`.** It built the GTK app with
    `cargo install` from the source tarball; the root of the repository is no

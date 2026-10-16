@@ -126,7 +126,7 @@ jobs:
           BRANCH="update-${TAG}"
           git checkout -b "$BRANCH"
 
-          # La primera version Tauri (0.5.0) cambia la estructura del manifest
+          # La primera version Tauri (1.0.0) cambia la estructura del manifest
           # (nueva fuente del frontend): si el upstream todavia no la tiene,
           # se toma la del repo y despues se parchean tag/commit/url/sha256.
           MANIFEST="${APP_ID}.yaml"

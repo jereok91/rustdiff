@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 RustDiff is a semantic JSON/XML/SQL diff tool for the desktop, written in Rust (edition 2024) with a Tauri v2 + React frontend. It compares document *structure* (keys, array indices, XML nodes/attributes, SQL statements), not raw text lines.
 
-Until 0.4.x the app was GTK4 + Libadwaita; 0.5.0 retired it (the migration plan and its log live in `odd/tasks/tauri-migration.md`).
+Until 0.4.x the app was GTK4 + Libadwaita; 1.0.0 retired it (the migration plan and its log live in `odd/tasks/tauri-migration.md`).
 
 ## Layout
 

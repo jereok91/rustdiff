@@ -30,7 +30,7 @@ StartupNotify=true
 StartupWMClass=rustdiff
 
 # ── Acciones rápidas (click derecho en el ícono) ───────────────────
-# (La acción "Abrir Historial" se retiró en 0.5.0: el shell Tauri solo
+# (La acción "Abrir Historial" se retiró en 1.0.0: el shell Tauri solo
 # entiende rutas de archivo en la línea de comandos.)
 Actions=NewComparison;
 

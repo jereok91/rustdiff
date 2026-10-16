@@ -10,7 +10,7 @@ flathub/
 └── cargo-sources.json             # Vendoring offline de las crates (generado)
 ```
 
-## Como se compila desde 0.5.0 (app Tauri)
+## Como se compila desde 1.0.0 (app Tauri)
 
 - **Runtime**: `org.gnome.Platform//50` + `org.gnome.Sdk//50`. Los dos ya traen
   WebKitGTK 4.1 (libs en el runtime, headers y `.pc` en el SDK), asi que el

@@ -347,3 +347,20 @@ decisión explícita del usuario, que revisa la app completa al final. D3 (i18ne
   fijó la variable. Función pura `needs_dmabuf_workaround` con su tabla de verdad en
   `desktop/src-tauri/tests/webkit_workaround.rs`. Se sacaron los exports del harness de
   smoke: ahora el smoke prueba el arreglo de la app en lugar de taparlo.
+
+**L15** (cierre: 1.0.0 preparada, sin tag). El usuario probó la app y la aprobó
+(*"ya lo he testateado me parce que todo esta super"*) y pidió la 1.0.0. La 0.5.0 nunca se
+publicó (sin tag ni push), así que la 1.0.0 la reemplaza:
+
+- Versión `0.5.0` → `1.0.0` en los tres archivos que la llevan: `Cargo.toml`
+  (`[workspace.package].version`), `desktop/package.json` y
+  `desktop/src-tauri/tauri.conf.json`; `Cargo.lock` refrescado (solo los crates del
+  workspace, así que `cargo-sources.json` no cambia).
+- `docs/RELEASE_NOTES_1.0.0.md` (Keep a Changelog), entrada `<release version="1.0.0"
+  date="2026-10-14">` en el metainfo, READMEs en/es con el stack y las features,
+  `docs/RELEASING.md` y `docs/DEBIAN_APT.md` al día.
+- Evidencia: 187 tests Rust y 215 de Vitest (29 archivos) verdes, fmt y clippy limpios,
+  `pnpm tauri build` produce `rustdiff_1.0.0_amd64.deb` (3.67 MiB, `Installed-Size: 8245`),
+  `appstreamcli validate` y `desktop-file-validate` pasan.
+- **El tag `v1.0.0` es decisión del humano**: empujarlo dispara los tres workflows de
+  publicación. Quedan a mano el PR de Flathub y el retiro de `Formula/rustdiff.rb` en el tap.

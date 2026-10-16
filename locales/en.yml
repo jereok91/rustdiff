@@ -1,7 +1,7 @@
 # Cadenas que todavia traducen los crates de Rust (rust-i18n): el reporte de
 # export de rustdiff-core y el resumen de sesion de rustdiff-persist. La UI se
 # traduce en el frontend (desktop/src/locales, i18next); las claves de la app
-# GTK se fueron con ella en 0.5.0. Ingles es la referencia y el fallback.
+# GTK se fueron con ella en 1.0.0. Ingles es la referencia y el fallback.
 "diff.identical": "Identical"
 "diff.summary_identical": "Documents are identical"
 "diff.summary_counts": "%{total} difference(s): %{added} added, %{removed} removed, %{changed} changed"

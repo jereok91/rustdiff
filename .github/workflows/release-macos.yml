@@ -5,7 +5,7 @@ name: macOS DMG release
 # del tag y actualiza el Cask `rustdiff-app` en el tap
 # jereok91/homebrew-rustdiff.
 #
-# Desde 0.5.0 la app usa el WebKit del sistema (WKWebView): el .app ya no
+# La app usa el WebKit del sistema (WKWebView): el .app ya no
 # empaqueta ninguna lib de Homebrew, asi que no hace falta reubicar dylibs.
 #
 # Requiere el secret HOMEBREW_TAP_PAT (PAT con permiso de escritura sobre el
@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag a publicar (ej. v0.5.0)"
+        description: "Tag a publicar (ej. v1.0.0)"
         required: true
 
 permissions:
@@ -117,7 +117,7 @@ jobs:
             echo "Expected exactly one DMG, found ${#dmgs[@]}."
             exit 1
           fi
-          # Mismo nombre que antes de 0.5.0: el cask arma la URL con él.
+          # Mismo nombre que antes de 1.0.0: el cask arma la URL con él.
           mkdir -p dist
           cp "${dmgs[0]}" "dist/RustDiff-${VERSION}-macos-${ARCH}.dmg"
 

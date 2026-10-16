@@ -7,7 +7,21 @@ Comparador semantico de JSON, XML y SQL para escritorio. Compara la
 XML, sentencias SQL — y no lineas de texto. El motor de diff esta escrito en
 Rust; la app es un shell [Tauri v2](https://v2.tauri.app/) con interfaz React.
 
+**1.0.0 es la primera version estable**: una reescritura completa de la
+interfaz sobre un stack moderno, encima del mismo motor de diff, historial y
+preferencias de la 0.4.0. Ver [las notas de la 1.0.0](docs/RELEASE_NOTES_1.0.0.md).
+
 Idioma: [English](README.md) | **Español**
+
+## Construido con
+
+- Shell **Tauri v2** en Rust, sobre el WebView del sistema (WebKitGTK 4.1 en Linux, WKWebView en macOS)
+- Frontend **React 19 + TypeScript**, compilado con Vite
+- **Tailwind CSS v4** y componentes **shadcn/ui** sobre primitivas **Radix**
+- Editores **CodeMirror 6**, fuentes **Geist** y **Geist Mono** (incluidas en la app, nunca se descargan de la red)
+- Un **sistema de diseño en OKLCH** con temas claro y oscuro y **contraste WCAG AA verificado por tests** ([`docs/design-system.md`](docs/design-system.md))
+- **IPC tipado generado con tauri-specta**: la interfaz solo llama comandos Rust; nunca toca el sistema de archivos
+- **i18next** para la interfaz, en ingles y español
 
 ## Caracteristicas
 
@@ -15,9 +29,12 @@ Idioma: [English](README.md) | **Español**
 - Editores CodeMirror lado a lado con resaltado de sintaxis, resaltado del diff a nivel de caracter y formateo (`Ctrl+Shift+F`)
 - Busqueda en los editores (`Ctrl+F`) con navegacion siguiente/anterior y wrap-around
 - Comparacion automatica al escribir (con debounce) y comparacion manual (`Ctrl+Enter`)
-- Tabla de diferencias con filtros por tipo y navegacion por click, plegable con `Ctrl+D`
-- Vista de grafo (`Ctrl+G`): el documento izquierdo como grafo de nodos interactivo (desplazar, zoom, ajustar, buscar nodos), estilo JSON Crack
-- Temas claro y oscuro (siguen al sistema o se eligen a mano), tamaño de texto ajustable, interfaz en ingles y español
+- Tabla de diferencias con filtros por tipo y navegacion por click, redimensionable y plegable con `Ctrl+D`
+- Vista de grafo (`Ctrl+G`): el documento izquierdo como grafo de nodos interactivo dibujado en un canvas sobre un layout calculado en Rust (desplazar, zoom, ajustar, buscar e inspeccionar nodos), estilo JSON Crack
+- Temas claro y oscuro, oscuro por defecto (o seguir al sistema)
+- Tamaño del texto de la interfaz del 60 % al 200 % (`Ctrl++`, `Ctrl+-`, `Ctrl+0`), recordado entre sesiones
+- Interfaz en ingles y español, con cambio de idioma en vivo sin reiniciar
+- Atajos de teclado para cada accion principal, listados en la app con `Ctrl+?`
 - Exportacion a `.txt` y `.html` con estilos
 - Historial de sesiones en SQLite (paginado, con busqueda, borrado por entrada o completo)
 
@@ -40,7 +57,7 @@ Idioma: [English](README.md) | **Español**
 | [Desde el codigo fuente](#compilar-desde-el-codigo-fuente) | Linux, macOS | `git pull` + recompilar |
 
 RustDiff ya no se publica en crates.io (`cargo install rustdiff` instala la
-ultima version GTK, 0.4.x). Ver [las notas de la 0.5.0](docs/RELEASE_NOTES_0.5.0.md).
+ultima version GTK, 0.4.x). Ver [las notas de la 1.0.0](docs/RELEASE_NOTES_1.0.0.md).
 
 ### 1) Flatpak + Flathub (recomendado en Linux)
 
@@ -241,7 +258,7 @@ cd desktop && pnpm test
 - Archivos y flujo de envio a Flathub: `flathub/README.md`
 - Requisitos de screenshots (AppStream/Flathub): `data/screenshots/README.md`
 - Sistema de diseño de la interfaz: `docs/design-system.md`
-- Notas de la version: `docs/RELEASE_NOTES_0.5.0.md`
+- Notas de la version: `docs/RELEASE_NOTES_1.0.0.md`
 
 ## Licencia
 

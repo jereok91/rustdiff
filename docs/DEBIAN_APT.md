@@ -13,7 +13,7 @@ The automation lives in:
 
 ## What the workflow does
 
-When a tag like `v0.5.0` is pushed:
+When a tag like `v1.0.0` is pushed:
 
 1. Builds a `.deb` package per architecture with the Tauri bundler
    (`scripts/packaging/build-deb.sh`, which runs `pnpm tauri build --bundles deb`
@@ -59,8 +59,8 @@ Copy the full armored block into `APT_GPG_PRIVATE_KEY`.
 
 ```bash
 # Example release
-git tag v0.5.0
-git push origin v0.5.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 After the workflow finishes:
@@ -90,7 +90,7 @@ sudo apt install rustdiff
 The bundler configuration lives in `desktop/src-tauri/tauri.conf.json`
 (`bundle.linux.deb`) plus `desktop/src-tauri/tauri.linux.conf.json`, which sets
 the product name to `rustdiff` on Linux so the package keeps the name it had
-before 0.5.0 (`apt upgrade` replaces the GTK package instead of installing a
+before 1.0.0 (`apt upgrade` replaces the GTK package instead of installing a
 second one).
 
 | Path | Source |
@@ -115,7 +115,7 @@ Build and inspect it locally:
 
 ```bash
 bash scripts/packaging/build-deb.sh
-DEB=target/release/bundle/deb/rustdiff_0.5.0_amd64.deb
+DEB=target/release/bundle/deb/rustdiff_1.0.0_amd64.deb
 ar p "$DEB" control.tar.gz | tar -xzO control
 ar p "$DEB" data.tar.gz | tar -tz
 ```
