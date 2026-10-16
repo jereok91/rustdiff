@@ -43,6 +43,21 @@ the latest release, elsewhere it builds the checkout/`main` from source.
    - `com.digitalgex.RustDiff.yaml` and `flathub/com.digitalgex.RustDiff.yaml` → `build-commands`
    - `install.sh` → `install_user_files` (per-user source build)
    - the DMG needs nothing: the frontend is embedded in the binary
+
+   The app icon is `data/icons/com.digitalgex.RustDiff.svg` plus a PNG set
+   rendered from it in `data/icons/hicolor/<size>/apps/`. Flatpak installs both:
+   `appstreamcli compose` needs a PNG for every size it caches (48, 64, 128
+   and their `@2` variants) or it falls back to decoding the SVG, which the
+   Flathub builder fails on (`icon-file-read-error`). If the SVG changes,
+   regenerate the PNGs:
+
+   ```bash
+   for spec in 48x48:48 64x64:64 128x128:128 256x256:256 512x512:512 64x64@2:128 128x128@2:256; do
+       d=${spec%%:*}; px=${spec##*:}; mkdir -p data/icons/hicolor/$d/apps
+       rsvg-convert -w $px -h $px data/icons/com.digitalgex.RustDiff.svg \
+           -o data/icons/hicolor/$d/apps/com.digitalgex.RustDiff.png
+   done
+   ```
 5. **Regenerate `cargo-sources.json`** if `Cargo.lock` changed in its
    registry crates (see [Flatpak](#flatpak-sources)), and copy it to
    `flathub/cargo-sources.json`. A version bump alone only rewrites the

@@ -47,6 +47,10 @@ modules:
       - install -Dm644 ./data/com.digitalgex.RustDiff.desktop -t /app/share/applications
       - install -Dm644 ./data/com.digitalgex.RustDiff.metainfo.xml -t /app/share/metainfo
       - install -Dm644 ./data/icons/com.digitalgex.RustDiff.svg -t /app/share/icons/hicolor/scalable/apps
+      # PNGs en todos los tamaños que pide `appstreamcli compose` (incluidos los
+      # @2): así nunca decodifica el SVG, que el builder de Flathub no puede leer
+      # (icon-file-read-error). Se generan desde el SVG (docs/RELEASING.md).
+      - for s in 48x48 64x64 128x128 256x256 512x512 64x64@2 128x128@2; do install -Dm644 ./data/icons/hicolor/$s/apps/com.digitalgex.RustDiff.png -t /app/share/icons/hicolor/$s/apps; done
     sources:
       - type: dir
         path: .
