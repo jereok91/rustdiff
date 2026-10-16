@@ -104,6 +104,11 @@
   </branding>
 
   <releases>
+    <release version="1.0.1" date="2026-10-16">
+      <description>
+        <p>Packaging fix: the application icon now ships as a PNG set alongside the SVG, because the Flatpak builder runtime decodes icons through a pipeline that cannot read the SVG.</p>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-10-14">
       <description>
         <p>The first stable release: a full rewrite of the interface on a modern stack. The diff engine, the parsers, the history database and the settings file are the same code as in 0.4.0, so upgrading needs no migration and your history and preferences carry over.</p>
