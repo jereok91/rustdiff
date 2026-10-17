@@ -1,0 +1,31 @@
+Architectures: amd64 arm64
+Codename: stable
+Components: main
+Date: Sat, 17 Oct 2026 21:24:35 +0000
+Label: RustDiff
+Origin: RustDiff
+Suite: stable
+MD5Sum:
+ 1bd5e5f87d4349e76c113b8a5150a0b6              146 Release
+ 7c21bd6950615a3e83f5f850cf56b9db              659 main/binary-amd64/Packages
+ f43d439fed191e0895d9de3397f86683              474 main/binary-amd64/Packages.gz
+ fa83806b6755b59a8097266d07e24e4f              659 main/binary-arm64/Packages
+ b7d9819943cbba5d0477578cd46be8f9              475 main/binary-arm64/Packages.gz
+SHA1:
+ 64c6754d517746950866a4962ec076f167da1ae3              146 Release
+ 91d047df1aa0502e0d2721f2f559042d130ef90c              659 main/binary-amd64/Packages
+ 3d8819c16963e04d7b0d7fb1e603c43d4dc2fc8e              474 main/binary-amd64/Packages.gz
+ b7b12d21d3b71a21ee37bfc6d60f469a97dbe642              659 main/binary-arm64/Packages
+ 2531bc3c20a9de12e3e2587e0e4252f9fc8de2f4              475 main/binary-arm64/Packages.gz
+SHA256:
+ 64058d845fc29fe3117f8c009055b6ab4cec84c0352fff1cedc3fff4c8bac7e6              146 Release
+ cf54a274376a4980c42706e79f61cc0c5b5e88b231200e19b99db07b3627c26b              659 main/binary-amd64/Packages
+ fbee677a07d35f77390c80d4ebe111bd7d31499767497b547774c67e6d958ba6              474 main/binary-amd64/Packages.gz
+ 0cd2479eb9ee526b4f59e94d1689ac4ecc92660da0cef094d12c3469a1c89211              659 main/binary-arm64/Packages
+ 922bce0f45450b0f88493b9b9394db9523364e8254bd0004e8a8d977ad34b256              475 main/binary-arm64/Packages.gz
+SHA512:
+ 786db06e419c07d2bbc699f9723fdbfb09a3e390319fd2ed7ec3f57ca4573e1c6421009966850600e3b29f185bbe93c8dca01e15689bfd484c647fddab405ee8              146 Release
+ 7c7cc8ec9425cce522a56b0f9c328702f88870a30dd7782ae7bdff59795328795925e7414a5dbda1d4c87784e09b7eb570c1ac91a94c6c094c11e92108d19c1c              659 main/binary-amd64/Packages
+ 7f32bd86e856b4127d0e71deafed7c0fca92a11c0d983eca002bae6f96fb3a4725b484677cac6034182bd339ec82e5b86eda5e63d473fc15abd6a9f60dacab66              474 main/binary-amd64/Packages.gz
+ 82fb8e6424245fde19e31dde9cc2a239f3910dfab593ab4f250e9b0abdd97414c95f1fbb1e2f8c40e1b7ca3207ad6ec72b39d891a2f2fd053325a248ce5711b6              659 main/binary-arm64/Packages
+ 0c520d53ff81a21b7321b3df25f62f4749b7a7cb99da867273bdd1d08ee54df874e51c7361133b5d27e5e34175960cc33ab838919b2a748012bc70d13614acfe              475 main/binary-arm64/Packages.gz
