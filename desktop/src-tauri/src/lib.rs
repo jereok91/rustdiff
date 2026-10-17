@@ -56,6 +56,33 @@ pub fn apply_webkit_workarounds() {
     tracing::info!(target: "rustdiff::startup", "NVIDIA + Wayland: se desactiva el renderer DMABUF de WebKit");
 }
 
+// ─────────────────────────────────────────────
+// Identidad de la ventana
+// ─────────────────────────────────────────────
+
+/// Fija el `app_id` con el que la ventana se anuncia en Wayland.
+///
+/// GTK3 toma ese `app_id` de `g_get_prgname()`, **no** del id de
+/// `GtkApplication` (ni de `gdk_set_program_class()`, que solo cambia el
+/// `WM_CLASS` de X11): sin esto la ventana se llama `rustdiff`, el nombre del
+/// binario, y el shell no puede atarla con `com.digitalgex.RustDiff.desktop`.
+/// El resultado visible es el icono genérico en la barra de título y en la
+/// barra de tareas (KDE cae al icono `wayland` de su tema), la ventana
+/// desagrupada de su lanzador y un diálogo de archivos del portal que no sabe
+/// qué app lo abre.
+///
+/// Tiene que correr antes de que GTK cree la primera superficie, por eso se
+/// llama al principio de [`run`] (y no después de armar el `Builder`).
+pub fn apply_gtk_app_id(identifier: &str) {
+    #[cfg(target_os = "linux")]
+    glib::set_prgname(Some(identifier));
+
+    // En macOS y Windows el app_id sale del bundle y el icono viaja con el
+    // ejecutable: no hay nada que anunciar al shell.
+    #[cfg(not(target_os = "linux"))]
+    let _ = identifier;
+}
+
 /// Definición única del contrato IPC.
 ///
 /// De acá salen los bindings TypeScript y el `invoke_handler`: el frontend y el
@@ -120,6 +147,12 @@ pub fn export_bindings(path: &Path) -> Result<(), String> {
 
 /// Arranca la aplicación.
 pub fn run() {
+    let context = tauri::generate_context!();
+
+    // El config es el origen único del identificador: el mismo que usa el
+    // bundle, el Flatpak y el nombre del `.desktop`.
+    apply_gtk_app_id(context.config().identifier.as_str());
+
     let builder = specta_builder();
 
     // Los bindings solo se regeneran en desarrollo: en release el archivo
@@ -135,6 +168,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::from_env())
         .invoke_handler(builder.invoke_handler())
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running RustDiff");
 }

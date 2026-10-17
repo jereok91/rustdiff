@@ -3,7 +3,10 @@
  *
  * Porta la estrategia de `src/ui/highlighter.rs` de la app GTK:
  *   1. Diff línea por línea (acá con `diff`, allá con `similar`): fondo
- *      sutil para líneas eliminadas (izquierda) y añadidas (derecha).
+ *      sutil para líneas eliminadas (izquierda) y añadidas (derecha). Antes de
+ *      difear, el diff semántico fija qué líneas se emparejan por ruta
+ *      (`semanticAlignment`): el texto a secas elige el vecino parecido y marca
+ *      entero como añadido un elemento que la tabla reporta modificado.
  *   2. En los bloques reemplazados, las líneas se emparejan por posición y
  *      se marcan los caracteres exactos que difieren con
  *      `commands.inlineCharRanges` (el mismo `inline_char_ranges` del núcleo).
@@ -19,7 +22,7 @@
 
 import { diffArrays } from "diff";
 import type { CharRange, DiffItem, DiffResult, InlineRanges } from "@/bindings";
-import { cleanSearchValue, locateItem, type TextRange } from "@/lib/locate";
+import { cleanSearchValue, locateItem, pathSyntax, type ItemLocation, type TextRange } from "@/lib/locate";
 
 /** Tope de pares de líneas que piden rangos inline al backend por comparación. */
 export const MAX_INLINE_PAIRS = 500;
@@ -47,8 +50,19 @@ export type LineOp = {
     newEnd: number;
 };
 
-/** Diff línea por línea; un borrado seguido de una inserción es un `replace`. */
-export function computeLineOps(left: string[], right: string[]): LineOp[] {
+/**
+ * Par de líneas que el diff semántico empareja: la misma ruta a los dos lados.
+ *
+ * Los tramos de un solo lado (un elemento de array que entra o se va entero) no
+ * se fijan acá. `locate` ubica el token por ruta sin respetar la profundidad, así
+ * que con una clave repetida en otro nivel —`$.d[1]` con otro `"d"` más arriba—
+ * devuelve el tramo ajeno, y forzarlo marcaba líneas idénticas que no cambiaron.
+ * Lo que entra o se va entero lo resuelve el diff de líneas.
+ */
+export type LineAnchor = { left: number; right: number };
+
+/** Myers sobre un tramo de líneas, con los índices ya corridos al documento. */
+function segmentOps(left: string[], right: string[], oldBase: number, newBase: number): LineOp[] {
     const ops: LineOp[] = [];
     let oldPos = 0;
     let newPos = 0;
@@ -62,10 +76,10 @@ export function computeLineOps(left: string[], right: string[]): LineOp[] {
         const tag: LineOpTag = pendingDel > 0 && pendingIns > 0 ? "replace" : pendingDel > 0 ? "delete" : "insert";
         ops.push({
             tag,
-            oldStart: oldPos,
-            oldEnd: oldPos + pendingDel,
-            newStart: newPos,
-            newEnd: newPos + pendingIns,
+            oldStart: oldBase + oldPos,
+            oldEnd: oldBase + oldPos + pendingDel,
+            newStart: newBase + newPos,
+            newEnd: newBase + newPos + pendingIns,
         });
         oldPos += pendingDel;
         newPos += pendingIns;
@@ -83,16 +97,57 @@ export function computeLineOps(left: string[], right: string[]): LineOp[] {
             flush();
             ops.push({
                 tag: "equal",
-                oldStart: oldPos,
-                oldEnd: oldPos + count,
-                newStart: newPos,
-                newEnd: newPos + count,
+                oldStart: oldBase + oldPos,
+                oldEnd: oldBase + oldPos + count,
+                newStart: newBase + newPos,
+                newEnd: newBase + newPos + count,
             });
             oldPos += count;
             newPos += count;
         }
     }
     flush();
+    return ops;
+}
+
+/**
+ * Diff línea por línea; un borrado seguido de una inserción es un `replace`.
+ *
+ * `anchors` son pares de líneas que el diff semántico empareja (ver
+ * `semanticAlignment`): entre ancla y ancla el diff es el de siempre, y el ancla
+ * queda como un `replace` de una línea por lado, que es el par que
+ * `lineHighlights` le pasa al diff inline de caracteres. Las anclas que no
+ * avanzan en los dos lados se descartan.
+ */
+export function computeLineOps(left: string[], right: string[], anchors: LineAnchor[] = []): LineOp[] {
+    const ops: LineOp[] = [];
+    let oldPos = 0;
+    let newPos = 0;
+
+    for (const anchor of anchors) {
+        const inside =
+            anchor.left >= oldPos &&
+            anchor.left < left.length &&
+            anchor.right >= newPos &&
+            anchor.right < right.length;
+        if (!inside) {
+            continue;
+        }
+
+        ops.push(...segmentOps(left.slice(oldPos, anchor.left), right.slice(newPos, anchor.right), oldPos, newPos));
+        // La línea anclada cambió de valor: se empareja 1 a 1.
+        ops.push({
+            tag: left[anchor.left] === right[anchor.right] ? "equal" : "replace",
+            oldStart: anchor.left,
+            oldEnd: anchor.left + 1,
+            newStart: anchor.right,
+            newEnd: anchor.right + 1,
+        });
+        oldPos = anchor.left + 1;
+        newPos = anchor.right + 1;
+    }
+
+    ops.push(...segmentOps(left.slice(oldPos), right.slice(newPos), oldPos, newPos));
     return ops;
 }
 
@@ -135,6 +190,124 @@ export function lineStartOffsets(text: string): number[] {
         }
     }
     return starts;
+}
+
+/** Línea (0-based) que contiene `offset`, en un documento con esos inicios. */
+function lineIndexAt(starts: number[], offset: number): number {
+    let low = 0;
+    let high = starts.length - 1;
+    while (low < high) {
+        const mid = (low + high + 1) >> 1;
+        if (starts[mid] <= offset) {
+            low = mid;
+        } else {
+            high = mid - 1;
+        }
+    }
+    return low;
+}
+
+/** ¿El diff trae rutas del documento? En texto plano (`line[N]`) no hay qué anclar. */
+function usesDocumentPaths(result: DiffResult): boolean {
+    return [...result.added, ...result.removed, ...result.changed].some((item) => !item.path.startsWith("line["));
+}
+
+/** Columna de un offset dentro de su línea. */
+function columnAt(starts: number[], offset: number): number {
+    return offset - starts[lineIndexAt(starts, offset)];
+}
+
+/**
+ * Rango que sirve de ancla para un item: su clave, si el valor ubicado cae en
+ * la misma línea.
+ *
+ * `locate` ubica la clave por la ruta (por nombre, en orden) y el valor como
+ * token. El valor puede aparecer antes en un hermano o en otro elemento del
+ * array —misma columna, mismo contenido— y entonces la búsqueda del token
+ * reubica el item en la línea equivocada: anclar ahí empareja con el hermano
+ * de arriba y el diff de líneas marca como borradas e insertadas las líneas
+ * idénticas del medio. Si la clave y el valor no comparten línea, la búsqueda
+ * del valor se fue a otra aparición y el item no da ancla.
+ */
+function anchorRange(starts: number[], found: ItemLocation): TextRange | null {
+    if (!found.key) {
+        return found.value;
+    }
+    if (found.value && lineIndexAt(starts, found.value.from) !== lineIndexAt(starts, found.key.from)) {
+        return null;
+    }
+    return found.key;
+}
+
+/**
+ * Lo que el diff semántico sabe de la alineación, listo para `computeLineOps`.
+ *
+ * El diff de líneas compara texto, y con documentos que repiten bloques
+ * parecidos —dos elementos de un array con las mismas claves— elige el vecino:
+ * el elemento que la tabla reporta modificado queda entero como añadido de un
+ * lado y sin decoración del otro, con el resto de las líneas corridas un
+ * elemento. Cada ruta dice cuál es la línea que le toca a cada lado: los items
+ * cambiados se emparejan (si la columna coincide en los dos lados).
+ *
+ * Las anclas se ordenan por línea y se descartan las que no avanzan en los dos
+ * lados: dos items de la misma línea (JSON compacto) o un `locate` que cayó en
+ * el elemento equivocado no pueden fijar dos anclas contradictorias.
+ */
+export function semanticAlignment(leftText: string, rightText: string, result: DiffResult): LineAnchor[] {
+    if (!usesDocumentPaths(result)) {
+        return [];
+    }
+
+    const leftStarts = lineStartOffsets(leftText);
+    const rightStarts = lineStartOffsets(rightText);
+    const candidates: LineAnchor[] = [];
+
+    for (const item of result.changed) {
+        const { left, right } = item;
+        // Mismo criterio que `semanticMarks`: sin valor no hay token que ubicar.
+        if (!left || cleanSearchValue(left) === "" || !right || cleanSearchValue(right) === "") {
+            continue;
+        }
+        // Solo JSON: el recorrido de la ruta respeta los índices `[N]` del array.
+        // En XML los índices de hermanos se ignoran (`<item>` es siempre el
+        // primero) y los hermanos comparten columna, así que el ancla podía caer
+        // en el hermano equivocado; sin ancla, esos formatos usan el diff de
+        // líneas de siempre.
+        if (pathSyntax(item.path) !== "json") {
+            continue;
+        }
+        const rangeLeft = anchorRange(leftStarts, locateItem(leftText, item.path, left));
+        const rangeRight = anchorRange(rightStarts, locateItem(rightText, item.path, right));
+        if (!rangeLeft || !rangeRight) {
+            continue;
+        }
+        // El `locate` no sabe de profundidad ni de claves repetidas: con el
+        // mismo nombre en dos niveles ubica el token equivocado, y forzar ese
+        // par marca líneas idénticas como cambiadas. Si los dos lados no caen en
+        // la misma columna no es la misma posición y el ancla se descarta:
+        // decide el diff de líneas.
+        if (columnAt(leftStarts, rangeLeft.from) !== columnAt(rightStarts, rangeRight.from)) {
+            continue;
+        }
+        candidates.push({
+            left: lineIndexAt(leftStarts, rangeLeft.from),
+            right: lineIndexAt(rightStarts, rangeRight.from),
+        });
+    }
+
+    candidates.sort((a, b) => a.left - b.left || a.right - b.right);
+    const anchors: LineAnchor[] = [];
+    let lastLeft = -1;
+    let lastRight = -1;
+    for (const candidate of candidates) {
+        if (candidate.left > lastLeft && candidate.right > lastRight) {
+            anchors.push(candidate);
+            lastLeft = candidate.left;
+            lastRight = candidate.right;
+        }
+    }
+
+    return anchors;
 }
 
 /** Convierte un índice de caracteres (code points, como Rust) a offset UTF-16. */
@@ -239,7 +412,10 @@ export async function buildDiffDecorations(
 ): Promise<DiffDecorations> {
     const leftLines = splitLines(leftText);
     const rightLines = splitLines(rightText);
-    const { left, right, pairs } = lineHighlights(computeLineOps(leftLines, rightLines));
+    // Las rutas del diff semántico fijan qué línea de la izquierda le toca a
+    // cada línea de la derecha.
+    const anchors = semanticAlignment(leftText, rightText, result);
+    const { left, right, pairs } = lineHighlights(computeLineOps(leftLines, rightLines, anchors));
 
     const leftStarts = lineStartOffsets(leftText);
     const rightStarts = lineStartOffsets(rightText);

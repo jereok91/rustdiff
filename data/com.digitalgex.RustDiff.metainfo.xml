@@ -104,6 +104,16 @@
   </branding>
 
   <releases>
+    <release version="1.0.3" date="2026-10-17">
+      <description>
+        <p>Desktop-integration and editor-highlight fixes.</p>
+        <ul>
+          <li>The window announces the application id, so the desktop shows its real icon and groups it with its launcher.</li>
+          <li>Editor highlighting is anchored to the diff paths, so a modified element is no longer painted as a whole added block when the other document appends a copy of it.</li>
+          <li>The focused editor's ring closes on all four sides.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.1" date="2026-10-16">
       <description>
         <p>Packaging fix: the application icon now ships as a PNG set alongside the SVG, because the Flatpak builder runtime decodes icons through a pipeline that cannot read the SVG.</p>

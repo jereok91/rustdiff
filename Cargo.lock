@@ -2767,7 +2767,7 @@ dependencies = [
 
 [[package]]
 name = "rustdiff-core"
-version = "1.0.0"
+version = "1.0.3"
 dependencies = [
  "pretty_assertions",
  "quick-xml 0.36.2",
@@ -2782,8 +2782,9 @@ dependencies = [
 
 [[package]]
 name = "rustdiff-desktop"
-version = "1.0.0"
+version = "1.0.3"
 dependencies = [
+ "glib",
  "rustdiff-core",
  "rustdiff-persist",
  "serde",
@@ -2799,7 +2800,7 @@ dependencies = [
 
 [[package]]
 name = "rustdiff-persist"
-version = "1.0.0"
+version = "1.0.3"
 dependencies = [
  "dirs 5.0.1",
  "rusqlite",

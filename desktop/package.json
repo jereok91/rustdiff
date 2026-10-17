@@ -1,7 +1,7 @@
 {
   "name": "rustdiff-desktop",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "comment": "Frontend de RustDiff (la app GTK se retiro en 1.0.0): React + Tailwind v4 + shadcn/ui, editores CodeMirror 6, i18next. Las llamadas al backend salen de src/bindings.ts (generado por tauri-specta).",
   "scripts": {

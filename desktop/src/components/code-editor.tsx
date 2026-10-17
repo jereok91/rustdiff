@@ -188,5 +188,15 @@ export function CodeEditor({
         viewRef.current?.dispatch({ effects: setDiffDecorations.of(decorations) });
     }, [decorations]);
 
-    return <div ref={hostRef} className="h-full min-h-0 overflow-hidden" data-testid="code-editor" />;
+    // El anillo de foco va acá y no en `.cm-editor` (ver `lib/editor-theme.ts`):
+    // la gutter de CodeMirror es `sticky` con z-index propio y taparía el lado
+    // izquierdo del outline, que es justo el de los números de línea. El
+    // `::after` pinta por encima y el contenedor incluye la gutter.
+    return (
+        <div
+            ref={hostRef}
+            className="relative h-full min-h-0 overflow-hidden focus-within:after:pointer-events-none focus-within:after:absolute focus-within:after:inset-0 focus-within:after:z-[250] focus-within:after:outline-2 focus-within:after:-outline-offset-2 focus-within:after:outline-ring"
+            data-testid="code-editor"
+        />
+    );
 }

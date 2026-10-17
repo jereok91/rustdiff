@@ -6,6 +6,8 @@
 # XDG_RUNTIME_DIR —sin salida a pantalla y sin tocar la sesión gráfica de quien
 # lo corre—, lanza la app, espera a que mapee su ventana, mide el arranque y la
 # memoria del árbol de procesos, y deja una captura PNG para revisar el render.
+# También comprueba el `app_id` de la ventana: es lo que ata la app con su
+# .desktop (icono y agrupación en el shell) y sale de `g_get_prgname()`.
 #
 # Uso:
 #   desktop/scripts/smoke-headless.sh [binario] [directorio-de-salida]
@@ -130,6 +132,19 @@ done
 
 ARRANQUE_MS=$(( $(date +%s%3N) - INICIO_MS ))
 
+# ── Asociación con el escritorio ─────────────
+# GTK3 publica en Wayland el app_id que le da `g_get_prgname()`; el shell lo
+# compara con el nombre del .desktop para poner el icono y agrupar la ventana
+# con su lanzador. Un app_id que no sea el identificador deja la ventana sin
+# icono (KDE cae al icono genérico `wayland`) y desagrupada.
+APP_ID_ESPERADO="com.digitalgex.RustDiff"
+APP_ID=$(swaymsg -t get_tree | sed -n 's/.*"app_id": "\([^"]*\)".*/\1/p' | head -1)
+[[ "$APP_ID" == "$APP_ID_ESPERADO" ]] || {
+    echo "la ventana se anuncia como app_id '$APP_ID' y no como '$APP_ID_ESPERADO':" \
+        "el escritorio no la puede asociar con com.digitalgex.RustDiff.desktop" >&2
+    exit 1
+}
+
 # El webview necesita un instante más para pintar el primer frame con el diff.
 sleep 3
 grim "$SALIDA/ventana.png" >/dev/null 2>&1 || echo "aviso: grim no pudo capturar" >&2
@@ -153,6 +168,9 @@ leer_arbol() {
 
 read -r RSS_KB PROCESOS <<<"$(leer_arbol)"
 
+# El stdout del script es su contrato (una línea por métrica): el app_id va por
+# stderr, así agregarlo no cambia lo que parsean los consumidores del stdout.
+echo "app_id=$APP_ID" >&2
 echo "arranque_ms=$ARRANQUE_MS"
 echo "rss_kb=$RSS_KB"
 echo "rss_mb=$(awk -v kb="$RSS_KB" 'BEGIN { printf "%.0f", kb / 1024 }')"

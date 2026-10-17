@@ -88,6 +88,13 @@ serde_json = "1"
 tauri-specta       = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 specta             = { version = "=2.0.0-rc.25", features = ["derive"] }
 specta-typescript  = "=0.0.12"
+
+# ── IDENTIDAD DE VENTANA (LINUX) ──────────────
+# `glib::set_prgname` es la unica via de fijar el app_id que GTK3 publica en
+# Wayland (ver `apply_gtk_app_id` en lib.rs). Misma rama 0.18 que arrastra gtk
+# a traves de tauri: asi no entra una segunda copia del binding.
+[target.'cfg(target_os = "linux")'.dependencies]
+glib = "0.18"
 # ─────────────────────────────────────────────
 # FEATURES
 # ─────────────────────────────────────────────

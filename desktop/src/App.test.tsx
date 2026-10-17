@@ -106,6 +106,21 @@ describe("App", () => {
         expect(screen.getAllByTestId("code-editor")).toHaveLength(2);
     });
 
+    it("el anillo de foco del editor lo dibuja el contenedor, que incluye la gutter", async () => {
+        // La gutter de CodeMirror es `sticky` con `z-index: 200`, así que un
+        // `outline` sobre `.cm-editor` queda tapado de ese lado (el de los
+        // números de línea) y el anillo se ve abierto. Lo dibuja el contenedor
+        // del editor, que incluye la gutter y pinta por encima.
+        mocks.startupFiles.mockResolvedValue([
+            { path: "/a.json", name: "a.json", content: "{}" },
+            { path: "/b.json", name: "b.json", content: "{}" },
+        ]);
+        render(<App />);
+        const host = (await screen.findAllByTestId("code-editor"))[0];
+        expect(host.className).toContain("focus-within:after:outline-ring");
+        expect(host.className).toContain("focus-within:after:z-[250]");
+    });
+
     it("con un archivo entra en modo documento único", async () => {
         mocks.startupFiles.mockResolvedValue([{ path: "/a.json", name: "a.json", content: "{}" }]);
         render(<App />);

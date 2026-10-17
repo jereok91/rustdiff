@@ -18,9 +18,10 @@ import type { ColorScheme } from "@/lib/theme";
 
 const chrome = {
     "&": { backgroundColor: "var(--editor)", color: "var(--foreground)" },
-    // El editor enfocado lleva el anillo de foco de la app, hacia adentro:
-    // además marca en cuál de los dos editores va a buscar Ctrl+F.
-    "&.cm-focused": { outline: "2px solid var(--ring)", outlineOffset: "-2px" },
+    // El anillo de foco NO se dibuja acá: la gutter es `position: sticky` con
+    // `z-index` propio, así que pinta encima del `outline` de `.cm-editor` y el
+    // lado izquierdo (justo el de los números de línea) desaparece. Lo dibuja el
+    // contenedor del editor, que incluye la gutter (ver `components/code-editor`).
     ".cm-content": { caretColor: "var(--primary)", padding: "0.5rem 0" },
     ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--primary)", borderLeftWidth: "2px" },
     "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":

@@ -24,10 +24,13 @@ Keywords[es]=json;xml;diff;comparar;formato;validar;
 # ── Integración con el escritorio ──────────────────────────────────
 # Aparece en la búsqueda de GNOME/KDE
 StartupNotify=true
-# La app es Tauri (GTK3 + WebKitGTK): su WM_CLASS / app_id de Wayland es el
-# prgname de GTK, es decir el nombre del binario. Sin esto el shell no asocia
-# la ventana con este .desktop y muestra un icono genérico.
-StartupWMClass=rustdiff
+# La app es Tauri (GTK3 + WebKitGTK) y su WM_CLASS / app_id es el prgname de
+# GTK, que `apply_gtk_app_id` (desktop/src-tauri/src/lib.rs) fija al
+# identificador. GTK3 publica ese mismo texto en el `app_id` de Wayland (en
+# X11 el `res_name` y el `res_class`, capitalizado); el shell lo compara con
+# este .desktop, así que los dos tienen que decir lo mismo o la ventana queda
+# sin icono y desagrupada de su lanzador.
+StartupWMClass=com.digitalgex.RustDiff
 
 # ── Acciones rápidas (click derecho en el ícono) ───────────────────
 # (La acción "Abrir Historial" se retiró en 1.0.0: el shell Tauri solo
