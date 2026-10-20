@@ -5,7 +5,7 @@ workflows fire on it in parallel, each publishing to a different channel.
 This document is the checklist for getting the repository into a state
 where that tag is correct.
 
-**Current version: 1.0.0**, the first stable release. Since 1.0.0 the app is
+**Current version: 1.0.4.** Since 1.0.0 the app is
 the Tauri shell in `desktop/` + `desktop/src-tauri/`. crates.io and the
 Homebrew source formula are retired (see the bottom of this page).
 

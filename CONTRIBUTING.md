@@ -82,7 +82,7 @@ Un commit = un cambio lógico. No mezcles un refactor con una feature ni con un 
 
 ## Antes de abrir el PR: los checks son obligatorios
 
-Esto es lo que el CI va a correr; si falla acá, falla allá. **El PR tiene que estar probado por quien lo manda**; un PR sin probar se rechaza.
+Esto es lo que corre el CI y lo que tiene que pasar antes de mandar el PR; si falla acá, falla allá. **El PR tiene que estar probado por quien lo manda**; un PR sin probar se rechaza. Además del CI, antes de abrir el PR corré el smoke headless y las validaciones de empaquetado que están al final del bloque.
 
 ```bash
 # Rust

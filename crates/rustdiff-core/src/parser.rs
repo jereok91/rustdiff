@@ -121,13 +121,56 @@ pub fn auto_detect_format(input: &str) -> Result<Format, ParseError> {
     Ok(Format::Text)
 }
 
+/// Decodifica las secuencias de escape de un string JSON (`\"`, `\\`, `\n`,
+/// `\t`, `\uXXXX`…) dejando el resto del texto intacto.
+fn decode_json_escapes(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            out.push(ch);
+            continue;
+        }
+        match chars.next() {
+            Some('"') => out.push('"'),
+            Some('\\') => out.push('\\'),
+            Some('/') => out.push('/'),
+            Some('b') => out.push('\u{0008}'),
+            Some('f') => out.push('\u{000C}'),
+            Some('n') => out.push('\n'),
+            Some('r') => out.push('\r'),
+            Some('t') => out.push('\t'),
+            Some('u') => {
+                let hex: String = (0..4).filter_map(|_| chars.next()).collect();
+                match u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
+                    Some(decoded) => out.push(decoded),
+                    // Secuencia inválida: se deja tal cual, no se inventa nada.
+                    None => {
+                        out.push('\\');
+                        out.push('u');
+                        out.push_str(&hex);
+                    }
+                }
+            }
+            // Escape desconocido: se deja tal cual.
+            Some(other) => {
+                out.push('\\');
+                out.push(other);
+            }
+            None => out.push('\\'),
+        }
+    }
+    out
+}
+
 /// Texto desescapado si `input` parece un JSON con las comillas escapadas.
 ///
 /// Un log o un portal muchas veces serializa el JSON dentro de un string y lo
 /// que se copia es `{\"a\":1}` con la barra invertida incluida: el parser lo
-/// rechaza y la comparación cae al diff de texto. Se desescapa **solo** `\"`
-/// (la forma que produce ese pegado) y se devuelve el texto **únicamente si
-/// después parsea como JSON**: si no, no hay nada que sugerir y nada cambia.
+/// rechaza y la comparación no arranca. Se decodifican **todas** las secuencias
+/// de escape del string (`\"`, `\\`, `\n`, `\t`, `\uXXXX`…) y se devuelve el
+/// texto **únicamente si después parsea como JSON**: si no, no hay nada que
+/// sugerir y nada cambia.
 ///
 /// Un documento que ya parsea nunca es una sugerencia: un valor con comillas
 /// escapadas y separadores adentro (`{"a":"1\",\"b\":\"2"}`) sigue siendo
@@ -136,7 +179,7 @@ pub fn auto_detect_format(input: &str) -> Result<Format, ParseError> {
 /// El frontend no parsea documentos (S8): esta es la puerta del comando IPC.
 pub fn unescape_escaped_json(input: &str) -> Option<String> {
     let trimmed = input.trim();
-    if !(trimmed.starts_with('{') || trimmed.starts_with('[')) || !trimmed.contains("\\\"") {
+    if !(trimmed.starts_with('{') || trimmed.starts_with('[')) || !trimmed.contains('\\') {
         return None;
     }
     if serde_json::from_str::<serde_json::Value>(trimmed).is_ok() {
@@ -144,8 +187,8 @@ pub fn unescape_escaped_json(input: &str) -> Option<String> {
     }
 
     // Se reemplaza sobre el texto original: el desescapado no toca los espacios
-    // de los extremos (solo `\"`).
-    let unescaped = input.replace("\\\"", "\"");
+    // de los extremos ni el resto del texto, solo las secuencias de escape.
+    let unescaped = decode_json_escapes(input);
     serde_json::from_str::<serde_json::Value>(&unescaped)
         .ok()
         .map(|_| unescaped)
@@ -854,6 +897,25 @@ mod tests {
         let pegado = "  [{\\\"a\\\":1}]  ";
         let desescapado = unescape_escaped_json(pegado).expect("lo tiene que detectar");
         assert_eq!(desescapado, "  [{\"a\":1}]  ");
+    }
+
+    #[test]
+    fn desescapa_todas_las_secuencias_no_solo_las_comillas() {
+        // Del verificador: un valor con un salto de línea escapado quedaba con la
+        // barra literal (JSON válido con el valor equivocado).
+        let pegado = r#"{\"a\":\"x\\ny\"}"#;
+        let desescapado = unescape_escaped_json(pegado).expect("lo tiene que detectar");
+        assert_eq!(desescapado, "{\"a\":\"x\\ny\"}");
+        assert!(serde_json::from_str::<serde_json::Value>(&desescapado).is_ok());
+
+        // Lo mismo con las barras invertidas de una ruta.
+        let pegado = r#"{\"a\":\"C:\\\\tmp\"}"#;
+        let desescapado = unescape_escaped_json(pegado).expect("lo tiene que detectar");
+        assert_eq!(desescapado, r#"{"a":"C:\\tmp"}"#);
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&desescapado).unwrap()["a"],
+            "C:\\tmp"
+        );
     }
 
     // ── Display para Format ─────────────────────

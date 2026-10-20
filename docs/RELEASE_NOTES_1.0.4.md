@@ -15,13 +15,15 @@ branch.
   button.
 
   The notice only appears when the document does **not** already parse and the
-  unescaped text does, so a valid document is never touched and no suggestion
-  can change a document's meaning. Applying it replaces the editor content and
-  compares again; dismissing it keeps it away for that text, and the suggestion
-  is dropped if the document changed in the meantime.
+  unescaped text does, so a valid document is never touched. Applying it
+  replaces the editor content and compares again; dismissing it keeps it away
+  for that text, and the suggestion is dropped if the document changed in the
+  meantime.
 
-  The unescape replaces `\"` and nothing else: leading and trailing whitespace
-  is preserved. The detection and the validation live in `rustdiff-core`
+  The unescape decodes every JSON string escape (`\"`, `\\`, `\n`, `\t`,
+  `\uXXXX`), which is what reproduces the original document, and leaves the rest
+  of the text alone: leading and trailing whitespace is preserved. The detection
+  and the validation live in `rustdiff-core`
   (`unescape_escaped_json`) behind the `unescape_json` command, so the
   interface still does not parse documents.
 
