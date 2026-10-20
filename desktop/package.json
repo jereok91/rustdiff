@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "bindings": "cd src-tauri && RUSTDIFF_UPDATE_BINDINGS=1 cargo test --test bindings",
+    "bindings": "cd src-tauri && RUSTDIFF_UPDATE_BINDINGS=1 cargo test --test shell los_bindings_commiteados_estan_al_dia",
     "tauri": "tauri",
     "test": "vitest run"
   },
