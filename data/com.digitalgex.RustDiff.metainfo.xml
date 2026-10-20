@@ -104,6 +104,17 @@
   </branding>
 
   <releases>
+    <release version="1.0.4" date="2026-10-20">
+      <description>
+        <p>A feature release: the editors now recognise JSON that arrives with the quotes escaped and offer to unescape it.</p>
+        <ul>
+          <li>Detects JSON with escaped quotes and offers to unescape it with one click; valid documents are never touched and the document's whitespace is preserved.</li>
+          <li>Adds CONTRIBUTING.md and a canary branch: pull requests target canary and main only holds released code.</li>
+          <li>The CI runs on canary as well.</li>
+          <li>Fixes the pnpm bindings script, which pointed at a test target that no longer exists.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.3" date="2026-10-17">
       <description>
         <p>Desktop-integration and editor-highlight fixes.</p>

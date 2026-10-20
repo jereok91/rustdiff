@@ -41,7 +41,7 @@ members  = ["crates/*", "desktop/src-tauri"]
 default-members = ["crates/*"]
 
 [workspace.package]
-version      = "1.0.3"
+version      = "1.0.4"
 edition      = "2024"
 rust-version = "1.85"
 authors      = ["digitalgex <jpajaro@digitalgex.com>"]
