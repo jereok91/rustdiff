@@ -121,6 +121,27 @@ pub fn auto_detect_format(input: &str) -> Result<Format, ParseError> {
     Ok(Format::Text)
 }
 
+/// Texto desescapado si `input` parece un JSON con las comillas escapadas.
+///
+/// Un log o un portal muchas veces serializa el JSON dentro de un string y lo
+/// que se copia es `{\"a\":1}` con la barra invertida incluida: el parser lo
+/// rechaza y la comparación cae al diff de texto. Se desescapa **solo** `\"`
+/// (la forma que produce ese pegado) y se devuelve el texto **únicamente si
+/// después parsea como JSON**: si no, no hay nada que sugerir y nada cambia.
+///
+/// El frontend no parsea documentos (S8): esta es la puerta del comando IPC.
+pub fn unescape_escaped_json(input: &str) -> Option<String> {
+    let trimmed = input.trim();
+    if !(trimmed.starts_with('{') || trimmed.starts_with('[')) || !trimmed.contains("\\\"") {
+        return None;
+    }
+
+    let unescaped = trimmed.replace("\\\"", "\"");
+    serde_json::from_str::<serde_json::Value>(&unescaped)
+        .ok()
+        .map(|_| unescaped)
+}
+
 /// Returns true when the text contains several typical SQL clause keywords,
 /// indicating it is SQL even if it doesn't start with a top-level keyword.
 fn looks_like_sql(input: &str) -> bool {
@@ -786,6 +807,29 @@ mod tests {
     fn pretty_print_texto_sin_cambios() {
         let text = "esto es\ntexto plano";
         assert_eq!(format_pretty(text, Format::Text).unwrap(), text);
+    }
+
+    // ── JSON con comillas escapadas ──────────────
+
+    #[test]
+    fn detecta_json_con_comillas_escapadas() {
+        let pegado = r#"[{\"ctry\":\"co\",\"caId\":\"1018404599\"},{\"ctry\":\"co\"}]"#;
+        let desescapado = unescape_escaped_json(pegado).expect("lo tiene que detectar");
+        assert_eq!(desescapado, r#"[{"ctry":"co","caId":"1018404599"},{"ctry":"co"}]"#);
+        assert!(serde_json::from_str::<serde_json::Value>(&desescapado).is_ok());
+    }
+
+    #[test]
+    fn no_sugiere_un_json_normal() {
+        assert_eq!(unescape_escaped_json(r#"{"a":1}"#), None);
+        assert_eq!(unescape_escaped_json(r#"{"a":"di \"hola\""}"#), None);
+        assert_eq!(unescape_escaped_json(""), None);
+    }
+
+    #[test]
+    fn no_sugiere_si_el_desescapado_no_parsea() {
+        assert_eq!(unescape_escaped_json(r#"{\"a\": }"#), None);
+        assert_eq!(unescape_escaped_json(r#"texto con \" comillas"#), None);
     }
 
     // ── Display para Format ─────────────────────

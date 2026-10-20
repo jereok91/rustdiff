@@ -4,7 +4,7 @@
 //! los errores a códigos y se respeta el corto-circuito de la GTK: un documento
 //! en blanco no llega al núcleo.
 
-use rustdiff_core::parser::{Format, format_pretty as core_format_pretty};
+use rustdiff_core::parser::{Format, format_pretty as core_format_pretty, unescape_escaped_json};
 
 use crate::commands::shared::{FormatArg, detect_format_code, resolve_format};
 use crate::error::CommandError;
@@ -32,6 +32,17 @@ pub fn format_pretty(text: String, format: Option<FormatArg>) -> Result<String, 
 
     let fmt = resolve_format(format.as_ref(), &text)?;
     core_format_pretty(&text, fmt).map_err(|e| CommandError::from_parse(&e, None))
+}
+
+/// Texto desescapado si el documento parece JSON con las comillas escapadas.
+///
+/// Devuelve `None` cuando no hay nada que sugerir: la UI muestra el aviso solo
+/// con un `Some` (ver `odd/tasks/escaped-json.md`). La detección y la validación
+/// viven en el núcleo; acá solo se expone el contrato IPC.
+#[tauri::command]
+#[specta::specta]
+pub fn unescape_json(text: String) -> Option<String> {
+    unescape_escaped_json(&text)
 }
 
 #[cfg(test)]

@@ -19,6 +19,14 @@ export const commands = {
 	 */
 	formatPretty: (text: string, format: Format | null) => __TAURI_INVOKE<string>("format_pretty", { text, format }),
 	/**
+	 *  Texto desescapado si el documento parece JSON con las comillas escapadas.
+	 * 
+	 *  Devuelve `None` cuando no hay nada que sugerir: la UI muestra el aviso solo
+	 *  con un `Some` (ver `odd/tasks/escaped-json.md`). La detección y la validación
+	 *  viven en el núcleo; acá solo se expone el contrato IPC.
+	 */
+	unescapeJson: (text: string) => __TAURI_INVOKE<string | null>("unescape_json", { text }),
+	/**
 	 *  Compara dos documentos y devuelve el resultado semántico.
 	 * 
 	 *  Semántica idéntica a la app GTK (F1 la dejó probada): formato explícito

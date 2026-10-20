@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     diffDocuments: vi.fn(),
     inlineCharRanges: vi.fn(),
     detectFormat: vi.fn(),
+    unescapeJson: vi.fn(),
     settingsGet: vi.fn(),
     settingsSave: vi.fn(),
     historyList: vi.fn(),
@@ -66,6 +67,7 @@ afterEach(cleanup);
 beforeEach(() => {
     mocks.inlineCharRanges.mockResolvedValue({ left: [], right: [] });
     mocks.detectFormat.mockResolvedValue("Json");
+    mocks.unescapeJson.mockResolvedValue(null);
     mocks.settingsGet.mockResolvedValue({ language: "en", ui_scale: 1 });
     mocks.settingsSave.mockImplementation(async (settings: unknown) => settings);
     mocks.historyList.mockResolvedValue([]);
@@ -104,6 +106,25 @@ describe("App", () => {
         expect(mocks.diffDocuments).toHaveBeenCalledWith('{"a":1}', '{"a":2}', null);
         expect(screen.getByTestId("diff-table").textContent).toContain("$.a");
         expect(screen.getAllByTestId("code-editor")).toHaveLength(2);
+    });
+
+    it("ofrece desescapar un JSON con comillas escapadas", async () => {
+        const escapado = '[{\\"a\\":1}]';
+        const normalizado = '[{"a":1}]';
+        mocks.startupFiles.mockResolvedValue([
+            { path: "/a.json", name: "a.json", content: escapado },
+            { path: "/b.json", name: "b.json", content: '[{"a":2}]' },
+        ]);
+        mocks.unescapeJson.mockImplementation(async (text: string) => (text === escapado ? normalizado : null));
+        render(<App />);
+
+        const aviso = await screen.findByText("This looks like escaped JSON: the quotes carry backslashes.");
+        expect(aviso).toBeTruthy();
+
+        fireEvent.click(screen.getByRole("button", { name: "Unescape and compare" }));
+        await waitFor(() => expect(mocks.diffDocuments).toHaveBeenCalledWith(normalizado, '[{"a":2}]', null));
+        // Aplicada la sugerencia, el aviso se apaga y no vuelve.
+        expect(screen.queryByText("This looks like escaped JSON: the quotes carry backslashes.")).toBeNull();
     });
 
     it("el anillo de foco del editor lo dibuja el contenedor, que incluye la gutter", async () => {

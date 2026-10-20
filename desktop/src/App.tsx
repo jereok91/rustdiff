@@ -27,7 +27,7 @@
 
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileCode, FolderOpen } from "lucide-react";
+import { AlertTriangle, FileCode, FolderOpen, X } from "lucide-react";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 
 import { commands, type DiffItem, type DiffResponse, type FileContents, type Format } from "@/bindings";
@@ -37,6 +37,7 @@ import { DiffTable } from "@/components/diff-table";
 import { type ExitChoice, ExitDialog } from "@/components/exit-dialog";
 import { GraphView } from "@/components/graph-view";
 import { HistorySidebar } from "@/components/history-sidebar";
+import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
 import { SearchBar, type SearchBarHandle } from "@/components/search-bar";
 import { ShortcutsDialog } from "@/components/shortcuts-dialog";
@@ -87,6 +88,15 @@ export default function App() {
     const [detected, setDetected] = useState<Format | null>(null);
     const [response, setResponse] = useState<DiffResponse | null>(null);
     const [decorations, setDecorations] = useState<DiffDecorations>(EMPTY_DECORATIONS);
+    // JSON con comillas escapadas (pegado desde un log): el nodo se ofrece, no
+    // se aplica solo. `escapedDismissed` recuerda el texto que el usuario ya
+    // descartó para no volver a sugerirlo en cada comparación.
+    const [escapedSuggestion, setEscapedSuggestion] = useState<{
+        side: Side;
+        source: string;
+        text: string;
+    } | null>(null);
+    const escapedDismissed = useRef<string | null>(null);
     const [status, setStatus] = useState<StatusMessage>(READY);
     const [diffPanelVisible, setDiffPanelVisible] = useState(true);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -150,6 +160,24 @@ export default function App() {
             return;
         }
 
+        // El parser rechaza la forma escapada y cae al diff de texto, así que
+        // la sugerencia se calcula aparte de la comparación.
+        void (async () => {
+            const [leftEscaped, rightEscaped] = await Promise.all([
+                commands.unescapeJson(l).catch(() => null),
+                commands.unescapeJson(r).catch(() => null),
+            ]);
+            if (seq !== sequence.current) {
+                return;
+            }
+            const suggestion = leftEscaped
+                ? { side: "left" as const, source: l, text: leftEscaped }
+                : rightEscaped
+                  ? { side: "right" as const, source: r, text: rightEscaped }
+                  : null;
+            setEscapedSuggestion(suggestion && suggestion.source !== escapedDismissed.current ? suggestion : null);
+        })();
+
         try {
             const resp = await commands.diffDocuments(l, r, formatArg(choice));
             const decos = await buildDiffDecorations(l, r, resp.result, commands.inlineCharRanges);
@@ -182,6 +210,27 @@ export default function App() {
     }, [clearDiff]);
 
     const scheduleCompare = useDebouncedCallback(() => void runCompare());
+
+    /** Aplica la sugerencia: reemplaza el documento y vuelve a comparar. */
+    const applyEscapedSuggestion = useCallback(() => {
+        const suggestion = escapedSuggestion;
+        if (!suggestion) {
+            return;
+        }
+        if (suggestion.side === "left") {
+            setLeft(suggestion.text);
+        } else {
+            setRight(suggestion.text);
+        }
+        setEscapedSuggestion(null);
+        scheduleCompare();
+    }, [escapedSuggestion, scheduleCompare]);
+
+    /** Descarta la sugerencia para este texto: no vuelve a aparecer. */
+    const dismissEscapedSuggestion = useCallback(() => {
+        escapedDismissed.current = escapedSuggestion?.source ?? null;
+        setEscapedSuggestion(null);
+    }, [escapedSuggestion]);
 
     /** Muestra u oculta el panel de diferencias (Ctrl+D). */
     const toggleDiffPanel = useCallback(() => {
@@ -706,6 +755,25 @@ export default function App() {
                                         getEditor={getSearchEditor}
                                         onClose={() => setSearchOpen(false)}
                                     />
+                                )}
+                                {escapedSuggestion && (
+                                    <div
+                                        role="status"
+                                        className="bg-muted/40 text-muted-foreground flex shrink-0 items-center gap-2 border-b px-3 py-1.5 text-body"
+                                    >
+                                        <AlertTriangle className="size-4 shrink-0" aria-hidden />
+                                        <span className="min-w-0 flex-1 truncate">{t("escaped.message")}</span>
+                                        <Button size="sm" onClick={applyEscapedSuggestion}>
+                                            {t("escaped.action")}
+                                        </Button>
+                                        <IconButton
+                                            label={t("escaped.dismiss")}
+                                            className="size-7"
+                                            onClick={dismissEscapedSuggestion}
+                                        >
+                                            <X />
+                                        </IconButton>
+                                    </div>
                                 )}
                                 <div className="min-h-0 flex-1">
                                     <ResizablePanelGroup orientation="vertical">

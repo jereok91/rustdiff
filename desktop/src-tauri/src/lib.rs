@@ -106,6 +106,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         .commands(collect_commands![
             commands::format::detect_format,
             commands::format::format_pretty,
+            commands::format::unescape_json,
             commands::diff::diff_documents,
             commands::diff::inline_char_ranges,
             commands::graph::build_graph,
