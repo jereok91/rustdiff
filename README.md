@@ -259,6 +259,12 @@ cd desktop && pnpm test
 - Design system of the interface: `docs/design-system.md`
 - Release notes: `docs/RELEASE_NOTES_1.0.0.md`
 
+## Contributing
+
+Bug reports, ideas and pull requests are welcome. Start with an issue, branch
+from `canary` and open your pull request against `canary`; the required checks
+and the conventions are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 GPL-3.0-or-later

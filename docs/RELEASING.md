@@ -63,10 +63,15 @@ the latest release, elsewhere it builds the checkout/`main` from source.
    `flathub/cargo-sources.json`. A version bump alone only rewrites the
    workspace crates, which are path dependencies and not vendored.
 6. **Validate locally** (see next section).
-7. **Commit, tag, push**:
+7. **Commit, tag, push** — el bump y las notas van en `canary`, y `main` solo
+   recibe el merge de `canary` (nunca commits directos):
 
    ```bash
-   git add -A && git commit -m "chore: bump version to X.Y.Z"
+   git checkout canary
+   git add -A && git commit -m "chore(release): X.Y.Z"
+   git push origin canary
+
+   git checkout main && git merge --ff-only canary
    git tag vX.Y.Z
    git push origin main
    git push origin vX.Y.Z       # this is what starts every publish
