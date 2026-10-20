@@ -1,11 +1,11 @@
 name: CI
 
-# Se ejecuta en cada push y PR a main
+# Se ejecuta en cada push y PR a main y a canary (las ramas de aporte)
 on:
   push:
-    branches: [main]
+    branches: [main, canary]
   pull_request:
-    branches: [main]
+    branches: [main, canary]
 
 env:
   CARGO_TERM_COLOR: always
