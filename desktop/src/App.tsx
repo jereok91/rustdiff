@@ -146,6 +146,8 @@ export default function App() {
         const seq = ++sequence.current;
 
         if (!both || l.trim() === "" || r.trim() === "") {
+            // El aviso no sobrevive a un documento que dejó de ser comparable.
+            setEscapedSuggestion(null);
             clearDiff();
             // Sin comparación posible, el lenguaje del editor sale del izquierdo.
             if (l.trim() !== "" && choice === "auto") {
@@ -215,6 +217,14 @@ export default function App() {
     const applyEscapedSuggestion = useCallback(() => {
         const suggestion = escapedSuggestion;
         if (!suggestion) {
+            return;
+        }
+        // La sugerencia se calcula de forma asíncrona: si el documento cambió
+        // desde entonces, aplicarla pisaría el texto nuevo.
+        const current = latest.current;
+        const actual = suggestion.side === "left" ? current.left : current.right;
+        if (actual !== suggestion.source) {
+            setEscapedSuggestion(null);
             return;
         }
         if (suggestion.side === "left") {

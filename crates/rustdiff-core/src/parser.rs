@@ -129,14 +129,23 @@ pub fn auto_detect_format(input: &str) -> Result<Format, ParseError> {
 /// (la forma que produce ese pegado) y se devuelve el texto **únicamente si
 /// después parsea como JSON**: si no, no hay nada que sugerir y nada cambia.
 ///
+/// Un documento que ya parsea nunca es una sugerencia: un valor con comillas
+/// escapadas y separadores adentro (`{"a":"1\",\"b\":\"2"}`) sigue siendo
+/// JSON válido, y desescaparlo lo convertiría en otro documento.
+///
 /// El frontend no parsea documentos (S8): esta es la puerta del comando IPC.
 pub fn unescape_escaped_json(input: &str) -> Option<String> {
     let trimmed = input.trim();
     if !(trimmed.starts_with('{') || trimmed.starts_with('[')) || !trimmed.contains("\\\"") {
         return None;
     }
+    if serde_json::from_str::<serde_json::Value>(trimmed).is_ok() {
+        return None;
+    }
 
-    let unescaped = trimmed.replace("\\\"", "\"");
+    // Se reemplaza sobre el texto original: el desescapado no toca los espacios
+    // de los extremos (solo `\"`).
+    let unescaped = input.replace("\\\"", "\"");
     serde_json::from_str::<serde_json::Value>(&unescaped)
         .ok()
         .map(|_| unescaped)
@@ -830,6 +839,21 @@ mod tests {
     fn no_sugiere_si_el_desescapado_no_parsea() {
         assert_eq!(unescape_escaped_json(r#"{\"a\": }"#), None);
         assert_eq!(unescape_escaped_json(r#"texto con \" comillas"#), None);
+    }
+
+    #[test]
+    fn no_sugiere_un_json_valido_con_escapes_adentro() {
+        // Ya parsea: desescaparlo lo convertiría en otro documento.
+        let valido = r#"{"a":"1\",\"b\":\"2"}"#;
+        assert!(serde_json::from_str::<serde_json::Value>(valido).is_ok());
+        assert_eq!(unescape_escaped_json(valido), None);
+    }
+
+    #[test]
+    fn desescapar_conserva_los_espacios_de_los_extremos() {
+        let pegado = "  [{\\\"a\\\":1}]  ";
+        let desescapado = unescape_escaped_json(pegado).expect("lo tiene que detectar");
+        assert_eq!(desescapado, "  [{\"a\":1}]  ");
     }
 
     // ── Display para Format ─────────────────────
