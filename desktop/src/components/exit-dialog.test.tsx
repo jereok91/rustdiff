@@ -35,18 +35,24 @@ describe("ExitDialog", () => {
         expect(document.activeElement?.textContent).toContain("Cancel");
     });
 
-    it("orden de Tab: Cancel es el foco inicial y la última respuesta es la acción segura, con la destructiva antes que ella", async () => {
+    it("un Tab desde Cancel no llega a la respuesta destructiva, que es la última del orden de foco", async () => {
         renderOpen();
         const dialog = await screen.findByTestId("exit-dialog");
-        expect(answerOrder(dialog)).toEqual([
+        // Sin tabindex positivo, el orden del DOM ES el orden del Tab. Esta prueba no
+        // simula la pulsacion (jsdom no mueve el foco): afirma la adyacencia, que es
+        // lo que decide que hace un Tab real desde Cancel.
+        const order = answerOrder(dialog);
+        const cancel = order.indexOf("Cancel");
+        expect(cancel).toBeGreaterThanOrEqual(0);
+        expect(order[cancel + 1]).toBe("Save to History");
+        expect(order.at(-1)).toBe("Close without saving");
+        expect(order).toEqual([
             "Export .html",
             "Export .txt",
             "Cancel",
-            "Close without saving",
             "Save to History",
+            "Close without saving",
         ]);
-        // La destructiva nunca es la última: un Tab apurado no la convierte en la acción por defecto.
-        expect(answerOrder(dialog).at(-1)).toBe("Save to History");
     });
 
     it("muestra la insignia sin guardar y el resumen de la sesión", async () => {

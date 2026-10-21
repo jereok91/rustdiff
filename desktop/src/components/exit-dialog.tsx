@@ -8,9 +8,11 @@
  * exportaciones agrupadas y el pie con los atajos reales (Escape cancela,
  * Ctrl/Cmd+S guarda en el historial, que es el único atajo que anuncia).
  *
- * Orden de foco: Cancel recibe el foco al abrir, así un Enter apurado nunca
- * descarta el trabajo; la respuesta destructiva no es la última del Tab y la
- * última es la acción segura (guardar). Escape equivale a Cancel.
+ * Orden de foco: Cancel recibe el foco al abrir y la respuesta destructiva es la
+ * última del Tab, detrás de las dos exportaciones y de guardar, así un Tab y un
+ * Enter apurados nunca descartan el trabajo (el mockup ponía la destructiva
+ * justo después de Cancel: eso es un Tab de distancia de perder datos). Escape
+ * equivale a Cancel.
  */
 
 import { FileCode2, FileText, HardDriveDownload, Info, Save, Trash2 } from "lucide-react";
@@ -112,14 +114,6 @@ export function ExitDialog({ open, onOpenChange, onChoose, pendingChanges = 0 }:
                             Esc
                         </kbd>
                     </AlertDialogCancel>
-                    <Button
-                        variant="ghost"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => choose("close")}
-                    >
-                        <Trash2 aria-hidden />
-                        {t("exit.close_without_saving")}
-                    </Button>
                     <Button onClick={() => choose("save_history")}>
                         <Save aria-hidden />
                         {t("exit.save_history")}
@@ -129,6 +123,16 @@ export function ExitDialog({ open, onOpenChange, onChoose, pendingChanges = 0 }:
                         >
                             Ctrl+S
                         </kbd>
+                    </Button>
+                    {/* Última del Tab: un Tab y un Enter apurados desde Cancel nunca
+                     * descartan el trabajo (hallazgos R2-1 y R3-TAB-DESTRUCTIVE). */}
+                    <Button
+                        variant="ghost"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => choose("close")}
+                    >
+                        <Trash2 aria-hidden />
+                        {t("exit.close_without_saving")}
                     </Button>
                 </div>
             </AlertDialogContent>
