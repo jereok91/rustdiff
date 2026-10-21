@@ -83,6 +83,11 @@
     --destructive: oklch(0.577 0.215 25);
     --destructive-foreground: oklch(0.985 0.005 25);
 
+    /* Aviso: la misma familia ámbar que --diff-changed, con nombre propio
+     * para los diálogos de contenido sin guardar. */
+    --warning: oklch(0.76 0.15 72);
+    --warning-foreground: oklch(0.49 0.115 62);
+
     --border: oklch(0.915 0.007 262);
     --input: oklch(0.65 0.009 262);
     --ring: oklch(0.6 0.17 262);
@@ -158,6 +163,10 @@
     --accent-foreground: oklch(0.96 0.005 262);
     --destructive: oklch(0.68 0.19 22);
     --destructive-foreground: oklch(0.16 0.03 22);
+
+    /* Aviso en oscuro: ámbar claro, legible sobre la tarjeta. */
+    --warning: oklch(0.79 0.14 78);
+    --warning-foreground: oklch(0.83 0.13 80);
 
     --border: oklch(0.26 0.009 265);
     --input: oklch(0.505 0.01 265);

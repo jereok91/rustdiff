@@ -1,6 +1,7 @@
 /*
- * Diálogo de salida: Cancel recibe el foco al abrir, es el primero del orden
- * de Tab, la respuesta destructiva es la última, y Escape cancela sin elegir.
+ * Diálogo de salida: Cancel recibe el foco al abrir, la última respuesta del Tab
+ * es la acción segura (guardar) y la destructiva queda antes que ella, Escape
+ * cancela sin elegir y Ctrl/Cmd+S elige guardar en el historial.
  */
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -11,11 +12,19 @@ import "@/i18n";
 
 afterEach(cleanup);
 
-function renderOpen() {
+function renderOpen(pendingChanges?: number) {
     const onOpenChange = vi.fn();
     const onChoose = vi.fn();
-    render(<ExitDialog open onOpenChange={onOpenChange} onChoose={onChoose} />);
+    render(
+        <ExitDialog open onOpenChange={onOpenChange} onChoose={onChoose} pendingChanges={pendingChanges} />,
+    );
     return { onOpenChange, onChoose };
+}
+
+function answerOrder(dialog: HTMLElement) {
+    return Array.from(dialog.querySelectorAll<HTMLButtonElement>("button"))
+        .filter((button) => button.tabIndex >= 0 && !button.disabled)
+        .map((button) => button.getAttribute("aria-label") ?? button.textContent?.replace(/Esc|Ctrl\+S/, "").trim());
 }
 
 describe("ExitDialog", () => {
@@ -23,22 +32,36 @@ describe("ExitDialog", () => {
         renderOpen();
         const dialog = await screen.findByTestId("exit-dialog");
         expect(dialog.contains(document.activeElement)).toBe(true);
-        expect(document.activeElement?.textContent).toBe("Cancel");
+        expect(document.activeElement?.textContent).toContain("Cancel");
     });
 
-    it("orden de Tab: Cancel primero, la respuesta destructiva al final", async () => {
+    it("orden de Tab: Cancel es el foco inicial y la última respuesta es la acción segura, con la destructiva antes que ella", async () => {
         renderOpen();
         const dialog = await screen.findByTestId("exit-dialog");
-        const order = Array.from(dialog.querySelectorAll<HTMLButtonElement>("button"))
-            .filter((button) => button.tabIndex >= 0 && !button.disabled)
-            .map((button) => button.textContent);
-        expect(order).toEqual([
-            "Cancel",
+        expect(answerOrder(dialog)).toEqual([
             "Export .html",
             "Export .txt",
-            "Save to History",
+            "Cancel",
             "Close without saving",
+            "Save to History",
         ]);
+        // La destructiva nunca es la última: un Tab apurado no la convierte en la acción por defecto.
+        expect(answerOrder(dialog).at(-1)).toBe("Save to History");
+    });
+
+    it("muestra la insignia sin guardar y el resumen de la sesión", async () => {
+        renderOpen(3);
+        const dialog = await screen.findByTestId("exit-dialog");
+        expect(dialog.textContent).toContain("Unsaved");
+        expect(dialog.textContent).toContain("Current session: 3 changes");
+        // Nada se guarda solo: la franja lo dice en vez de prometer recuperación.
+        expect(dialog.textContent).toContain("In memory only");
+    });
+
+    it("la franja usa el singular con una sola modificación", async () => {
+        renderOpen(1);
+        const dialog = await screen.findByTestId("exit-dialog");
+        expect(dialog.textContent).toContain("Current session: 1 change");
     });
 
     it("Escape cierra sin elegir ninguna respuesta", async () => {
@@ -47,5 +70,27 @@ describe("ExitDialog", () => {
         fireEvent.keyDown(dialog, { key: "Escape" });
         expect(onOpenChange).toHaveBeenCalledWith(false);
         expect(onChoose).not.toHaveBeenCalled();
+    });
+
+    it("Ctrl+S elige guardar en el historial", async () => {
+        const { onChoose } = renderOpen();
+        const dialog = await screen.findByTestId("exit-dialog");
+        fireEvent.keyDown(dialog, { key: "s", ctrlKey: true });
+        expect(onChoose).toHaveBeenCalledWith("save_history");
+    });
+
+    it("cada respuesta dispara su elección", async () => {
+        const { onChoose } = renderOpen(1);
+        await screen.findByTestId("exit-dialog");
+        fireEvent.click(screen.getByText("Export .html"));
+        fireEvent.click(screen.getByText("Export .txt"));
+        fireEvent.click(screen.getByText("Save to History"));
+        fireEvent.click(screen.getByText("Close without saving"));
+        expect(onChoose.mock.calls.map(([choice]) => choice)).toEqual([
+            "export_html",
+            "export_txt",
+            "save_history",
+            "close",
+        ]);
     });
 });

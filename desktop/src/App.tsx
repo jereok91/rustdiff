@@ -106,6 +106,8 @@ export default function App() {
     const [historyOpen, setHistoryOpen] = useState(false);
     const [historyRefresh, setHistoryRefresh] = useState(0);
     const [exitOpen, setExitOpen] = useState(false);
+    // Diferencias pendientes de la última comparación, para el resumen del diálogo de salida.
+    const [pendingChanges, setPendingChanges] = useState(0);
     const [graphOpen, setGraphOpen] = useState(false);
     // Nombre del archivo abierto en cada panel (solo para la cabecera del panel).
     const [fileNames, setFileNames] = useState<Record<Side, string | null>>({ left: null, right: null });
@@ -202,6 +204,7 @@ export default function App() {
                     formatDisplayName(resp.format),
                 ),
             );
+            setPendingChanges(resp.result.added.length + resp.result.removed.length + resp.result.changed.length);
         } catch (error) {
             if (seq !== sequence.current) {
                 return;
@@ -878,6 +881,7 @@ export default function App() {
                     open={exitOpen}
                     onOpenChange={setExitOpen}
                     onChoose={(choice) => void onExitChoice(choice)}
+                    pendingChanges={pendingChanges}
                 />
                 <Toaster />
             </div>
