@@ -15,7 +15,6 @@ import { useTranslation } from "react-i18next";
 import {
     Download,
     FolderOpen,
-    GitCompareArrows,
     History,
     List,
     Moon,
@@ -132,12 +131,9 @@ export function AppHeader(props: AppHeaderProps) {
         >
             {/* Marca */}
             <div className="flex shrink-0 items-center gap-2" data-tauri-drag-region>
-                <div
-                    aria-hidden
-                    className="bg-primary text-primary-foreground grid size-6 place-items-center rounded-md shadow-xs"
-                >
-                    <GitCompareArrows className="size-3.5" strokeWidth={2.5} />
-                </div>
+                {/* La marca es el icono de la app, el mismo de la bienvenida
+                    (`public/com.digitalgex.RustDiff.svg`). */}
+                <img src="/com.digitalgex.RustDiff.svg" alt="" aria-hidden className="size-6 shrink-0 rounded-md" />
                 <span className="hidden text-body font-semibold tracking-tight @3xl:inline" data-tauri-drag-region>
                     {t("app.title")}
                 </span>
