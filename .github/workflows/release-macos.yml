@@ -186,9 +186,10 @@ jobs:
     name: Update Homebrew cask
     needs: build-dmg
     runs-on: ubuntu-latest
-    # Un RC no actualiza el cask. El dispatch manual de un tag final sigue
-    # funcionando: ahi `inputs.tag` no tiene guion y `github.ref_name` es la rama.
-    if: ${{ !contains(inputs.tag || '', '-') && !contains(github.ref_name, '-') }}
+    # Un RC no actualiza el cask. En dispatch manual manda el tag de entrada; si
+    # no vino, el ref. Mirar los dos a la vez saltaba el cask desde una rama con
+    # guion (R1-002).
+    if: ${{ !contains(inputs.tag || github.ref_name, '-') }}
     env:
       TAP_REPO: jereok91/homebrew-rustdiff
       CASK: Casks/rustdiff-app.rb

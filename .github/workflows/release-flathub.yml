@@ -83,6 +83,9 @@ jobs:
           echo "url=https://github.com/${{ github.repository }}/releases/download/${TAG}/${NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Attach the frontend tarball to the GitHub release
+        # Solo en un push de tag: un dispatch manual del workflow no crea ni
+        # adjunta releases, se quede en el artefacto del run (R1-001).
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.frontend.outputs.name }}
