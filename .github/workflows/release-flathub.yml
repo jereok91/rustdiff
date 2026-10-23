@@ -31,9 +31,9 @@ jobs:
   update-flathub:
     name: Update Flathub manifest
     runs-on: ubuntu-latest
-    # Solo tags finales: un RC nunca clona, bumpea ni abre PR en el repo de
-    # Flathub.
-    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+    # Solo el push de un tag final: ni un RC ni un dispatch manual clonan,
+    # bumpean ni abren PR en el repo de Flathub.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
 
     steps:
       - name: Checkout rustdiff at the pushed tag
@@ -192,7 +192,7 @@ jobs:
   build-bundle:
     name: Build Flatpak bundle (RC / manual)
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: contains(github.ref_name, '-') || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
