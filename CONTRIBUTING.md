@@ -137,4 +137,6 @@ No abras un issue público para una vulnerabilidad. Escribile al mantenedor por 
 
 El mantenedor trabaja con ODD (Organic Driven Development): documentos de feature en `odd/tasks/`, commits por unidad y una revisión nativa antes de publicar. **No es un requisito para aportes**: para PRs externos alcanza con Conventional Commits, tests y documentación.
 
+**Los tags y las versiones son solo del mantenedor.** Un aporte nunca crea tags, nunca sube la versión en `Cargo.toml`, `desktop/package.json` ni `desktop/src-tauri/tauri.conf.json`, y nunca empuja ramas al repositorio principal. Los release candidates (`vX.Y.Z-rc.N`) y los tags finales (`vX.Y.Z`) los crea únicamente el mantenedor: un RC publica artefactos de prueba en un prerelease sin promover nada (ni APT, ni el cask de Homebrew, ni Flathub), y la promoción a `vX.Y.Z` también es suya. Ver [docs/RELEASING.md](docs/RELEASING.md#release-candidates).
+
 Gracias por tomarte el tiempo. Un PR chico, probado y bien contado vale más que uno grande y a medias.

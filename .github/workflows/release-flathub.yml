@@ -9,10 +9,16 @@ name: Open PR on Flathub repo for new tag
 #
 # Requiere el secret FLATHUB_PAT: un PAT con permiso para pushear ramas y abrir
 # PRs en flathub/com.digitalgex.RustDiff.
+#
+# Release candidates (`vX.Y.Z-rc.N`) y el dispatch manual NO abren PR en
+# Flathub: el job `update-flathub` solo corre para tags finales, y el job
+# `build-bundle` arma un .flatpak instalable como artefacto del run para
+# probar el RC antes de promover.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -25,6 +31,9 @@ jobs:
   update-flathub:
     name: Update Flathub manifest
     runs-on: ubuntu-latest
+    # Solo tags finales: un RC nunca clona, bumpea ni abre PR en el repo de
+    # Flathub.
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
 
     steps:
       - name: Checkout rustdiff at the pushed tag
@@ -77,6 +86,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.frontend.outputs.name }}
+          # Tag con guion (v1.2.3-rc.1) = release candidate: el tarball va a un
+          # prerelease, que nunca pasa a ser "latest".
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
       # ── Rust: fuentes offline ───────────────────────────────────────────
       - name: Setup Python
@@ -173,3 +185,82 @@ jobs:
                   exit 1
               fi
           fi
+
+  # Arma un .flatpak instalable y lo deja como artefacto del run: es la forma de
+  # probar un release candidate sin tocar el repo de Flathub (no usa el secret
+  # del PAT ni abre PRs). Tambien sirve en dispatch manual.
+  build-bundle:
+    name: Build Flatpak bundle (RC / manual)
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # En un tag el nombre sale del tag; en dispatch manual (rama por defecto,
+      # sin tag) se lee la version que la rama tiene en tauri.conf.json.
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(python3 -c 'import json;print(json.load(open("desktop/src-tauri/tauri.conf.json"))["version"])')"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Bundle: rustdiff-${VERSION}.flatpak"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+
+      # El manifest local toma `desktop/dist` del checkout: el frontend se
+      # compila aca, no adentro del sandbox.
+      - name: Build the frontend
+        working-directory: desktop
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: Add the Flathub remote
+        # --user: la instalación de sistema (/var/lib/flatpak) es de root, así que
+        # un remote-add sin privilegios fallaría en el runner.
+        run: flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      # --install-deps-from resuelve runtime, SDK y sdk-extensions desde el
+      # manifest: no hay que fijar a mano el branch de rust-stable.
+      - name: Build the Flatpak
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --repo=repo \
+              --force-clean build-dir com.digitalgex.RustDiff.yaml
+
+      - name: Create the bundle
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          NAME="rustdiff-${VERSION}.flatpak"
+          flatpak build-bundle repo "$NAME" com.digitalgex.RustDiff
+          ls -l "$NAME"
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustdiff-flatpak-${{ steps.version.outputs.version }}
+          path: rustdiff-${{ steps.version.outputs.version }}.flatpak
+          if-no-files-found: error

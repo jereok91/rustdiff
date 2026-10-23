@@ -20,6 +20,60 @@ Homebrew source formula are retired (see the bottom of this page).
 `install.sh` is not a workflow: on Debian/Ubuntu it downloads the `.deb` of
 the latest release, elsewhere it builds the checkout/`main` from source.
 
+## Release candidates
+
+An RC builds the same artifacts a final release does and attaches them to a
+GitHub **prerelease**, without promoting anything. RCs are cut from `canary`.
+
+**Tag taxonomy.** An RC is `vX.Y.Z-rc.N`; the final is `vX.Y.Z`. Semver sorts
+the prerelease before the final, so the final always wins.
+
+**RC round.**
+
+1. Bump the three version files to `X.Y.Z-rc.N`: `Cargo.toml` workspace
+   version, `desktop/package.json`, `desktop/src-tauri/tauri.conf.json`.
+2. Commit `chore(release): X.Y.Z-rc.N` on `canary`.
+3. `git tag vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N`.
+
+**What a `v*-rc.*` tag does.** It attaches the `.deb` (both arches), the
+per-arch DMGs and the frontend tarball to a GitHub **prerelease**, and
+`release-flathub.yml` builds the Flatpak bundle as a workflow artifact. The
+release stays a prerelease, so it never becomes "latest" — which is what
+`install.sh` and the site resolve against.
+
+**What it does not do.** No publish to the APT repository (`publish-apt` is
+skipped), no Homebrew cask update (`update-cask` is skipped), no PR on Flathub
+(`update-flathub` is skipped). Every promotion job is gated on
+`!contains(github.ref_name, '-')`.
+
+**Testing the Flatpak.** Run the `release-flathub.yml` workflow manually
+(`workflow_dispatch`) and download the `rustdiff-<version>.flatpak` artifact
+from the run; install it with
+`flatpak install --user rustdiff-<version>.flatpak`. A manual run builds the
+default branch and takes the version from `desktop/src-tauri/tauri.conf.json`;
+the bundle is built from the manifest at the repository root (frontend from the
+checkout), so it never touches `flathub/`.
+
+**Promotion.**
+
+1. Bump the three files to `X.Y.Z` and commit `chore(release): X.Y.Z` on
+   `canary`; push.
+2. `git checkout main && git merge --ff-only canary`
+3. `git tag vX.Y.Z`
+4. `git push origin main vX.Y.Z`
+
+That final tag runs the existing full-release pipelines unchanged (see the
+checklist below). `main` must be exactly the commit that was tested: a fix
+after `vX.Y.Z-rc.N` means `vX.Y.Z-rc.N+1`, never a different tree under the
+final tag.
+
+The AppStream `<release>` entry in `data/com.digitalgex.RustDiff.metainfo.xml`
+is added only for the final version: Flathub rejects a build whose metainfo has
+no entry for the version being published, and RCs never reach Flathub.
+
+RC artifacts stay public on the prerelease — their links are what testers use.
+They can be deleted once the final release is out.
+
 ## Checklist
 
 1. **Bump the version** — three files, they do not read each other:

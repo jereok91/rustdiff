@@ -178,11 +178,17 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           files: dist/*.dmg
+          # Tag con guion (v1.2.3-rc.1) = release candidate: los DMG van a un
+          # prerelease, que nunca pasa a ser "latest".
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
 
   update-cask:
     name: Update Homebrew cask
     needs: build-dmg
     runs-on: ubuntu-latest
+    # Un RC no actualiza el cask. El dispatch manual de un tag final sigue
+    # funcionando: ahi `inputs.tag` no tiene guion y `github.ref_name` es la rama.
+    if: ${{ !contains(inputs.tag || '', '-') && !contains(github.ref_name, '-') }}
     env:
       TAP_REPO: jereok91/homebrew-rustdiff
       CASK: Casks/rustdiff-app.rb
