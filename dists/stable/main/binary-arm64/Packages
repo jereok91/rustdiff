@@ -1,0 +1,17 @@
+Package: rustdiff
+Version: 1.0.6
+Architecture: arm64
+Maintainer: digitalgex <jpajaro@digitalgex.com>
+Installed-Size: 7367
+Depends: libwebkit2gtk-4.1-0, libgtk-3-0
+Filename: pool/main/r/rustdiff/rustdiff_1.0.6_arm64.deb
+Size: 3625916
+MD5sum: e0d16a463c529ecfda3c55bab1450851
+SHA1: 7bf37169e173126e91ee8dd6bf6c2019f8d2c1ee
+SHA256: c4fbb640f9d465fbfe2d721f1ab9b0c5658c7dd4312c5b29cf80c120646a39d7
+Section: utils
+Priority: optional
+Homepage: https://github.com/jereok91/rustdiff
+Description: Semantic JSON, XML and SQL comparator
+ RustDiff compares the structure of JSON, XML and SQL documents: keys, array indices, XML nodes and attributes, and SQL statements.
+
