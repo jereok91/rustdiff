@@ -14,8 +14,15 @@ https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/<nombr
 | Archivo         | Descripción                                                        |
 |-----------------|--------------------------------------------------------------------|
 | `main.png`      | Captura principal: dos JSON comparados con resaltado de diferencias |
-| `diff-table.png`| Vista inferior de la tabla de diferencias con filtros activos      |
-| `history.png`   | Panel lateral de historial con varias sesiones guardadas           |
+| `xml.png`       | Dos documentos XML comparados por nodo y atributo                  |
+| `sql.png`       | Dos conjuntos de sentencias SQL comparados tras normalizar          |
+| `graph.png`     | Mapa de nodos de un documento JSON                                  |
+| `graph-xml.png` | Mapa de nodos de un documento XML (nodos y atributos)               |
+
+Las capturas se hacen con `target/shots/capture.sh` sobre un sway headless
+(1600x900, ventana con decoración) y muestran documentos inventados: ninguna
+lleva datos reales. `diff-table.png` y `history.png` quedan en el repo de la
+etapa GTK pero ya no se declaran en el metainfo.
 
 ## Requisitos técnicos (Flathub / AppStream)
 

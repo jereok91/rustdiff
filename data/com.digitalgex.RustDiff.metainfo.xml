@@ -89,12 +89,20 @@
       <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/main.png</image>
     </screenshot>
     <screenshot>
-      <caption>Difference table with type filters</caption>
-      <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/diff-table.png</image>
+      <caption>Comparing XML documents node by node, attributes included</caption>
+      <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/xml.png</image>
     </screenshot>
     <screenshot>
-      <caption>Session history sidebar</caption>
-      <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/history.png</image>
+      <caption>Comparing SQL statements after whitespace and case normalisation</caption>
+      <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/sql.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The node graph of a JSON document</caption>
+      <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/graph.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The node graph of an XML document: nodes and attributes together</caption>
+      <image>https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/graph-xml.png</image>
     </screenshot>
   </screenshots>
 
