@@ -42,9 +42,11 @@ Language: **English** | [Español](README.es.md)
 
 ![Main view - Comparing JSON documents](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/main.png)
 
-![Difference table with filters](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/diff-table.png)
+![Comparing XML documents node by node, attributes included](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/xml.png)
 
-![Session history sidebar](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/history.png)
+![Comparing SQL statements after normalisation](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/sql.png)
+
+![The node graph of a JSON document](https://raw.githubusercontent.com/jereok91/rustdiff/main/data/screenshots/graph.png)
 
 ## Installation
 
