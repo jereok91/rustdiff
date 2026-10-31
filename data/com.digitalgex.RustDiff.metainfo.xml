@@ -120,6 +120,17 @@
   </branding>
 
   <releases>
+    <release version="1.0.6" date="2026-10-31">
+      <description>
+        <p>A polish release: a new icon, screenshots that match the current interface, and two desktop fixes.</p>
+        <ul>
+          <li>A new app icon (an emerald brace, an orange angle bracket and a violet not-equal sign) ships on every channel, and the header shows it.</li>
+          <li>The screenshots now show JSON, XML and SQL comparisons, the node graph of both formats, the difference table and the session history, all captured from the current interface.</li>
+          <li>Right-clicking no longer opens the WebView's own menu, whose Reload threw away everything held in memory.</li>
+          <li>Scrolling to the end of the differences no longer moves the whole interface or exposes the empty background.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5" date="2026-10-31">
       <description>
         <p>A design and release-infrastructure release.</p>
