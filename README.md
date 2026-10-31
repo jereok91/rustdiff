@@ -152,9 +152,28 @@ Or download `RustDiff-<version>-macos-<arch>.dmg` from
 [Releases](https://github.com/jereok91/rustdiff/releases) and drag
 `RustDiff.app` into `Applications`.
 
-> The app is ad-hoc signed (no Apple Developer certificate). If macOS blocks
-> the first launch: right-click the app → **Open**, or run
-> `xattr -cr /Applications/RustDiff.app`.
+> **macOS Gatekeeper: you have to allow the app once.** The builds are ad-hoc
+> signed, with no Apple Developer certificate and no notarisation, so macOS
+> treats RustDiff as coming from an unidentified developer and refuses the
+> first launch. The message is either *"RustDiff.app can't be opened because
+> Apple cannot check it for malicious software"* or the misleading *"RustDiff.app
+> is damaged and can't be opened"*: the app is fine, it just was not signed by
+> Apple.
+>
+> To allow it, open **System Settings → Privacy & Security**, scroll down to the
+> message about RustDiff and press **Open Anyway**, then confirm with your
+> password and launch the app again. On macOS 15 and later this is the only
+> path: the old right-click → **Open** trick no longer bypasses the check.
+>
+> The equivalent from a terminal is:
+>
+> ```bash
+> xattr -cr /Applications/RustDiff.app
+> ```
+>
+> This is needed once per install, and only because the app is not signed with
+> a paid Apple certificate. It applies to the Homebrew cask too, since the cask
+> installs the same DMG.
 
 The Homebrew **source formula** (`brew install jereok91/rustdiff/rustdiff`) is
 retired: it built the GTK app with `cargo install`, which no longer exists.

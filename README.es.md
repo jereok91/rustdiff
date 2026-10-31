@@ -152,9 +152,29 @@ O descarga `RustDiff-<version>-macos-<arch>.dmg` desde
 [Releases](https://github.com/jereok91/rustdiff/releases) y arrastra
 `RustDiff.app` a `Aplicaciones`.
 
-> La app esta firmada ad-hoc (sin certificado de Apple Developer). Si macOS
-> bloquea el primer arranque: click derecho sobre la app → **Abrir**, o
-> `xattr -cr /Applications/RustDiff.app`.
+> **Gatekeeper de macOS: hay que darle permiso una vez.** Los binarios estan
+> firmados ad-hoc, sin certificado de Apple Developer ni notarizacion, asi que
+> macOS trata a RustDiff como una app de un desarrollador no identificado y
+> bloquea el primer arranque. El mensaje es *"RustDiff.app no se puede abrir
+> porque Apple no puede verificar que no contenga software malicioso"* o el
+> enganoso *"RustDiff.app esta dañada y no se puede abrir"*: la app esta bien,
+> solo no la firmo Apple.
+>
+> Para permitirla, abri **Ajustes del Sistema → Privacidad y seguridad**, baja
+> hasta el aviso sobre RustDiff y pulsa **Abrir de todos modos**, confirma con
+> tu contraseña y volve a abrir la app. En macOS 15 y posteriores este es el
+> unico camino: el viejo truco de click derecho → **Abrir** ya no saltea el
+> control.
+>
+> El equivalente desde una terminal es:
+>
+> ```bash
+> xattr -cr /Applications/RustDiff.app
+> ```
+>
+> Hace falta una vez por instalacion, y solo porque la app no esta firmada con
+> un certificado pago de Apple. Aplica tambien al cask de Homebrew, porque
+> instala el mismo DMG.
 
 La **formula de codigo fuente** de Homebrew (`brew install jereok91/rustdiff/rustdiff`)
 se retiro: compilaba la app GTK con `cargo install`, que ya no existe. Si la
