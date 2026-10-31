@@ -123,6 +123,13 @@
     #root {
         @apply h-full;
     }
+    /* El documento no scrollea nunca: el scroll vive en los paneles internos. Con
+     * `body` solo, la rueda al llegar al final de la tabla encadenaba al viewport,
+     * corría el documento y dejaba al descubierto el fondo blanco del WebView. */
+    html {
+        @apply bg-background overflow-hidden;
+        overscroll-behavior: none;
+    }
     body {
         @apply bg-background text-foreground overflow-hidden font-sans antialiased;
         /* En rem: la escala de texto (`ui_scale`) mueve el font-size de la raíz. */
