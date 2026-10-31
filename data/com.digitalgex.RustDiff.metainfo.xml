@@ -104,6 +104,16 @@
   </branding>
 
   <releases>
+    <release version="1.0.5" date="2026-10-31">
+      <description>
+        <p>A design and release-infrastructure release.</p>
+        <ul>
+          <li>A redesigned exit prompt: it groups the export actions, summarises the pending session and shows the real shortcuts. Ctrl/Cmd+S saves to History from it.</li>
+          <li>The app icons are regenerated from the project's SVG with the Tauri CLI, and the header shows the app icon instead of a generic glyph.</li>
+          <li>A release-candidate lane in CI: a vX.Y.Z-rc.N tag builds testable artifacts as a prerelease and never publishes to APT, Homebrew or Flathub.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.4" date="2026-10-20">
       <description>
         <p>A feature release: the editors now recognise JSON that arrives with the quotes escaped and offer to unescape it.</p>
